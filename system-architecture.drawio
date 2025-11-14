@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" version="28.2.7">
+  <diagram name="Page-1" id="GQspeDYAIe-jwmtjbGoF">
+    <mxGraphModel dx="736" dy="616" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-3" value="Front-end" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" vertex="1" parent="1">
+          <mxGeometry x="200" y="120" width="520" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-4" value="React Native mobile application" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" vertex="1" parent="OqpBlMDHU6_ndu6DHLuN-3">
+          <mxGeometry x="280" y="80" width="200" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-21" value="QR scanner&lt;div&gt;Manual verification&lt;/div&gt;&lt;div&gt;Product details&lt;/div&gt;&lt;div&gt;Expiry check&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="OqpBlMDHU6_ndu6DHLuN-4">
+          <mxGeometry y="40" width="200" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-2" value="React web application" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" vertex="1" parent="OqpBlMDHU6_ndu6DHLuN-3">
+          <mxGeometry x="40" y="80" width="200" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-20" value="Product registration&lt;div&gt;View products&lt;/div&gt;&lt;div&gt;Upload documentation&lt;/div&gt;&lt;div&gt;Batch management&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(255, 51, 51);&quot;&gt;Hosted on Vercel&lt;/font&gt;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="OqpBlMDHU6_ndu6DHLuN-2">
+          <mxGeometry y="40" width="200" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-26" value="&lt;font style=&quot;color: rgb(51, 51, 255);&quot;&gt;Nginx reverse proxy api routing&lt;/font&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="OqpBlMDHU6_ndu6DHLuN-3">
+          <mxGeometry y="280" width="520" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-5" value="" style="endArrow=none;dashed=1;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="460" y="520" as="sourcePoint" />
+            <mxPoint x="460" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-6" value="REST API" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="430" y="520" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-9" value="" style="endArrow=none;dashed=1;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="459.76" y="600" as="sourcePoint" />
+            <mxPoint x="459.76" y="560" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-10" value="Back-end NodeJS &amp;amp; Express" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" vertex="1" parent="1">
+          <mxGeometry x="200" y="600" width="520" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-11" value="&lt;div&gt;&lt;font style=&quot;color: rgb(51, 51, 255);&quot;&gt;Node process&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(51, 51, 255);&quot;&gt;Docker containerisation&lt;/font&gt;&lt;/div&gt;Fabric SDK&lt;div&gt;IPFS HTTP client&lt;/div&gt;&lt;div&gt;JWT auth&lt;/div&gt;&lt;div&gt;PostgrSQL&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(255, 0, 0);&quot;&gt;Hosted on OCI&lt;/font&gt;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="OqpBlMDHU6_ndu6DHLuN-10">
+          <mxGeometry y="40" width="520" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-12" value="Hyperledger Fabric" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" vertex="1" parent="1">
+          <mxGeometry x="200" y="880" width="160" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-13" value="IPFS" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" vertex="1" parent="1">
+          <mxGeometry x="380" y="880" width="160" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-24" value="&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 255);&quot;&gt;Systemd service&lt;/font&gt;&lt;/div&gt;&lt;div&gt;PDFs&lt;/div&gt;&lt;div&gt;Images&lt;/div&gt;&lt;div&gt;Certificates&lt;/div&gt;&lt;div&gt;Lab reports&lt;/div&gt;&lt;div&gt;Test documentation&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(255, 0, 0);&quot;&gt;Hosted on OCI&lt;/font&gt;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="OqpBlMDHU6_ndu6DHLuN-13">
+          <mxGeometry y="40" width="160" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-14" value="PostgrSQL" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" vertex="1" parent="1">
+          <mxGeometry x="560" y="880" width="160" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-25" value="&lt;div&gt;&lt;font style=&quot;color: rgb(51, 51, 255);&quot;&gt;Docker containerisation&lt;/font&gt;&lt;/div&gt;User accounts&lt;div&gt;Organisations&lt;/div&gt;&lt;div&gt;API keys&lt;/div&gt;&lt;div&gt;Audit logging&lt;/div&gt;&lt;div&gt;Blockchain product cache&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(255, 0, 0);&quot;&gt;Hosted on OCI&lt;/font&gt;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="OqpBlMDHU6_ndu6DHLuN-14">
+          <mxGeometry y="40" width="160" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-17" value="" style="endArrow=none;dashed=1;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="OqpBlMDHU6_ndu6DHLuN-12">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="279.52" y="840" as="sourcePoint" />
+            <mxPoint x="279.52" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-18" value="" style="endArrow=none;dashed=1;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="OqpBlMDHU6_ndu6DHLuN-13" target="OqpBlMDHU6_ndu6DHLuN-11">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="459.52" y="850" as="sourcePoint" />
+            <mxPoint x="459.52" y="810" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-19" value="" style="endArrow=none;dashed=1;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="639.71" y="880" as="sourcePoint" />
+            <mxPoint x="639.71" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OqpBlMDHU6_ndu6DHLuN-22" value="&lt;div&gt;&lt;font style=&quot;color: rgb(51, 51, 255);&quot;&gt;Docker containerisation&lt;/font&gt;&lt;/div&gt;Serial number&lt;div&gt;GTIN&lt;/div&gt;&lt;div&gt;Batch number&lt;/div&gt;&lt;div&gt;Expiry date&lt;/div&gt;&lt;div&gt;Manufacturer&lt;/div&gt;&lt;div&gt;Product name&lt;/div&gt;&lt;div&gt;Dosage&lt;/div&gt;&lt;div&gt;IPFS hash pointer&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(255, 0, 0);&quot;&gt;Hosted on OCI&lt;/font&gt;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="200" y="920" width="160" height="160" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
