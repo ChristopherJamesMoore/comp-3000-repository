@@ -1,0 +1,11 @@
+Step 0: Initial Setup - Complete
+Step 0: Renamed project to ledgrx-mvp
+Step 1: Setup Hyperledger Fabric - Downloaded binaries and samples
+Step 1: Setup Hyperledger Fabric - Network is up
+Step 2: Create Chaincode - Complete
+Step 3: Deploy Chaincode - Environment variables set
+Step 3: Deploy Chaincode - Complete
+Step 4: Create Node.js API Server - Waiting for server.js content
+Step 5: Create React Frontend - Waiting for App.js content
+Step 5: Create React Frontend - Initial setup complete
+Step 5: Create React Frontend - Complete
