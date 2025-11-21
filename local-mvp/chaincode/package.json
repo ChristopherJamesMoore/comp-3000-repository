@@ -1,9 +1,0 @@
-{
-  "name": "pharma-simple",
-  "version": "1.0.0",
-  "description": "Simple pharma chaincode",
-  "main": "index.js",
-  "dependencies": {
-    "fabric-contract-api": "^2.5.0"
-  }
-}
