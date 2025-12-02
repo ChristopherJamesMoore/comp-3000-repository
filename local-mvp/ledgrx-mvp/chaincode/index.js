@@ -7,19 +7,25 @@ class PharmaContract extends Contract {
         console.log('Ledger initialized');
     }
 
-    async addMedication(ctx, id, name, manufacturer, dosage, expiryDate) {
+    async addMedication(ctx, serialNumber, medicationName, gtin, batchNumber, expiryDate, ipfsHash, qrHash) {
         const medication = {
-            id, name, manufacturer, dosage, expiryDate,
+            serialNumber,
+            medicationName,
+            gtin,
+            batchNumber,
+            expiryDate,
+            ipfsHash,
+            qrHash,
             createdAt: new Date().toISOString()
         };
-        await ctx.stub.putState(id, Buffer.from(JSON.stringify(medication)));
+        await ctx.stub.putState(serialNumber, Buffer.from(JSON.stringify(medication)));
         return JSON.stringify(medication);
     }
 
-    async getMedication(ctx, id) {
-        const bytes = await ctx.stub.getState(id);
+    async getMedication(ctx, serialNumber) {
+        const bytes = await ctx.stub.getState(serialNumber);
         if (!bytes || bytes.length === 0) {
-            throw new Error(`Medication ${id} does not exist`);
+            throw new Error(`Medication ${serialNumber} does not exist`);
         }
         return bytes.toString();
     }

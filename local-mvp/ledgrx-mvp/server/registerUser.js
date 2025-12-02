@@ -43,9 +43,7 @@ async function main() {
         const userIdentity = await wallet.get('appUser');
         if (userIdentity) {
             console.log('An identity for the user "appUser" already exists in the wallet');
-            // To re-enroll with new role, remove existing identity first
-            await wallet.remove('appUser'); // Corrected method
-            console.log('Existing "appUser" identity removed for re-enrollment.');
+            return;
         }
 
         // Register the user, enroll the user, and import the new identity into the wallet.
