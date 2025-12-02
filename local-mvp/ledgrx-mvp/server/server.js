@@ -42,8 +42,10 @@ async function main() {
         // API endpoint to add a medication
         app.post('/api/medications', async (req, res) => {
             try {
-                const { id, name, manufacturer, dosage, expiryDate } = req.body;
-                await contract.submitTransaction('addMedication', id, name, manufacturer, dosage, expiryDate);
+                const { medicationName, gtin, batchNumber, expiryDate, serialNumber } = req.body;
+                const qrHash = `${gtin}${expiryDate}${serialNumber}`;
+                const ipfsHash = ''; // To be added later
+                await contract.submitTransaction('addMedication', serialNumber, medicationName, gtin, batchNumber, expiryDate, ipfsHash, qrHash);
                 res.json({ message: 'Medication added successfully' });
             } catch (error) {
                 res.status(500).json({ error: error.message });

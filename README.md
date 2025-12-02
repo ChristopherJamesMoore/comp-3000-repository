@@ -1,6 +1,10 @@
 # LedgRX
 End-to-end visibility into the manufacturing and distribution processes of all pharmaceutical medications.
 
+## Running project locally
+`./up.sh`
+`./down.sh`
+
 ## Commit types
 
 - `CHORE:` General maintenance  
