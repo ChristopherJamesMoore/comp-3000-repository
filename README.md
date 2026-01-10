@@ -2,8 +2,29 @@
 End-to-end visibility into the manufacturing and distribution processes of all pharmaceutical medications.
 
 ## Running project locally
-`./up.sh`
-`./down.sh`
+
+This repo's runnable stack lives under `local-mvp/ledgrx-mvp`. It uses Docker Compose and a local Hyperledger Fabric test network.
+
+Prereqs:
+- Docker + Docker Compose
+- Bash (macOS/Linux or WSL)
+
+Start:
+```bash
+cd local-mvp/ledgrx-mvp
+chmod +x up.sh down.sh
+./up.sh
+```
+
+App endpoints:
+- Frontend: http://localhost:3000
+- API: http://localhost:3001
+
+Stop:
+```bash
+cd local-mvp/ledgrx-mvp
+./down.sh
+```
 
 ## Commit types
 

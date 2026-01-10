@@ -7,14 +7,12 @@ class PharmaContract extends Contract {
         console.log('Ledger initialized');
     }
 
-    async addMedication(ctx, serialNumber, medicationName, gtin, batchNumber, expiryDate, ipfsHash, qrHash) {
+    async addMedication(ctx, serialNumber, gtin, batchNumber, expiryDate, qrHash) {
         const medication = {
             serialNumber,
-            medicationName,
             gtin,
             batchNumber,
             expiryDate,
-            ipfsHash,
             qrHash,
             createdAt: new Date().toISOString()
         };
