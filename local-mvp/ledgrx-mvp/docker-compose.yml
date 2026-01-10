@@ -7,10 +7,19 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app
+      - /app/node_modules
 
   server:
     build: ./server
-    network_mode: "host"
+    ports:
+      - "3001:3001"
     volumes:
       - ./server:/app
       - ./fabric-samples:/fabric-samples
+    networks:
+      - fabric_test
+
+networks:
+  fabric_test:
+    name: fabric_test
+    external: true

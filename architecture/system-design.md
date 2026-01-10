@@ -193,12 +193,14 @@ Each event will contain references to: product identifiers, actor identity (cert
 
 ---
 
-## Information stored
-GTIN (Global Trafe Item Number)
+## Information stored on the blockchain
+Medication Name
+GTIN (Global Trade Item Number)
 Batch Number
 Expiry Date
 Serial Number (UID)
 IPFS hash for supporting documents
+QR hash (GTIN + Expiry Date + Serial Number)
 
 ### Portal
 Several user roles for determinening what level of informaiton can be changed and viewed. This will be managed with role-based access control (RBAC).

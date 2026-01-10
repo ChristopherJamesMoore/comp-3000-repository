@@ -3,6 +3,7 @@ const cors = require('cors');
 const { Gateway, Wallets } = require('fabric-network');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
@@ -42,10 +43,11 @@ async function main() {
         // API endpoint to add a medication
         app.post('/api/medications', async (req, res) => {
             try {
-                const { medicationName, gtin, batchNumber, expiryDate, serialNumber } = req.body;
-                const qrHash = `${gtin}${expiryDate}${serialNumber}`;
-                const ipfsHash = ''; // To be added later
-                await contract.submitTransaction('addMedication', serialNumber, medicationName, gtin, batchNumber, expiryDate, ipfsHash, qrHash);
+                const { gtin, batchNumber, expiryDate, serialNumber } = req.body;
+                const qrHashSource = `${batchNumber}${expiryDate}${serialNumber}`;
+                const qrHash = crypto.createHash('sha256').update(qrHashSource).digest('hex');
+                
+                await contract.submitTransaction('addMedication', serialNumber, gtin, batchNumber, expiryDate, qrHash);
                 res.json({ message: 'Medication added successfully' });
             } catch (error) {
                 res.status(500).json({ error: error.message });

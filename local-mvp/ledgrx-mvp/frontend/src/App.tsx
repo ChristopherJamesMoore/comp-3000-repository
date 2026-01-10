@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, List, RefreshCw } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 const App: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'add' | 'view'>('add');
     const [medications, setMedications] = useState<any[]>([]);
     const [formData, setFormData] = useState({
-        id: '',
-        name: '',
-        manufacturer: '',
-        dosage: '',
+        serialNumber: '',
+        gtin: '',
+        batchNumber: '',
         expiryDate: '',
     });
+    const [showQRModal, setShowQRModal] = useState(false);
+    const [selectedQRHash, setSelectedQRHash] = useState('');
 
     const fetchMedications = async () => {
         try {
@@ -45,10 +47,9 @@ const App: React.FC = () => {
             if (response.ok) {
                 alert('Medication added successfully!');
                 setFormData({
-                    id: '',
-                    name: '',
-                    manufacturer: '',
-                    dosage: '',
+                    serialNumber: '',
+                    gtin: '',
+                    batchNumber: '',
                     expiryDate: '',
                 });
             } else {
@@ -61,79 +62,84 @@ const App: React.FC = () => {
         }
     };
 
+    const handleShowQR = (qrHash: string) => {
+        setSelectedQRHash(qrHash);
+        setShowQRModal(true);
+    };
+
     const containerStyle: React.CSSProperties = {
         minHeight: '100vh',
-        backgroundColor: '#f3f4f6', // gray-100
+        backgroundColor: '#f3f4f6',
         padding: '2rem 0',
     };
 
     const innerContainerStyle: React.CSSProperties = {
-        maxWidth: '64rem', // max-w-4xl
+        maxWidth: '64rem',
         margin: '0 auto',
         padding: '2rem',
     };
 
     const cardStyle: React.CSSProperties = {
         backgroundColor: '#fff',
-        borderRadius: '0.5rem', // rounded-lg
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', // shadow-md
+        borderRadius: '0.5rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
     };
 
     const tabContainerStyle: React.CSSProperties = {
         display: 'flex',
-        borderBottom: '1px solid #e5e7eb', // border-b
+        borderBottom: '1px solid #e5e7eb',
     };
 
     const tabButtonStyle: React.CSSProperties = {
         flex: 1,
-        padding: '1rem 1.5rem', // py-4 px-6
+        padding: '1rem 1.5rem',
         textAlign: 'center',
-        fontWeight: '600', // font-semibold
+        fontWeight: '600',
         cursor: 'pointer',
         backgroundColor: 'transparent',
         border: 'none',
     };
 
     const activeTabButtonStyle: React.CSSProperties = {
-        color: '#2563eb', // text-blue-600
-        borderBottom: '2px solid #2563eb', // border-b-2 border-blue-600
+        color: '#2563eb',
+        borderBottom: '2px solid #2563eb',
     };
 
     const inactiveTabButtonStyle: React.CSSProperties = {
-        color: '#6b7280', // text-gray-500
+        color: '#6b7280',
     };
 
     const formGridStyle: React.CSSProperties = {
         display: 'grid',
         gridTemplateColumns: '1fr',
-        gap: '1.5rem', // gap-6
+        gap: '1.5rem',
     };
 
     const inputStyle: React.CSSProperties = {
-        padding: '0.75rem', // p-3
-        border: '1px solid #d1d5db', // border
-        borderRadius: '0.375rem', // rounded-md
+        padding: '0.75rem',
+        border: '1px solid #d1d5db',
+        borderRadius: '0.375rem',
     };
 
     const submitButtonStyle: React.CSSProperties = {
-        width: '100%', // w-full
-        marginTop: '1.5rem', // mt-6
-        backgroundColor: '#2563eb', // bg-blue-600
-        color: '#fff', // text-white
-        padding: '0.75rem 0', // py-3
-        borderRadius: '0.375rem', // rounded-md
-        fontWeight: '600', // font-semibold
+        width: '100%',
+        marginTop: '1.5rem',
+        backgroundColor: '#2563eb',
+        color: '#fff',
+        padding: '0.75rem 0',
+        borderRadius: '0.375rem',
+        fontWeight: '600',
         cursor: 'pointer',
         transition: 'background-color 0.2s',
     };
 
     const refreshButtonStyle: React.CSSProperties = {
-        marginBottom: '1rem', // mb-4
-        backgroundColor: '#e5e7eb', // bg-gray-200
-        color: '#4b5563', // text-gray-700
-        padding: '0.5rem 1rem', // py-2 px-4
-        borderRadius: '0.375rem', // rounded-md
-        fontWeight: '600', // font-semibold
+        marginBottom: '1rem',
+        backgroundColor: '#e5e7eb',
+        color: '#4b5563',
+        padding: '0.5rem 1rem',
+        borderRadius: '0.375rem',
+        fontWeight: '600',
         cursor: 'pointer',
         transition: 'background-color 0.2s',
         display: 'inline-flex',
@@ -150,22 +156,50 @@ const App: React.FC = () => {
     };
 
     const tableHeaderStyle: React.CSSProperties = {
-        backgroundColor: '#f9fafb', // bg-gray-50
+        backgroundColor: '#f9fafb',
     };
 
     const thStyle: React.CSSProperties = {
-        padding: '0.75rem 1.5rem', // py-3 px-6
+        padding: '0.75rem 1.5rem',
         textAlign: 'left',
-        fontSize: '0.75rem', // text-xs
-        fontWeight: '500', // font-medium
-        color: '#6b7280', // text-gray-500
-        textTransform: 'uppercase', // uppercase
-        letterSpacing: '0.05em', // tracking-wider
+        fontSize: '0.75rem',
+        fontWeight: '500',
+        color: '#6b7280',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
     };
 
     const tdStyle: React.CSSProperties = {
-        padding: '1rem 1.5rem', // py-4 px-6
+        padding: '1rem 1.5rem',
         whiteSpace: 'nowrap',
+    };
+
+    const qrButtonStyle: React.CSSProperties = {
+        backgroundColor: '#3b82f6',
+        color: 'white',
+        padding: '0.5rem 1rem',
+        borderRadius: '0.375rem',
+        cursor: 'pointer',
+        border: 'none',
+    };
+
+    const modalOverlayStyle: React.CSSProperties = {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+    };
+
+    const modalContentStyle: React.CSSProperties = {
+        backgroundColor: 'white',
+        padding: '2rem',
+        borderRadius: '0.5rem',
+        textAlign: 'center',
     };
 
     return (
@@ -195,36 +229,27 @@ const App: React.FC = () => {
                                 <div style={formGridStyle}>
                                     <input
                                         type="text"
-                                        name="id"
-                                        placeholder="ID (e.g., MED001)"
-                                        value={formData.id}
+                                        name="serialNumber"
+                                        placeholder="Serial Number (UID)"
+                                        value={formData.serialNumber}
                                         onChange={handleInputChange}
                                         style={inputStyle}
                                         required
                                     />
                                     <input
                                         type="text"
-                                        name="name"
-                                        placeholder="Name (e.g., Aspirin)"
-                                        value={formData.name}
+                                        name="gtin"
+                                        placeholder="GTIN"
+                                        value={formData.gtin}
                                         onChange={handleInputChange}
                                         style={inputStyle}
                                         required
                                     />
                                     <input
                                         type="text"
-                                        name="manufacturer"
-                                        placeholder="Manufacturer (e.g., PharmaCorp)"
-                                        value={formData.manufacturer}
-                                        onChange={handleInputChange}
-                                        style={inputStyle}
-                                        required
-                                    />
-                                    <input
-                                        type="text"
-                                        name="dosage"
-                                        placeholder="Dosage (e.g., 500mg)"
-                                        value={formData.dosage}
+                                        name="batchNumber"
+                                        placeholder="Batch Number"
+                                        value={formData.batchNumber}
                                         onChange={handleInputChange}
                                         style={inputStyle}
                                         required
@@ -260,21 +285,25 @@ const App: React.FC = () => {
                                     <table style={tableStyle}>
                                         <thead style={tableHeaderStyle}>
                                             <tr>
-                                                <th style={thStyle}>ID</th>
-                                                <th style={thStyle}>Name</th>
-                                                <th style={thStyle}>Manufacturer</th>
-                                                <th style={thStyle}>Dosage</th>
+                                                <th style={thStyle}>Serial Number</th>
+                                                <th style={thStyle}>GTIN</th>
+                                                <th style={thStyle}>Batch Number</th>
                                                 <th style={thStyle}>Expiry Date</th>
+                                                <th style={thStyle}>QR Code</th>
                                             </tr>
                                         </thead>
                                         <tbody style={{ borderBottom: '1px solid #e5e7eb' }}>
                                             {medications.map((med) => (
-                                                <tr key={med.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                                    <td style={tdStyle}>{med.id}</td>
-                                                    <td style={tdStyle}>{med.name}</td>
-                                                    <td style={tdStyle}>{med.manufacturer}</td>
-                                                    <td style={tdStyle}>{med.dosage}</td>
+                                                <tr key={med.serialNumber} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                                    <td style={tdStyle}>{med.serialNumber}</td>
+                                                    <td style={tdStyle}>{med.gtin}</td>
+                                                    <td style={tdStyle}>{med.batchNumber}</td>
                                                     <td style={tdStyle}>{med.expiryDate}</td>
+                                                    <td style={tdStyle}>
+                                                        <button onClick={() => handleShowQR(med.qrHash)} style={qrButtonStyle}>
+                                                            Show QR
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -285,6 +314,14 @@ const App: React.FC = () => {
                     </div>
                 </div>
             </div>
+            {showQRModal && (
+                <div style={modalOverlayStyle} onClick={() => setShowQRModal(false)}>
+                    <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+                        <QRCodeSVG value={selectedQRHash} size={256} />
+                        <p style={{ marginTop: '1rem', wordBreak: 'break-all' }}>{selectedQRHash}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

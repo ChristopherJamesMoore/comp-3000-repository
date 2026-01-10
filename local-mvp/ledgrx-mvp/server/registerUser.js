@@ -13,7 +13,8 @@ async function main() {
 
         // Create a new CA client for interacting with the CA.
         const caURL = ccp.certificateAuthorities['ca.org1.example.com'].url;
-        const ca = new FabricCAServices(caURL);
+        const caTLSCACerts = ccp.certificateAuthorities['ca.org1.example.com'].tlsCACerts.pem;
+        const ca = new FabricCAServices(caURL, { trustedRoots: caTLSCACerts, verify: false });
 
         // Create a new file system based wallet for managing identities.
         const walletPath = path.join(process.cwd(), 'wallet');
@@ -39,13 +40,6 @@ async function main() {
             console.log('Successfully enrolled admin user "admin" and imported it into the wallet');
         }
 
-        // Check to see if we've already enrolled the app user.
-        const userIdentity = await wallet.get('appUser');
-        if (userIdentity) {
-            console.log('An identity for the user "appUser" already exists in the wallet');
-            return;
-        }
-
         // Register the user, enroll the user, and import the new identity into the wallet.
         const adminIdentityForRegister = await wallet.get('admin');
         const provider = wallet.getProviderRegistry().getProvider(adminIdentityForRegister.type);
@@ -53,7 +47,7 @@ async function main() {
         const secret = await ca.register({
             affiliation: 'org1.department1',
             enrollmentID: 'appUser',
-            role: 'admin' // Changed role to admin
+            role: 'client' // Changed role to admin
         }, adminUser);
         const userEnrollment = await ca.enroll({
             enrollmentID: 'appUser',
