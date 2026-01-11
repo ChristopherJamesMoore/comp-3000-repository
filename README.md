@@ -3,7 +3,7 @@ End-to-end visibility into the manufacturing and distribution processes of all p
 
 ## Running project locally
 
-This repo's runnable stack lives under `local-mvp/ledgrx-mvp`. It uses Docker Compose and a local Hyperledger Fabric test network.
+This repo's runnable stack lives under `blockchain`. It uses Docker Compose and a local Hyperledger Fabric test network.
 
 Prereqs:
 - Docker + Docker Compose
@@ -11,7 +11,7 @@ Prereqs:
 
 Start:
 ```bash
-cd local-mvp/ledgrx-mvp
+cd blockchain
 chmod +x up.sh down.sh
 ./up.sh
 ```
@@ -22,7 +22,7 @@ App endpoints:
 
 Stop:
 ```bash
-cd local-mvp/ledgrx-mvp
+cd blockchain
 ./down.sh
 ```
 
