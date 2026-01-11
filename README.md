@@ -26,6 +26,33 @@ cd blockchain
 ./down.sh
 ```
 
+## Mobile app (React Native)
+
+Prereqs:
+- Node.js 20+
+- Xcode (iOS) or Android Studio (Android)
+
+iOS simulator:
+```bash
+cd mobile-app
+npm install
+cd ios && pod install && cd ..
+npm run ios
+```
+
+Android emulator:
+```bash
+cd mobile-app
+npm install
+npm run android
+```
+
+Physical device (camera testing):
+1) Ensure your phone and dev machine are on the same Wi‑Fi.
+2) Update `API_BASE_URL` in `mobile-app/App.tsx` to use your machine’s LAN IP (e.g. `http://192.168.1.20:3001`).
+3) iOS: run `npm run ios -- --device "<Your iPhone Name>"`.
+4) Android: enable USB debugging, then run `npm run android`.
+
 ## Commit types
 
 - `CHORE:` General maintenance  
