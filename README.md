@@ -11,6 +11,11 @@ Prereqs:
 
 Start:
 ```bash
+cd blockchain/fabric-samples/test-network
+./network.sh deployCC -c mychannel -ccn pharma -ccp ../../chaincode -ccl javascript
+```
+
+```bash
 cd blockchain
 chmod +x up.sh down.sh
 ./up.sh
