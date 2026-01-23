@@ -28,6 +28,7 @@ const API_BASE_URL =
     ios: 'http://localhost:3001',
     android: 'http://10.0.2.2:3001',
   }) ?? 'http://localhost:3001';
+const REQUEST_TIMEOUT_MS = 8000;
 
 function App() {
   const device = useCameraDevice('back');
@@ -53,12 +54,18 @@ function App() {
   }, []);
 
   const searchMedication = useCallback(async (qrHash: string) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, REQUEST_TIMEOUT_MS);
     try {
       setIsLoading(true);
       setErrorMessage('');
-      const response = await fetch(`${API_BASE_URL}/api/medications`);
+      const response = await fetch(`${API_BASE_URL}/api/medications`, {
+        signal: controller.signal,
+      });
       if (!response.ok) {
-        throw new Error('Failed to fetch medications');
+        throw new Error(`Server error: ${response.status}`);
       }
       const data: Medication[] = await response.json();
       const match = data.find((item) => item.qrHash === qrHash);
@@ -67,9 +74,23 @@ function App() {
         return;
       }
       setMedication(match);
-    } catch (error) {
-      setErrorMessage('Failed to query the blockchain API.');
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : null;
+      if (err) {
+        const isTimeout = err.name === 'AbortError';
+        const isNetworkFailure = err.message === 'Network request failed';
+        if (isTimeout || isNetworkFailure) {
+          setErrorMessage(
+            'Server not responding. Check that the API server is running.',
+          );
+        } else {
+          setErrorMessage('Server error while querying the blockchain API.');
+        }
+      } else {
+        setErrorMessage('Server error while querying the blockchain API.');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   }, []);

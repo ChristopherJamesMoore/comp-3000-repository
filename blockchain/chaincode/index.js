@@ -8,13 +8,20 @@ class PharmaContract extends Contract {
     }
 
     async addMedication(ctx, serialNumber, gtin, batchNumber, expiryDate, qrHash) {
+        const txTime = ctx.stub.getTxTimestamp();
+        const seconds = (txTime.seconds && typeof txTime.seconds.toNumber === 'function')
+            ? txTime.seconds.toNumber()
+            : Number(txTime.seconds);
+        const millis = (seconds * 1000) + Math.floor(txTime.nanos / 1e6);
+        const createdAt = new Date(millis).toISOString();
+
         const medication = {
             serialNumber,
             gtin,
             batchNumber,
             expiryDate,
             qrHash,
-            createdAt: new Date().toISOString()
+            createdAt
         };
         await ctx.stub.putState(serialNumber, Buffer.from(JSON.stringify(medication)));
         return JSON.stringify(medication);
