@@ -1,28 +1,87 @@
 const express = require('express');
 const cors = require('cors');
-const { Gateway, Wallets } = require('fabric-network');
-const fs = require('fs');
-const path = require('path');
+const grpc = require('@grpc/grpc-js');
+const { connect, signers } = require('@hyperledger/fabric-gateway');
 const crypto = require('crypto');
+const fs = require('fs');
 
-const port = 3001;
+const getEnv = (name, fallback = undefined) => {
+    const value = process.env[name];
+    if (value === undefined || value === '') return fallback;
+    return value;
+};
+
+const requireEnv = (name) => {
+    const value = getEnv(name);
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+};
+
+const parseAllowedOrigins = () => {
+    const raw = getEnv('CORS_ORIGIN', '');
+    const origins = raw
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+    const devOrigins = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173'
+    ];
+    return Array.from(new Set([...origins, ...devOrigins]));
+};
+
+const corsOptions = () => {
+    const allowedOrigins = parseAllowedOrigins();
+    return {
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) return callback(null, true);
+            return callback(new Error('Not allowed by CORS'));
+        }
+    };
+};
+
+const normalizeEndpoint = (endpoint) => {
+    if (!endpoint) return '';
+    try {
+        const url = new URL(endpoint);
+        return url.host;
+    } catch (error) {
+        return endpoint;
+    }
+};
+
+const readFileOrThrow = (filePath) => {
+    if (!filePath) throw new Error('File path not provided');
+    return fs.readFileSync(filePath);
+};
 
 const createApp = (contract) => {
     const app = express();
-    app.use(cors());
+    app.use(cors(corsOptions()));
     app.use(express.json());
 
     // API endpoint to add a medication
     app.post('/api/medications', async (req, res) => {
         try {
             const { gtin, batchNumber, expiryDate, serialNumber } = req.body;
+            if (!gtin || !batchNumber || !expiryDate || !serialNumber) {
+                return res.status(400).json({ error: 'Missing required fields.' });
+            }
             const qrHashSource = `${batchNumber}${expiryDate}${serialNumber}`;
             const qrHash = crypto.createHash('sha256').update(qrHashSource).digest('hex');
 
             await contract.submitTransaction('addMedication', serialNumber, gtin, batchNumber, expiryDate, qrHash);
-            res.json({ message: 'Medication added successfully' });
+            res.status(201).json({
+                id: serialNumber,
+                qrHash
+            });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ error: error.message || 'Internal server error' });
         }
     });
 
@@ -32,56 +91,97 @@ const createApp = (contract) => {
             const result = await contract.evaluateTransaction('getAllMedications');
             res.json(JSON.parse(result.toString()));
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ error: error.message || 'Internal server error' });
         }
+    });
+
+    // API endpoint to get medication by serial number
+    app.get('/api/medications/:id', async (req, res) => {
+        try {
+            const serialNumber = req.params.id;
+            if (!serialNumber) {
+                return res.status(400).json({ error: 'Medication id is required.' });
+            }
+            const result = await contract.evaluateTransaction('getMedication', serialNumber);
+            res.json(JSON.parse(result.toString()));
+        } catch (error) {
+            const message = error.message || 'Internal server error';
+            if (message.includes('does not exist')) {
+                return res.status(404).json({ error: message });
+            }
+            res.status(500).json({ error: message });
+        }
+    });
+
+    app.get('/api/health', (req, res) => {
+        res.json({ ok: true });
+    });
+
+    app.use((err, req, res, next) => {
+        if (err && err.message === 'Not allowed by CORS') {
+            return res.status(403).json({ error: 'CORS origin denied' });
+        }
+        return next(err);
     });
 
     return app;
 };
 
 async function createContract() {
-    // load the network configuration
-    const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network', 'organizations', 'peerOrganizations', 'org1.example.com', 'connection-org1.json');
-    const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
-    const isDocker = fs.existsSync('/.dockerenv') || process.env.IN_DOCKER === 'true';
+    const connectionProfilePath = requireEnv('FABRIC_CONNECTION_PROFILE');
+    const connectionProfile = JSON.parse(fs.readFileSync(connectionProfilePath, 'utf8'));
 
-    if (isDocker) {
-        if (ccp.certificateAuthorities?.['ca.org1.example.com']) {
-            ccp.certificateAuthorities['ca.org1.example.com'].url = 'https://ca_org1:7054';
-        }
-        if (ccp.peers?.['peer0.org1.example.com']) {
-            ccp.peers['peer0.org1.example.com'].url = 'grpcs://peer0.org1.example.com:7051';
-        }
+    const peerEndpoint =
+        normalizeEndpoint(getEnv('FABRIC_PEER_ENDPOINT')) ||
+        normalizeEndpoint(
+            Object.values(connectionProfile.peers || {})[0]?.url || ''
+        );
+
+    if (!peerEndpoint) {
+        throw new Error('Unable to resolve Fabric peer endpoint.');
     }
 
-    // Create a new file system based wallet for managing identities.
-    const walletPath = path.join(process.cwd(), 'wallet');
-    const wallet = await Wallets.newFileSystemWallet(walletPath);
-    console.log(`Wallet path: ${walletPath}`);
+    const tlsCertPath = getEnv('FABRIC_TLS_CERT_PATH');
+    const tlsCertPem = tlsCertPath
+        ? readFileOrThrow(tlsCertPath)
+        : Buffer.from(Object.values(connectionProfile.peers || {})[0]?.tlsCACerts?.pem || '', 'utf8');
 
-    // Check to see if we've already enrolled the user.
-    const identity = await wallet.get('appUser');
-    if (!identity) {
-        throw new Error('An identity for the user "appUser" does not exist in the wallet');
+    if (!tlsCertPem || tlsCertPem.length === 0) {
+        throw new Error('Unable to resolve Fabric TLS CA cert.');
     }
 
-    // Create a new gateway for connecting to our peer node.
-    const gateway = new Gateway();
-    await gateway.connect(ccp, { wallet, identity: 'appUser', discovery: { enabled: true, asLocalhost: !isDocker } });
+    const identityCertPath = requireEnv('FABRIC_ID_CERT_PATH');
+    const identityKeyPath = requireEnv('FABRIC_ID_KEY_PATH');
 
-    // Get the network (channel) our contract is deployed to.
-    const network = await gateway.getNetwork('mychannel');
+    const identity = {
+        mspId: requireEnv('FABRIC_MSPID'),
+        credentials: readFileOrThrow(identityCertPath)
+    };
 
-    // Get the contract from the network.
-    return network.getContract('pharma');
+    const privateKeyPem = readFileOrThrow(identityKeyPath);
+    const privateKey = crypto.createPrivateKey(privateKeyPem);
+    const signer = signers.newPrivateKeySigner(privateKey);
+
+    const client = new grpc.Client(peerEndpoint, grpc.credentials.createSsl(tlsCertPem));
+    const gateway = connect({
+        client,
+        identity,
+        signer
+    });
+
+    const channelName = requireEnv('FABRIC_CHANNEL');
+    const chaincodeName = requireEnv('FABRIC_CHAINCODE');
+    const network = gateway.getNetwork(channelName);
+    return network.getContract(chaincodeName);
 }
 
 async function main() {
     try {
         const contract = await createContract();
         const app = createApp(contract);
+        const port = parseInt(getEnv('PORT', '3001'), 10);
         app.listen(port, () => {
-            console.log(`Server running on http://localhost:${port}`);
+            console.log(`Server listening on port ${port}`);
         });
     } catch (error) {
         console.error(`Failed to start the server: ${error}`);
