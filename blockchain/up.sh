@@ -32,5 +32,5 @@ echo "Ensuring channel and chaincode are deployed..."
 (cd fabric-samples/test-network && ./network.sh createChannel -c mychannel)
 (cd fabric-samples/test-network && ./network.sh deployCC -c mychannel -ccn pharma -ccp ../../chaincode -ccl javascript)
 
-echo "Starting frontend and server applications..."
-docker-compose up --build -d
+echo "Starting backend API..."
+docker compose -f docker-compose.backend.yml up --build -d

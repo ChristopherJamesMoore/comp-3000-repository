@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "Stopping frontend and server applications..."
-docker-compose down
+echo "Stopping backend API..."
+docker compose -f docker-compose.backend.yml down
 
 read -p "Do you want to shut down the Hyperledger Fabric network? (y/n) " -n 1 -r
 echo
