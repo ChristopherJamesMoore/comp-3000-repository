@@ -5,15 +5,26 @@ import './App.css';
 
 type Toast = { type: 'success' | 'error' | 'info'; message: string };
 
+const API_BASE =
+    (process.env.NEXT_PUBLIC_API_BASE_URL && process.env.NEXT_PUBLIC_API_BASE_URL.trim()) ||
+    'https://ledgrx.duckdns.org';
+
+const buildUrl = (path: string) => `${API_BASE.replace(/\/$/, '')}${path}`;
+
 const App: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'add' | 'view'>('add');
     const [medications, setMedications] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [addError, setAddError] = useState('');
     const [toast, setToast] = useState<Toast | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+    const [lookupSerial, setLookupSerial] = useState('');
+    const [lookupResult, setLookupResult] = useState<any | null>(null);
+    const [lookupError, setLookupError] = useState('');
+    const [lookupLoading, setLookupLoading] = useState(false);
     const [formData, setFormData] = useState({
         serialNumber: '',
         gtin: '',
@@ -34,7 +45,11 @@ const App: React.FC = () => {
         setIsLoading(true);
         setError('');
         try {
-            const response = await fetch('http://localhost:3001/api/medications');
+            const response = await fetch(buildUrl('/api/medications'));
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to fetch medications.');
+            }
             const data = await response.json();
             setMedications(data);
             setLastUpdated(new Date().toLocaleString());
@@ -58,9 +73,14 @@ const App: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setAddError('');
+        if (!formData.serialNumber || !formData.gtin || !formData.batchNumber || !formData.expiryDate) {
+            setAddError('All fields are required.');
+            return;
+        }
         setIsSubmitting(true);
         try {
-            const response = await fetch('http://localhost:3001/api/medications', {
+            const response = await fetch(buildUrl('/api/medications'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -68,7 +88,8 @@ const App: React.FC = () => {
                 body: JSON.stringify(formData),
             });
             if (response.ok) {
-                setToast({ type: 'success', message: 'Medication anchored on-chain.' });
+                const data = await response.json().catch(() => ({}));
+                setToast({ type: 'success', message: data.qrHash ? 'Medication anchored on-chain.' : 'Medication added.' });
                 setFormData({
                     serialNumber: '',
                     gtin: '',
@@ -77,11 +98,15 @@ const App: React.FC = () => {
                 });
             } else {
                 const errorData = await response.json();
-                setToast({ type: 'error', message: errorData.error || 'Upload failed.' });
+                const message = errorData.error || 'Upload failed.';
+                setAddError(message);
+                setToast({ type: 'error', message });
             }
         } catch (error) {
             console.error('Error adding medication:', error);
-            setToast({ type: 'error', message: 'An error occurred while adding the medication.' });
+            const message = 'An error occurred while adding the medication.';
+            setAddError(message);
+            setToast({ type: 'error', message });
         } finally {
             setIsSubmitting(false);
         }
@@ -104,6 +129,46 @@ const App: React.FC = () => {
             setTimeout(() => setCopied(false), 2000);
         } catch (error) {
             setToast({ type: 'error', message: 'Copy failed. Try manually selecting the hash.' });
+        }
+    };
+
+    const handleLookup = async () => {
+        if (!lookupSerial.trim()) {
+            setLookupError('Enter a serial number to search.');
+            return;
+        }
+        setLookupLoading(true);
+        setLookupError('');
+        setLookupResult(null);
+        try {
+            const response = await fetch(buildUrl(`/api/medications/${encodeURIComponent(lookupSerial.trim())}`));
+            if (response.status === 404) {
+                const errorData = await response.json().catch(() => ({}));
+                setLookupError(errorData.error || 'Medication not found.');
+                return;
+            }
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Lookup failed.');
+            }
+            const data = await response.json();
+            setLookupResult(data);
+        } catch (error) {
+            setLookupError(error.message || 'Lookup failed.');
+        } finally {
+            setLookupLoading(false);
+        }
+    };
+
+    const handleHealthCheck = async () => {
+        try {
+            const response = await fetch(buildUrl('/api/health'));
+            if (!response.ok) {
+                throw new Error('Backend not reachable.');
+            }
+            setToast({ type: 'success', message: 'Backend online' });
+        } catch (error) {
+            setToast({ type: 'error', message: error.message || 'Backend offline' });
         }
     };
 
@@ -237,6 +302,7 @@ const App: React.FC = () => {
                                         {isSubmitting ? 'Anchoring...' : 'Add to Blockchain'}
                                     </button>
                                 </div>
+                                {addError && <div className="inline-error">{addError}</div>}
                             </form>
 
                             <div className="card card--preview">
@@ -292,8 +358,51 @@ const App: React.FC = () => {
                                     {isLoading ? 'Refreshing' : 'Refresh'}
                                 </button>
                             </div>
+                            <div className="records__actions">
+                                <button className="button button--ghost" onClick={handleHealthCheck}>
+                                    <ShieldCheck size={16} />
+                                    Check backend
+                                </button>
+                            </div>
 
                             {error && <div className="error-banner">{error}</div>}
+
+                            <div className="lookup card">
+                                <h3>Scan / lookup</h3>
+                                <p>Enter a serial number from a QR scan to fetch on-chain data.</p>
+                                <div className="lookup__row">
+                                    <input
+                                        type="text"
+                                        placeholder="Serial number"
+                                        value={lookupSerial}
+                                        onChange={(e) => setLookupSerial(e.target.value)}
+                                    />
+                                    <button className="button button--primary" onClick={handleLookup} disabled={lookupLoading}>
+                                        {lookupLoading ? 'Searching...' : 'Search'}
+                                    </button>
+                                </div>
+                                {lookupError && <div className="inline-error">{lookupError}</div>}
+                                {lookupResult && (
+                                    <div className="lookup__result">
+                                        <div>
+                                            <span>Serial</span>
+                                            <strong>{lookupResult.serialNumber}</strong>
+                                        </div>
+                                        <div>
+                                            <span>GTIN</span>
+                                            <strong>{lookupResult.gtin}</strong>
+                                        </div>
+                                        <div>
+                                            <span>Batch</span>
+                                            <strong>{lookupResult.batchNumber}</strong>
+                                        </div>
+                                        <div>
+                                            <span>Expiry</span>
+                                            <strong>{lookupResult.expiryDate}</strong>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             <div className="records__grid">
                                 {filteredMedications.length === 0 && !isLoading && (
