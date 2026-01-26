@@ -153,8 +153,9 @@ const App: React.FC = () => {
             }
             const data = await response.json();
             setLookupResult(data);
-        } catch (error) {
-            setLookupError(error.message || 'Lookup failed.');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setLookupError(message || 'Lookup failed.');
         } finally {
             setLookupLoading(false);
         }
@@ -167,8 +168,9 @@ const App: React.FC = () => {
                 throw new Error('Backend not reachable.');
             }
             setToast({ type: 'success', message: 'Backend online' });
-        } catch (error) {
-            setToast({ type: 'error', message: error.message || 'Backend offline' });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setToast({ type: 'error', message: message || 'Backend offline' });
         }
     };
 
