@@ -20,6 +20,12 @@ App endpoints:
 - Frontend: http://localhost:3000
 - API: http://localhost:3001
 
+## Vercel frontend configuration
+- In Vercel → Settings → Environment Variables, set:
+  - `NEXT_PUBLIC_API_BASE_URL` = `https://ledgrx.duckdns.org`
+- Redeploy the frontend after saving.
+- CORS is configured on the backend for `https://comp-3000-repository.vercel.app`.
+
 Stop:
 ```bash
 cd blockchain

@@ -10,19 +10,15 @@ const mockFetch = (data: unknown) =>
 
 describe('App', () => {
   beforeEach(() => {
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
+    process.env.NEXT_PUBLIC_API_BASE_URL = 'https://ledgrx.duckdns.org';
   });
 
   test('renders the main heading and tabs', () => {
     render(<App />);
 
-    expect(screen.getByText('Pharma Blockchain MVP')).toBeInTheDocument();
+    expect(screen.getByText('LedgerRx Control Center')).toBeInTheDocument();
     expect(screen.getByText('Add Medication')).toBeInTheDocument();
-    expect(screen.getByText('View All')).toBeInTheDocument();
+    expect(screen.getByText('View Records')).toBeInTheDocument();
   });
 
   test('loads medications when switching to the view tab', async () => {
@@ -33,12 +29,12 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByText('View All'));
+    fireEvent.click(screen.getByText('View Records'));
 
     await waitFor(() => {
       expect(screen.getByText('SN-1')).toBeInTheDocument();
     });
-    expect(global.fetch).toHaveBeenCalledWith('http://localhost:3001/api/medications');
+    expect(global.fetch).toHaveBeenCalledWith('https://ledgrx.duckdns.org/api/medications');
   });
 
   test('toggles the QR modal when clicking the same Show QR button twice', async () => {
@@ -48,16 +44,16 @@ describe('App', () => {
     global.fetch = mockFetch(medications);
 
     render(<App />);
-    fireEvent.click(screen.getByText('View All'));
+    fireEvent.click(screen.getByText('View Records'));
 
     await waitFor(() => {
-      expect(screen.getByText('Show QR')).toBeInTheDocument();
+      expect(screen.getByText('View QR')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Show QR'));
+    fireEvent.click(screen.getByText('View QR'));
     expect(screen.getByText('hash-1')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Show QR'));
+    fireEvent.click(screen.getByText('View QR'));
     expect(screen.queryByText('hash-1')).not.toBeInTheDocument();
   });
 });
