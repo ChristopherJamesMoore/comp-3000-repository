@@ -1,0 +1,60 @@
+'use strict';
+
+const { Contract } = require('fabric-contract-api');
+
+class PharmaContract extends Contract {
+    async initLedger(ctx) {
+        console.log('Ledger initialized');
+    }
+
+    async addMedication(ctx, serialNumber, medicationName, gtin, batchNumber, expiryDate, productionCompany, distributionCompany, qrHash) {
+        const txTime = ctx.stub.getTxTimestamp();
+        const seconds = (txTime.seconds && typeof txTime.seconds.toNumber === 'function')
+            ? txTime.seconds.toNumber()
+            : Number(txTime.seconds);
+        const millis = (seconds * 1000) + Math.floor(txTime.nanos / 1e6);
+        const createdAt = new Date(millis).toISOString();
+
+        const medication = {
+            serialNumber,
+            medicationName,
+            gtin,
+            batchNumber,
+            expiryDate,
+            productionCompany,
+            distributionCompany,
+            qrHash,
+            createdAt
+        };
+        await ctx.stub.putState(serialNumber, Buffer.from(JSON.stringify(medication)));
+        return JSON.stringify(medication);
+    }
+
+    async getMedication(ctx, serialNumber) {
+        const bytes = await ctx.stub.getState(serialNumber);
+        if (!bytes || bytes.length === 0) {
+            throw new Error(`Medication ${serialNumber} does not exist`);
+        }
+        return bytes.toString();
+    }
+
+    async getAllMedications(ctx) {
+        const allResults = [];
+        const iterator = await ctx.stub.getStateByRange('', '');
+        let result = await iterator.next();
+        while (!result.done) {
+            const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
+            try {
+                allResults.push(JSON.parse(strValue));
+            } catch (err) {
+                console.log(err);
+            }
+            result = await iterator.next();
+        }
+        await iterator.close();
+        return JSON.stringify(allResults);
+    }
+}
+
+module.exports.PharmaContract = PharmaContract;
+module.exports.contracts = [ PharmaContract ];

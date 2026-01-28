@@ -5,6 +5,10 @@ End-to-end visibility into the manufacturing and distribution processes of all p
 `./up.sh`
 `./down.sh`
 
+## VPS deployment (backend + Fabric only)
+See `docs/vps.md` for the quickstart steps to run the backend API and Fabric
+on a Linux VPS while keeping the frontend on Vercel.
+
 ## Commit types
 
 - `CHORE:` General maintenance  

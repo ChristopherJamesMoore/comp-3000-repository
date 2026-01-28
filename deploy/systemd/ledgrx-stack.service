@@ -1,0 +1,15 @@
+[Unit]
+Description=Ledgrx Fabric + API stack
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/ledgrx/comp-3000-repository
+ExecStart=/opt/ledgrx/comp-3000-repository/scripts/vps-up.sh
+ExecStop=/opt/ledgrx/comp-3000-repository/scripts/vps-down.sh --fabric
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

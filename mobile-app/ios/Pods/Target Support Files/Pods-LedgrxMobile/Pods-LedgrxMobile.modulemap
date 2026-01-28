@@ -1,0 +1,6 @@
+module Pods_LedgrxMobile {
+  umbrella header "Pods-LedgrxMobile-umbrella.h"
+
+  export *
+  module * { export * }
+}

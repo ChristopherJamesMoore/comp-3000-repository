@@ -1,0 +1,57 @@
+services:
+  api:
+    build: ./blockchain/server
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      CORS_ORIGIN: "http://localhost:3000"
+      AUTH_JWT_SECRET: "devsecret"
+      AUTH_USERS: '[{"username":"admin","password":"admin"}]'
+      AUTH_USERS_FILE: "/data/users.json"
+      MONGODB_URI: "mongodb://mongo:27017/ledgrx"
+      FABRIC_CHANNEL: "mychannel"
+      FABRIC_CHAINCODE: "pharma"
+      FABRIC_MSPID: "Org1MSP"
+      FABRIC_PEER_ENDPOINT: "peer0.org1.example.com:7051"
+      FABRIC_CONNECTION_PROFILE: "/fabric/connection-org1.json"
+      FABRIC_TLS_CERT_PATH: "/fabric/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+      FABRIC_ID_CERT_PATH: "/fabric/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/cert.pem"
+      FABRIC_ID_KEY_PATH: "/fabric/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/priv_sk"
+    volumes:
+      - ./blockchain/fabric-samples/test-network/organizations:/fabric/organizations:ro
+      - ./blockchain/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/connection-org1.json:/fabric/connection-org1.json:ro
+      - ./blockchain/server/data:/data
+    networks:
+      - fabric_test
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    environment:
+      HOST: "0.0.0.0"
+      REACT_APP_API_BASE_URL: "http://localhost:3001"
+      CHOKIDAR_USEPOLLING: "true"
+    command: sh -c "npm install && npm start"
+    depends_on:
+      - api
+      - mongo
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - fabric_test
+
+networks:
+  fabric_test:
+    name: fabric_test
+    external: true
+
+volumes:
+  mongo_data:

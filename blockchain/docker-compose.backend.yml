@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  api:
+    build: ./server
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      PORT: "${PORT:-3001}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-}"
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:-}"
+      AUTH_USERS: "${AUTH_USERS:-}"
+      AUTH_USERS_FILE: "${AUTH_USERS_FILE:-/data/users.json}"
+      MONGODB_URI: "${MONGODB_URI:-mongodb://mongo:27017/ledgrx}"
+      FABRIC_CHANNEL: "${FABRIC_CHANNEL:-mychannel}"
+      FABRIC_CHAINCODE: "${FABRIC_CHAINCODE:-pharma}"
+      FABRIC_MSPID: "${FABRIC_MSPID:-Org1MSP}"
+      FABRIC_PEER_ENDPOINT: "${FABRIC_PEER_ENDPOINT:-peer0.org1.example.com:7051}"
+      FABRIC_CONNECTION_PROFILE: "${FABRIC_CONNECTION_PROFILE:-/fabric/connection-org1.json}"
+      FABRIC_TLS_CERT_PATH: "${FABRIC_TLS_CERT_PATH:-/fabric/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt}"
+      FABRIC_ID_CERT_PATH: "${FABRIC_ID_CERT_PATH:-/fabric/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/cert.pem}"
+      FABRIC_ID_KEY_PATH: "${FABRIC_ID_KEY_PATH:-/fabric/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/priv_sk}"
+    volumes:
+      - ./fabric-samples/test-network/organizations:/fabric/organizations:ro
+      - ./fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/connection-org1.json:/fabric/connection-org1.json:ro
+      - ./server/data:/data
+    networks:
+      - fabric_test
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - fabric_test
+    restart: unless-stopped
+
+networks:
+  fabric_test:
+    name: fabric_test
+    external: true
+
+volumes:
+  mongo_data:
