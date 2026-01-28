@@ -1,19 +1,17 @@
 {
-  "name": "pharma-api",
+  "name": "ledgrx-api",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "jest"
-  },
-  "devDependencies": {
-    "jest": "^29.7.0",
-    "supertest": "^7.1.1"
+    "start": "node server.js"
   },
   "dependencies": {
-    "@hyperledger/fabric-gateway": "^1.0.0",
     "@grpc/grpc-js": "^1.10.5",
+    "@hyperledger/fabric-gateway": "^1.0.0",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.6.2"
   }
 }

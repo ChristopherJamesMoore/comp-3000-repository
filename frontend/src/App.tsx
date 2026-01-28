@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, List, RefreshCw, Search, QrCode, Copy, Check, ShieldCheck, Loader2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import './App.css';
-
-type Toast = { type: 'success' | 'error' | 'info'; message: string };
-
-const API_BASE =
-    (process.env.NEXT_PUBLIC_API_BASE_URL && process.env.NEXT_PUBLIC_API_BASE_URL.trim()) ||
-    'https://ledgrx.duckdns.org';
-
-const buildUrl = (path: string) => `${API_BASE.replace(/\/$/, '')}${path}`;
+import { buildUrl, API_BASE } from './utils/api';
+import { Medication, Toast, UserProfile, AuthMode } from './types';
+import Topbar from './components/Topbar';
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import AccountPage from './pages/AccountPage';
 
 const App: React.FC = () => {
+    const [route, setRoute] = useState(window.location.pathname || '/');
     const [activeTab, setActiveTab] = useState<'add' | 'view'>('add');
-    const [medications, setMedications] = useState<any[]>([]);
+    const [medications, setMedications] = useState<Medication[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -22,18 +22,92 @@ const App: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
     const [lookupSerial, setLookupSerial] = useState('');
-    const [lookupResult, setLookupResult] = useState<any | null>(null);
+    const [lookupResult, setLookupResult] = useState<Medication | null>(null);
     const [lookupError, setLookupError] = useState('');
     const [lookupLoading, setLookupLoading] = useState(false);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<Medication>({
         serialNumber: '',
+        medicationName: '',
         gtin: '',
         batchNumber: '',
         expiryDate: '',
+        productionCompany: '',
+        distributionCompany: ''
     });
     const [showQRModal, setShowQRModal] = useState(false);
     const [selectedQRHash, setSelectedQRHash] = useState('');
     const [copied, setCopied] = useState(false);
+    const [authToken, setAuthToken] = useState<string | null>(null);
+    const [authError, setAuthError] = useState('');
+    const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+    const [authMode, setAuthMode] = useState<AuthMode>('login');
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [profileForm, setProfileForm] = useState({ companyType: '', companyName: '' });
+    const [profileError, setProfileError] = useState('');
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
+    const [adminError, setAdminError] = useState('');
+    const [adminLoading, setAdminLoading] = useState(false);
+
+    useEffect(() => {
+        const stored = localStorage.getItem('authToken');
+        if (stored) {
+            setAuthToken(stored);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!authToken) {
+            setProfile(null);
+            return;
+        }
+        loadProfile();
+    }, [authToken]);
+
+    useEffect(() => {
+        if (profile?.isAdmin) {
+            loadAdminUsers();
+        } else {
+            setAdminUsers([]);
+        }
+    }, [profile?.isAdmin]);
+
+    useEffect(() => {
+        const onPopState = () => setRoute(window.location.pathname || '/');
+        window.addEventListener('popstate', onPopState);
+        return () => window.removeEventListener('popstate', onPopState);
+    }, []);
+
+    const requiresAuth = route === '/app' || route === '/account';
+
+    useEffect(() => {
+        if (!authToken && requiresAuth) {
+            navigate('/login', 'login');
+        }
+    }, [authToken, requiresAuth, route]);
+
+    const navigate = (path: string, mode?: AuthMode) => {
+        if (path !== route) {
+            window.history.pushState({}, '', path);
+            setRoute(path);
+        }
+        if (mode) {
+            setAuthMode(mode);
+        }
+    };
+
+    const handleLoginFormChange = (field: 'username' | 'password', value: string) => {
+        setLoginForm({ ...loginForm, [field]: value });
+    };
+
+    const handleProfileFormChange = (field: 'companyType' | 'companyName', value: string) => {
+        setProfileForm({ ...profileForm, [field]: value });
+    };
+
+    const handleToggleAuthMode = () => {
+        setAuthError('');
+        setAuthMode(authMode === 'signup' ? 'login' : 'signup');
+    };
 
     useEffect(() => {
         if (!toast) return;
@@ -41,11 +115,60 @@ const App: React.FC = () => {
         return () => clearTimeout(timer);
     }, [toast]);
 
+    const authFetch = (path: string, options: RequestInit = {}) => {
+        const headers = new Headers(options.headers || {});
+        if (authToken) {
+            headers.set('Authorization', `Bearer ${authToken}`);
+        }
+        if (!headers.has('Content-Type') && options.body) {
+            headers.set('Content-Type', 'application/json');
+        }
+        return fetch(buildUrl(path), { ...options, headers });
+    };
+
+    const loadProfile = async () => {
+        if (!authToken) return;
+        try {
+            const response = await authFetch('/api/auth/me');
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+            setProfile(data);
+            setProfileForm({
+                companyType: data.companyType || '',
+                companyName: data.companyName || ''
+            });
+        } catch (error) {
+            setProfileError('Failed to load profile.');
+        }
+    };
+
+    const loadAdminUsers = async () => {
+        if (!authToken) return;
+        setAdminLoading(true);
+        setAdminError('');
+        try {
+            const response = await authFetch('/api/admin/users');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to load users.');
+            }
+            const data = await response.json();
+            setAdminUsers(Array.isArray(data.users) ? data.users : []);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setAdminError(message || 'Failed to load users.');
+        } finally {
+            setAdminLoading(false);
+        }
+    };
+
     const fetchMedications = async () => {
         setIsLoading(true);
         setError('');
         try {
-            const response = await fetch(buildUrl('/api/medications'));
+            const response = await authFetch('/api/medications');
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || 'Failed to fetch medications.');
@@ -53,19 +176,19 @@ const App: React.FC = () => {
             const data = await response.json();
             setMedications(data);
             setLastUpdated(new Date().toLocaleString());
-        } catch (error) {
-            setError('Unable to reach the API. Check that the server is running.');
-            console.error('Error fetching medications:', error);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setError(message || 'Unable to reach the API.');
         } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        if (activeTab === 'view') {
+        if (route === '/app' && activeTab === 'view') {
             fetchMedications();
         }
-    }, [activeTab]);
+    }, [route, activeTab]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -74,27 +197,35 @@ const App: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setAddError('');
-        if (!formData.serialNumber || !formData.gtin || !formData.batchNumber || !formData.expiryDate) {
+        if (
+            !formData.serialNumber ||
+            !formData.medicationName ||
+            !formData.gtin ||
+            !formData.batchNumber ||
+            !formData.expiryDate ||
+            !formData.productionCompany ||
+            !formData.distributionCompany
+        ) {
             setAddError('All fields are required.');
             return;
         }
         setIsSubmitting(true);
         try {
-            const response = await fetch(buildUrl('/api/medications'), {
+            const response = await authFetch('/api/medications', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(formData)
             });
             if (response.ok) {
                 const data = await response.json().catch(() => ({}));
                 setToast({ type: 'success', message: data.qrHash ? 'Medication anchored on-chain.' : 'Medication added.' });
                 setFormData({
                     serialNumber: '',
+                    medicationName: '',
                     gtin: '',
                     batchNumber: '',
                     expiryDate: '',
+                    productionCompany: '',
+                    distributionCompany: ''
                 });
             } else {
                 const errorData = await response.json();
@@ -102,11 +233,10 @@ const App: React.FC = () => {
                 setAddError(message);
                 setToast({ type: 'error', message });
             }
-        } catch (error) {
-            console.error('Error adding medication:', error);
-            const message = 'An error occurred while adding the medication.';
-            setAddError(message);
-            setToast({ type: 'error', message });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setAddError(message || 'An error occurred while adding the medication.');
+            setToast({ type: 'error', message: message || 'Upload failed.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -141,7 +271,7 @@ const App: React.FC = () => {
         setLookupError('');
         setLookupResult(null);
         try {
-            const response = await fetch(buildUrl(`/api/medications/${encodeURIComponent(lookupSerial.trim())}`));
+            const response = await authFetch(`/api/medications/${encodeURIComponent(lookupSerial.trim())}`);
             if (response.status === 404) {
                 const errorData = await response.json().catch(() => ({}));
                 setLookupError(errorData.error || 'Medication not found.');
@@ -161,303 +291,239 @@ const App: React.FC = () => {
         }
     };
 
-    const handleHealthCheck = async () => {
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setAuthError('');
+        if (!loginForm.username || !loginForm.password) {
+            setAuthError('Enter your username and password.');
+            return;
+        }
         try {
-            const response = await fetch(buildUrl('/api/health'));
+            const response = await fetch(buildUrl('/api/auth/login'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(loginForm)
+            });
             if (!response.ok) {
-                throw new Error('Backend not reachable.');
+                const errorData = await response.json().catch(() => ({}));
+                setAuthError(errorData.error || 'Login failed.');
+                return;
             }
-            setToast({ type: 'success', message: 'Backend online' });
+            const data = await response.json();
+            if (!data.token) {
+                setAuthError('Login failed.');
+                return;
+            }
+            localStorage.setItem('authToken', data.token);
+            setAuthToken(data.token);
+            setLoginForm({ username: '', password: '' });
+            if (data.user) {
+                setProfile(data.user);
+                setProfileForm({
+                    companyType: data.user.companyType || '',
+                    companyName: data.user.companyName || ''
+                });
+            }
+            navigate('/app');
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);
-            setToast({ type: 'error', message: message || 'Backend offline' });
+            setAuthError(message || `Login failed. Check API at ${API_BASE}.`);
+        }
+    };
+
+    const handleSignup = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setAuthError('');
+        if (!loginForm.username || !loginForm.password) {
+            setAuthError('Enter a username and password.');
+            return;
+        }
+        if (loginForm.username.trim().length < 3) {
+            setAuthError('Username must be at least 3 characters.');
+            return;
+        }
+        if (loginForm.password.trim().length < 6) {
+            setAuthError('Password must be at least 6 characters.');
+            return;
+        }
+        try {
+            const response = await fetch(buildUrl('/api/auth/signup'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: loginForm.username.trim(),
+                    password: loginForm.password
+                })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                setAuthError(errorData.error || 'Sign up failed.');
+                return;
+            }
+            const data = await response.json();
+            if (!data.token) {
+                setAuthError('Sign up failed.');
+                return;
+            }
+            localStorage.setItem('authToken', data.token);
+            setAuthToken(data.token);
+            setLoginForm({ username: '', password: '' });
+            if (data.user) {
+                setProfile(data.user);
+                setProfileForm({
+                    companyType: data.user.companyType || '',
+                    companyName: data.user.companyName || ''
+                });
+            }
+            setAuthMode('login');
+            navigate('/app');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setAuthError(message || `Sign up failed. Check API at ${API_BASE}.`);
+        }
+    };
+
+    const handleLogout = () => {
+        if (authToken) {
+            authFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+        }
+        localStorage.removeItem('authToken');
+        setAuthToken(null);
+        setProfile(null);
+        setProfileForm({ companyType: '', companyName: '' });
+        navigate('/');
+    };
+
+    const handleProfileSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setProfileError('');
+        if (!profileForm.companyType || !profileForm.companyName.trim()) {
+            setProfileError('Select a company type and name.');
+            return;
+        }
+        setProfileSaving(true);
+        try {
+            const response = await authFetch('/api/auth/profile', {
+                method: 'POST',
+                body: JSON.stringify({
+                    companyType: profileForm.companyType,
+                    companyName: profileForm.companyName.trim()
+                })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                setProfileError(errorData.error || 'Failed to update profile.');
+                return;
+            }
+            const data = await response.json();
+            setProfile(data);
+            setToast({ type: 'success', message: 'Account details updated.' });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setProfileError(message || 'Failed to update profile.');
+        } finally {
+            setProfileSaving(false);
         }
     };
 
     const filteredMedications = useMemo(() => {
         if (!searchQuery.trim()) return medications;
         const q = searchQuery.trim().toLowerCase();
-        return medications.filter((med) =>
-            [med.serialNumber, med.gtin, med.batchNumber, med.expiryDate, med.qrHash]
-                .filter(Boolean)
-                .some((value: string) => value.toLowerCase().includes(q))
-        );
+        return medications.filter((med) => {
+            const fields = [
+                med.serialNumber,
+                med.medicationName,
+                med.gtin,
+                med.batchNumber,
+                med.expiryDate,
+                med.productionCompany,
+                med.distributionCompany,
+                med.qrHash
+            ].map((value) => value ?? '');
+            return fields.some((value) => value.toLowerCase().includes(q));
+        });
     }, [medications, searchQuery]);
+
+    const showDashboard = route === '/app' && !!authToken;
+    const showAccount = route === '/account' && !!authToken;
+    const showLogin = route === '/login' || (!authToken && requiresAuth);
+    const showHome = !showDashboard && !showLogin && !showAccount;
 
     return (
         <div className="app">
             <div className="app__glow app__glow--one" />
             <div className="app__glow app__glow--two" />
 
-            <header className="hero">
-                <div className="hero__badge">
-                    <ShieldCheck size={16} />
-                    Trusted pharma traceability
-                </div>
-                <h1>LedgerRx Control Center</h1>
-                <p>
-                    Anchor medication lineage to your private Fabric network. Track batches, verify origin,
-                    and generate QR codes for downstream scanning.
-                </p>
-                <div className="hero__stats">
-                    <div>
-                        <span>Total Records</span>
-                        <strong>{medications.length}</strong>
-                    </div>
-                    <div>
-                        <span>Network Status</span>
-                        <strong>{error ? 'Offline' : 'Online'}</strong>
-                    </div>
-                    <div>
-                        <span>Last Sync</span>
-                        <strong>{lastUpdated ?? '—'}</strong>
-                    </div>
-                </div>
-            </header>
 
-            <section className="panel">
-                <div className="panel__tabs">
-                    <button
-                        className={activeTab === 'add' ? 'tab tab--active' : 'tab'}
-                        onClick={() => setActiveTab('add')}
-                    >
-                        <Plus size={16} />
-                        Add Medication
-                    </button>
-                    <button
-                        className={activeTab === 'view' ? 'tab tab--active' : 'tab'}
-                        onClick={() => setActiveTab('view')}
-                    >
-                        <List size={16} />
-                        View Records
-                    </button>
-                </div>
+            <Topbar authToken={authToken} profile={profile} onNavigate={navigate} onLogout={handleLogout} />
 
-                <div className="panel__body">
-                    {activeTab === 'add' && (
-                        <div className="grid">
-                            <form className="card card--form" onSubmit={handleSubmit}>
-                                <h2>New medication entry</h2>
-                                <p>All fields are required to generate a traceable QR payload.</p>
-
-                                <div className="field">
-                                    <label>Serial Number (UID)</label>
-                                    <input
-                                        type="text"
-                                        name="serialNumber"
-                                        placeholder="RX-2026-00001"
-                                        value={formData.serialNumber}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                                <div className="field">
-                                    <label>GTIN</label>
-                                    <input
-                                        type="text"
-                                        name="gtin"
-                                        placeholder="00312345678905"
-                                        value={formData.gtin}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                                <div className="field">
-                                    <label>Batch Number</label>
-                                    <input
-                                        type="text"
-                                        name="batchNumber"
-                                        placeholder="BATCH-APR-26"
-                                        value={formData.batchNumber}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                                <div className="field">
-                                    <label>Expiry Date</label>
-                                    <input
-                                        type="date"
-                                        name="expiryDate"
-                                        value={formData.expiryDate}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="form__actions">
-                                    <button
-                                        type="button"
-                                        className="button button--ghost"
-                                        onClick={() =>
-                                            setFormData({
-                                                serialNumber: 'RX-2026-00001',
-                                                gtin: '00312345678905',
-                                                batchNumber: 'BATCH-APR-26',
-                                                expiryDate: '2026-12-31',
-                                            })
-                                        }
-                                    >
-                                        Fill demo data
-                                    </button>
-                                    <button type="submit" className="button button--primary" disabled={isSubmitting}>
-                                        {isSubmitting ? <Loader2 size={16} className="spin" /> : <QrCode size={16} />}
-                                        {isSubmitting ? 'Anchoring...' : 'Add to Blockchain'}
-                                    </button>
-                                </div>
-                                {addError && <div className="inline-error">{addError}</div>}
-                            </form>
-
-                            <div className="card card--preview">
-                                <div className="preview__header">
-                                    <div>
-                                        <h3>QR readiness</h3>
-                                        <p>QR hash is generated after the transaction is committed.</p>
-                                    </div>
-                                    <div className="preview__status">{isSubmitting ? 'Processing' : 'Ready'}</div>
-                                </div>
-                                <div className="preview__body">
-                                    <div className="preview__placeholder">
-                                        <QrCode size={32} />
-                                        <span>Submit to mint a QR hash</span>
-                                    </div>
-                                    <ul className="preview__checks">
-                                        <li className={formData.serialNumber ? 'done' : ''}>
-                                            <Check size={16} />
-                                            Unique serial number
-                                        </li>
-                                        <li className={formData.gtin ? 'done' : ''}>
-                                            <Check size={16} />
-                                            Global trade item number
-                                        </li>
-                                        <li className={formData.batchNumber ? 'done' : ''}>
-                                            <Check size={16} />
-                                            Batch metadata
-                                        </li>
-                                        <li className={formData.expiryDate ? 'done' : ''}>
-                                            <Check size={16} />
-                                            Verified expiry date
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'view' && (
-                        <div className="records">
-                            <div className="records__toolbar">
-                                <div className="search">
-                                    <Search size={16} />
-                                    <input
-                                        type="text"
-                                        placeholder="Search serial, GTIN, batch, expiry..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
-                                </div>
-                                <button className="button button--ghost" onClick={fetchMedications}>
-                                    <RefreshCw size={16} className={isLoading ? 'spin' : ''} />
-                                    {isLoading ? 'Refreshing' : 'Refresh'}
-                                </button>
-                            </div>
-                            <div className="records__actions">
-                                <button className="button button--ghost" onClick={handleHealthCheck}>
-                                    <ShieldCheck size={16} />
-                                    Check backend
-                                </button>
-                            </div>
-
-                            {error && <div className="error-banner">{error}</div>}
-
-                            <div className="lookup card">
-                                <h3>Scan / lookup</h3>
-                                <p>Enter a serial number from a QR scan to fetch on-chain data.</p>
-                                <div className="lookup__row">
-                                    <input
-                                        type="text"
-                                        placeholder="Serial number"
-                                        value={lookupSerial}
-                                        onChange={(e) => setLookupSerial(e.target.value)}
-                                    />
-                                    <button className="button button--primary" onClick={handleLookup} disabled={lookupLoading}>
-                                        {lookupLoading ? 'Searching...' : 'Search'}
-                                    </button>
-                                </div>
-                                {lookupError && <div className="inline-error">{lookupError}</div>}
-                                {lookupResult && (
-                                    <div className="lookup__result">
-                                        <div>
-                                            <span>Serial</span>
-                                            <strong>{lookupResult.serialNumber}</strong>
-                                        </div>
-                                        <div>
-                                            <span>GTIN</span>
-                                            <strong>{lookupResult.gtin}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Batch</span>
-                                            <strong>{lookupResult.batchNumber}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Expiry</span>
-                                            <strong>{lookupResult.expiryDate}</strong>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="records__grid">
-                                {filteredMedications.length === 0 && !isLoading && (
-                                    <div className="empty-state">
-                                        <QrCode size={32} />
-                                        <p>No records yet. Add a medication to mint the first QR hash.</p>
-                                    </div>
-                                )}
-                                {filteredMedications.map((med) => (
-                                    <div className="record-card" key={med.serialNumber}>
-                                        <div className="record-card__header">
-                                            <div>
-                                                <span className="pill">Serial</span>
-                                                <h3>{med.serialNumber}</h3>
-                                            </div>
-                                            <button className="button button--mini" onClick={() => handleShowQR(med.qrHash)}>
-                                                <QrCode size={14} />
-                                                View QR
-                                            </button>
-                                        </div>
-                                        <div className="record-card__meta">
-                                            <div>
-                                                <span>GTIN</span>
-                                                <strong>{med.gtin}</strong>
-                                            </div>
-                                            <div>
-                                                <span>Batch</span>
-                                                <strong>{med.batchNumber}</strong>
-                                            </div>
-                                            <div>
-                                                <span>Expiry</span>
-                                                <strong>{med.expiryDate}</strong>
-                                            </div>
-                                        </div>
-                                        <div className="record-card__hash">
-                                            <span>QR Hash</span>
-                                            <button className="button button--ghost button--mini" onClick={() => handleShowQR(med.qrHash)}>
-                                                Show
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {toast && (
-                <div className={`toast toast--${toast.type}`}>
-                    {toast.message}
-                </div>
+            {showHome && (
+                <HomePage
+                    authToken={authToken}
+                    medicationsCount={medications.length}
+                    error={error}
+                    lastUpdated={lastUpdated}
+                    onNavigate={navigate}
+                />
             )}
+
+            {showLogin && (
+                <LoginPage
+                    authMode={authMode}
+                    loginForm={loginForm}
+                    authError={authError}
+                    onLoginFormChange={handleLoginFormChange}
+                    onToggleMode={handleToggleAuthMode}
+                    onSubmitLogin={handleLogin}
+                    onSubmitSignup={handleSignup}
+                    onNavigateHome={() => navigate('/')}
+                />
+            )}
+
+            {showDashboard && (
+                <DashboardPage
+                    medications={medications}
+                    filteredMedications={filteredMedications}
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    onSubmit={handleSubmit}
+                    isSubmitting={isSubmitting}
+                    addError={addError}
+                    isLoading={isLoading}
+                    error={error}
+                    onRefresh={fetchMedications}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    lastUpdated={lastUpdated}
+                    onShowQR={handleShowQR}
+                    lookupSerial={lookupSerial}
+                    onLookupSerialChange={setLookupSerial}
+                    onLookup={handleLookup}
+                    lookupLoading={lookupLoading}
+                    lookupError={lookupError}
+                    lookupResult={lookupResult}
+                />
+            )}
+
+            {showAccount && (
+                <AccountPage
+                    profile={profile}
+                    profileForm={profileForm}
+                    profileError={profileError}
+                    profileSaving={profileSaving}
+                    onProfileFormChange={handleProfileFormChange}
+                    onProfileSave={handleProfileSave}
+                    onBack={() => navigate('/app')}
+                    adminUsers={adminUsers}
+                    adminLoading={adminLoading}
+                    adminError={adminError}
+                    onReloadAdmin={loadAdminUsers}
+                />
+            )}
+
+            {toast && <div className={`toast toast--${toast.type}`}>{toast.message}</div>}
 
             {showQRModal && (
                 <div className="modal" onClick={() => setShowQRModal(false)}>
@@ -479,6 +545,11 @@ const App: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <footer className="footer">
+                <span>LedgRx • Private pharma traceability</span>
+                <span>Powered by Hyperledger Fabric</span>
+            </footer>
         </div>
     );
 };

@@ -8,6 +8,10 @@ services:
     environment:
       PORT: "${PORT:-3001}"
       CORS_ORIGIN: "${CORS_ORIGIN:-}"
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:-}"
+      AUTH_USERS: "${AUTH_USERS:-}"
+      AUTH_USERS_FILE: "${AUTH_USERS_FILE:-/data/users.json}"
+      MONGODB_URI: "${MONGODB_URI:-mongodb://mongo:27017/ledgrx}"
       FABRIC_CHANNEL: "${FABRIC_CHANNEL:-mychannel}"
       FABRIC_CHAINCODE: "${FABRIC_CHAINCODE:-pharma}"
       FABRIC_MSPID: "${FABRIC_MSPID:-Org1MSP}"
@@ -19,6 +23,15 @@ services:
     volumes:
       - ./fabric-samples/test-network/organizations:/fabric/organizations:ro
       - ./fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/connection-org1.json:/fabric/connection-org1.json:ro
+      - ./server/data:/data
+    networks:
+      - fabric_test
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
     networks:
       - fabric_test
     restart: unless-stopped
@@ -27,3 +40,6 @@ networks:
   fabric_test:
     name: fabric_test
     external: true
+
+volumes:
+  mongo_data:

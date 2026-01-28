@@ -5,6 +5,17 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BLOCKCHAIN_DIR="$ROOT_DIR/blockchain"
 FABRIC_DIR="$BLOCKCHAIN_DIR/fabric-samples/test-network"
+ENV_FILE="$ROOT_DIR/.env.backend"
+
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  . "$ENV_FILE"
+  set +a
+fi
+
+if [ -x "$ROOT_DIR/scripts/vps-bootstrap.sh" ]; then
+  "$ROOT_DIR/scripts/vps-bootstrap.sh"
+fi
 
 FABRIC_CHANNEL="${FABRIC_CHANNEL:-mychannel}"
 FABRIC_CHAINCODE="${FABRIC_CHAINCODE:-pharma}"

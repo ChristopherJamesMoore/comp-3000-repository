@@ -2,67 +2,12 @@
 End-to-end visibility into the manufacturing and distribution processes of all pharmaceutical medications.
 
 ## Running project locally
+`./up.sh`
+`./down.sh`
 
-This repo's runnable stack lives under `blockchain`. It uses Docker Compose and a local Hyperledger Fabric test network.
-
-Prereqs:
-- Docker + Docker Compose
-- Bash (macOS/Linux or WSL)
-
-Start:
-```bash
-cd blockchain/fabric-samples/test-network
-./network.sh deployCC -c mychannel -ccn pharma -ccp ../../chaincode -ccl javascript
-```
-
-```bash
-cd blockchain
-chmod +x up.sh down.sh
-./up.sh
-```
-
-App endpoints:
-- Frontend: http://localhost:3000
-- API: http://localhost:3001
-
-## Vercel frontend configuration
-- In Vercel → Settings → Environment Variables, set:
-  - `NEXT_PUBLIC_API_BASE_URL` = `https://ledgrx.duckdns.org`
-- Redeploy the frontend after saving.
-- CORS is configured on the backend for `https://comp-3000-repository.vercel.app`.
-
-Stop:
-```bash
-cd blockchain
-./down.sh
-```
-
-## Mobile app (React Native)
-
-Prereqs:
-- Node.js 20+
-- Xcode (iOS) or Android Studio (Android)
-
-iOS simulator:
-```bash
-cd mobile-app
-npm install
-cd ios && pod install && cd ..
-npm run ios
-```
-
-Android emulator:
-```bash
-cd mobile-app
-npm install
-npm run android
-```
-
-Physical device (camera testing):
-1) Ensure your phone and dev machine are on the same Wi‑Fi.
-2) Update `API_BASE_URL` in `mobile-app/App.tsx` to use your machine’s LAN IP (e.g. `http://192.168.1.20:3001`).
-3) iOS: run `npm run ios -- --device "<Your iPhone Name>"`.
-4) Android: enable USB debugging, then run `npm run android`.
+## VPS deployment (backend + Fabric only)
+See `docs/vps.md` for the quickstart steps to run the backend API and Fabric
+on a Linux VPS while keeping the frontend on Vercel.
 
 ## Commit types
 
@@ -156,6 +101,108 @@ A mitigation for this would be to talk to professionals and do due diligence res
 The implementation of a blockchain-based pharmaceutical tracking system raises significant legal and ethical considerations, primarily concerning data protection and regulatory compliance. The General Data Protection Regulation (GDPR) presents a fundamental challenge due to the apparent conflict between blockchain's immutability and GDPR's requirement for data erasure under the "right to be forgotten." The hybrid storage architecture proposed in this project addresses this by storing only cryptographic hashes on the immutable blockchain while maintaining deletable personal data off-chain. The system must also comply with the Medicines and Healthcare products Regulatory Agency (MHRA) regulations and the Falsified Medicines Directive (FMD), which mandates specific safety features for medication packaging and serialisation requirements. Professional responsibilities as a software developer in the healthcare domain require adherence to the British Computer Society (BCS) Code of Conduct, emphasisng public interest and duty of care when developing systems that impact public health. The project must be clearly positioned as a proof-of-concept research prototype rather than a production-ready system, with transparent documentation of system limitations and security considerations.
 
 Ethical considerations extend beyond legal compliance to encompass privacy, consent, and equity within healthcare systems. Patients have a reasonable expectation of privacy regarding their medical information, and while tracking batch-level information may not directly identify individuals, careful consideration must be given to what information is truly necessary for counterfeit prevention.
+
+
+## Proposed Gantt chart
+
+**Project Duration:** 9 months
+**Start Date:** Late September 2025  
+
+---
+
+## Phase Breakdown
+
+### Phase 1: Research & Planning (Weeks 1-6)
+
+| Task | Week 1 | Week 2 | Week 3 | Week 4 | Week 5 | Week 6 |
+|------|--------|--------|--------|--------|--------|--------|
+| Blockchain in healthcare | ████ | ████ | ████ | | | |
+| Pharmaceutical supply chains | | ████ | ████ | ████ | | |
+| Requirements gathering & analysis | | | ████ | ████ | ████ | |
+| System architecture design | | | | ████ | ████ | ████ |
+| Project plan finalization | | | | | | ████ |
+
+**Deliverables:**
+- Requirements specification
+- System architecture diagram
+
+---
+
+### Phase 2: Learning & Proof of Concept (Weeks 7-12)
+
+| Task | Week 7 | Week 8 | Week 9 | Week 10 | Week 11 | Week 12 |
+|------|--------|--------|--------|---------|---------|---------|
+| Hyperledger Fabric tutorials & learning | ████ | ████ | ████ | | | |
+| IPFS learning & experimentation | | ████ | ████ | ████ | | |
+| Development environment setup | ████ | ████ | | | | |
+| Simple blockchain PoC | | | ████ | ████ | | |
+| IPFS integration PoC | | | | ████ | ████ | |
+| Interim report preparation | | | | | ████ | ████ |
+
+**Deliverables:**
+- Working Hyperledger Fabric test network
+- Basic IPFS storage demonstration
+- Interim project report
+
+**Note:** Christmas break approximately Weeks 13-14
+
+---
+
+### Phase 3: Core Development (Weeks 15-24)
+
+| Task | Week 15 | Week 16 | Week 17 | Week 18 | Week 19 | Week 20 | Week 21 | Week 22 | Week 23 | Week 24 |
+|------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+| Blockchain network implementation | ████ | ████ | ████ | ████ | | | | | | |
+| Smart contract development | | ████ | ████ | ████ | ████ | | | | | |
+| Hybrid storage system (on/off-chain) | | | | ████ | ████ | ████ | | | | |
+| RESTful API development | | | | | ████ | ████ | ████ | ████ | | |
+| Database design & implementation | | | ████ | ████ | ████ | | | | | |
+| Role-based access control | | | | | | ████ | ████ | ████ | | |
+| Integration testing | | | | | | | ████ | ████ | ████ | |
+| Security review & hardening | | | | | | | | ████ | ████ | ████ |
+
+**Deliverables:**
+- Functional blockchain network
+- Working API endpoints
+- RBAC implementation
+- Integrated backend system
+
+---
+
+### Phase 4: User Interface & Testing (Weeks 27-30)
+
+| Task | Week 27 | Week 28 | Week 29 | Week 30 |
+|------|---------|---------|---------|---------|
+| Manufacturer portal development | ████ | ████ | | |
+| Distributor portal development | | ████ | ████ | |
+| GP/Pharmacist portal development | | | ████ | ████ |
+| Patient verification interface | | | ████ | ████ |
+| System integration testing | ████ | ████ | ████ | |
+| User acceptance testing preparation | | | ████ | ████ |
+| Performance testing | | | | ████ |
+
+**Deliverables:**
+- Complete user interfaces for all stakeholders
+- Integrated end-to-end system
+- Test reports
+
+---
+
+### Phase 5: Documentation & Finalization (Weeks 31-36)
+
+| Task | Week 31 | Week 32 | Week 33 | Week 34 | Week 35 | Week 36 |
+|------|---------|---------|---------|---------|---------|---------|
+| System documentation | ████ | ████ | | | | |
+| Dissertation writing - Introduction | ████ | ████ | | | | |
+| Dissertation writing - Literature review | ████ | ████ | | | | |
+| Dissertation writing - Methodology | | ████ | ████ | | | |
+| Dissertation writing - Implementation | | | ████ | ████ | | |
+| Dissertation writing - Testing & results | | | | ████ | ████ | |
+| Dissertation writing - Evaluation | | | | | ████ | ████ |
+| Dissertation writing - Conclusion | | | | | | ████ |
+| Final review & proofreading | | | | | ████ | ████ |
+| Presentation preparation | | | | | ████ | ████ |
+| Final submission | | | | | | ████ |
 
 **Deliverables:**
 - Complete dissertation document
