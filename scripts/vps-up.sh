@@ -7,6 +7,9 @@ BLOCKCHAIN_DIR="$ROOT_DIR/blockchain"
 FABRIC_DIR="$BLOCKCHAIN_DIR/fabric-samples/test-network"
 ENV_FILE="$ROOT_DIR/.env.backend"
 
+export DOCKER_BUILDKIT=0
+export COMPOSE_DOCKER_CLI_BUILD=0
+
 if [ -f "$ENV_FILE" ]; then
   set -a
   . "$ENV_FILE"
@@ -21,8 +24,11 @@ FABRIC_CHANNEL="${FABRIC_CHANNEL:-mychannel}"
 FABRIC_CHAINCODE="${FABRIC_CHAINCODE:-pharma}"
 CHAINCODE_PATH="${CHAINCODE_PATH:-$BLOCKCHAIN_DIR/chaincode}"
 CHAINCODE_LANG="${CHAINCODE_LANG:-javascript}"
+FABRIC_VERSION="${FABRIC_VERSION:-2.5.14}"
+FABRIC_CA_VERSION="${FABRIC_CA_VERSION:-1.5.15}"
 
 echo "Starting Hyperledger Fabric network (with CA)..."
+(cd "$FABRIC_DIR" && ./network.sh prereq -i "$FABRIC_VERSION" -cai "$FABRIC_CA_VERSION")
 (cd "$FABRIC_DIR" && ./network.sh up -ca)
 
 if [ -z "$(docker ps -aq -f name=ca_org1)" ]; then
@@ -42,8 +48,16 @@ fi
 
 echo "Ensuring channel exists..."
 set +e
-(cd "$FABRIC_DIR" && ./network.sh createChannel -c "$FABRIC_CHANNEL")
+(cd "$FABRIC_DIR" && . scripts/envVar.sh 1 && peer channel list 2>/dev/null | grep -q "$FABRIC_CHANNEL")
+CHANNEL_EXISTS=$?
 set -e
+if [ "$CHANNEL_EXISTS" -ne 0 ]; then
+  set +e
+  (cd "$FABRIC_DIR" && ./network.sh createChannel -c "$FABRIC_CHANNEL")
+  set -e
+else
+  echo "Channel '$FABRIC_CHANNEL' already joined. Skipping createChannel."
+fi
 
 echo "Ensuring chaincode is deployed..."
 set +e
