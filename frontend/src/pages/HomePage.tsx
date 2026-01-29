@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { LogIn, Plus } from 'lucide-react';
 import { AuthMode } from '../types';
 import MarketingNav from '../components/MarketingNav';
 
