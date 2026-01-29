@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import './App.css';
@@ -62,57 +62,33 @@ const App: React.FC = () => {
         }
     }, []);
 
-    useEffect(() => {
-        if (!authToken) {
-            setProfile(null);
-            return;
-        }
-        loadProfile();
-    }, [authToken]);
-
-    useEffect(() => {
-        if (profile?.isAdmin) {
-            loadAdminUsers();
-        } else {
-            setAdminUsers([]);
-        }
-    }, [profile?.isAdmin]);
-
-    useEffect(() => {
-        const onPopState = () => setRoute(window.location.pathname || '/');
-        window.addEventListener('popstate', onPopState);
-        return () => window.removeEventListener('popstate', onPopState);
-    }, []);
-
-    const requiresAuth = route === '/app' || route === '/account' || route === '/app/add';
-
-    useEffect(() => {
-        if (!authToken && requiresAuth) {
-            navigate('/login', 'login');
-        }
-    }, [authToken, requiresAuth, route]);
-
-    const navigate = (path: string, mode?: AuthMode) => {
-        if (path !== route) {
-            window.history.pushState({}, '', path);
-            setRoute(path);
-        }
-        if (mode) {
-            setAuthMode(mode);
-        }
-    };
+    const navigate = useCallback(
+        (path: string, mode?: AuthMode) => {
+            setRoute((currentRoute) => {
+                if (path !== currentRoute) {
+                    window.history.pushState({}, '', path);
+                    return path;
+                }
+                return currentRoute;
+            });
+            if (mode) {
+                setAuthMode(mode);
+            }
+        },
+        []
+    );
 
     const handleLoginFormChange = (field: 'username' | 'password', value: string) => {
-        setLoginForm({ ...loginForm, [field]: value });
+        setLoginForm((current) => ({ ...current, [field]: value }));
     };
 
     const handleProfileFormChange = (field: 'companyType' | 'companyName', value: string) => {
-        setProfileForm({ ...profileForm, [field]: value });
+        setProfileForm((current) => ({ ...current, [field]: value }));
     };
 
     const handleToggleAuthMode = () => {
         setAuthError('');
-        setAuthMode(authMode === 'signup' ? 'login' : 'signup');
+        setAuthMode((current) => (current === 'signup' ? 'login' : 'signup'));
     };
 
     useEffect(() => {
@@ -121,18 +97,21 @@ const App: React.FC = () => {
         return () => clearTimeout(timer);
     }, [toast]);
 
-    const authFetch = (path: string, options: RequestInit = {}) => {
-        const headers = new Headers(options.headers || {});
-        if (authToken) {
-            headers.set('Authorization', `Bearer ${authToken}`);
-        }
-        if (!headers.has('Content-Type') && options.body) {
-            headers.set('Content-Type', 'application/json');
-        }
-        return fetch(buildUrl(path), { ...options, headers });
-    };
+    const authFetch = useCallback(
+        (path: string, options: RequestInit = {}) => {
+            const headers = new Headers(options.headers || {});
+            if (authToken) {
+                headers.set('Authorization', `Bearer ${authToken}`);
+            }
+            if (!headers.has('Content-Type') && options.body) {
+                headers.set('Content-Type', 'application/json');
+            }
+            return fetch(buildUrl(path), { ...options, headers });
+        },
+        [authToken]
+    );
 
-    const loadProfile = async () => {
+    const loadProfile = useCallback(async () => {
         if (!authToken) return;
         try {
             const response = await authFetch('/api/auth/me');
@@ -148,9 +127,9 @@ const App: React.FC = () => {
         } catch (error) {
             setProfileError('Failed to load profile.');
         }
-    };
+    }, [authFetch, authToken]);
 
-    const loadAdminUsers = async () => {
+    const loadAdminUsers = useCallback(async () => {
         if (!authToken) return;
         setAdminLoading(true);
         setAdminError('');
@@ -168,9 +147,9 @@ const App: React.FC = () => {
         } finally {
             setAdminLoading(false);
         }
-    };
+    }, [authFetch, authToken]);
 
-    const fetchMedications = async () => {
+    const fetchMedications = useCallback(async () => {
         setIsLoading(true);
         setError('');
         try {
@@ -188,13 +167,43 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [authFetch]);
+
+    useEffect(() => {
+        if (!authToken) {
+            setProfile(null);
+            return;
+        }
+        loadProfile();
+    }, [authToken, loadProfile]);
+
+    useEffect(() => {
+        if (profile?.isAdmin) {
+            loadAdminUsers();
+        } else {
+            setAdminUsers([]);
+        }
+    }, [loadAdminUsers, profile?.isAdmin]);
+
+    useEffect(() => {
+        const onPopState = () => setRoute(window.location.pathname || '/');
+        window.addEventListener('popstate', onPopState);
+        return () => window.removeEventListener('popstate', onPopState);
+    }, []);
+
+    const requiresAuth = route === '/app' || route === '/account' || route === '/app/add';
+
+    useEffect(() => {
+        if (!authToken && requiresAuth) {
+            navigate('/login', 'login');
+        }
+    }, [authToken, navigate, requiresAuth]);
 
     useEffect(() => {
         if (route === '/app' && activeTab === 'view') {
             fetchMedications();
         }
-    }, [route, activeTab]);
+    }, [route, activeTab, fetchMedications]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
