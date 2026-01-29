@@ -73,7 +73,12 @@ function checkPrereqs() {
   # use the fabric peer container to see if the samples and binaries match your
   # docker images
   LOCAL_VERSION=$(peer version | sed -ne 's/^ Version: //p')
-  DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm hyperledger/fabric-peer:latest peer version | sed -ne 's/^ Version: //p')
+  if [ -z "$IMAGETAG" ] || [ "$IMAGETAG" == "default" ]; then
+    IMAGE_TAG_FOR_VERSION="latest"
+  else
+    IMAGE_TAG_FOR_VERSION="$IMAGETAG"
+  fi
+  DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm ghcr.io/hyperledger/fabric-peer:${IMAGE_TAG_FOR_VERSION} peer version | sed -ne 's/^ Version: //p')
 
   infoln "LOCAL_VERSION=$LOCAL_VERSION"
   infoln "DOCKER_IMAGE_VERSION=$DOCKER_IMAGE_VERSION"
@@ -119,7 +124,12 @@ function checkPrereqs() {
       exit 1
     fi
     CA_LOCAL_VERSION=$(fabric-ca-client version | sed -ne 's/ Version: //p')
-    CA_DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm hyperledger/fabric-ca:latest fabric-ca-client version | sed -ne 's/ Version: //p' | head -1)
+    if [ -z "$CA_IMAGETAG" ] || [ "$CA_IMAGETAG" == "default" ]; then
+      CA_IMAGE_TAG_FOR_VERSION="latest"
+    else
+      CA_IMAGE_TAG_FOR_VERSION="$CA_IMAGETAG"
+    fi
+    CA_DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm ghcr.io/hyperledger/fabric-ca:${CA_IMAGE_TAG_FOR_VERSION} fabric-ca-client version | sed -ne 's/ Version: //p' | head -1)
     infoln "CA_LOCAL_VERSION=$CA_LOCAL_VERSION"
     infoln "CA_DOCKER_IMAGE_VERSION=$CA_DOCKER_IMAGE_VERSION"
 

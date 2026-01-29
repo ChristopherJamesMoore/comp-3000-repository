@@ -14,7 +14,7 @@ services:
 
   peer0.org3.example.com:
     container_name: peer0.org3.example.com
-    image: hyperledger/fabric-peer:latest
+    image: ghcr.io/hyperledger/fabric-peer:2.5.14
     labels:
       service: hyperledger-fabric
     environment:
