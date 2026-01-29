@@ -4,15 +4,21 @@ import { QRCodeSVG } from 'qrcode.react';
 import './App.css';
 import { buildUrl, API_BASE } from './utils/api';
 import { Medication, Toast, UserProfile, AuthMode } from './types';
-import Topbar from './components/Topbar';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AccountPage from './pages/AccountPage';
+import ProductPage from './pages/ProductPage';
+import SolutionsPage from './pages/SolutionsPage';
+import ResourcesPage from './pages/ResourcesPage';
+import CustomersPage from './pages/CustomersPage';
+import PricingPage from './pages/PricingPage';
+import AddMedicationPage from './pages/AddMedicationPage';
+import { DashboardNav } from './components/DashboardLayout';
 
 const App: React.FC = () => {
     const [route, setRoute] = useState(window.location.pathname || '/');
-    const [activeTab, setActiveTab] = useState<'add' | 'view'>('add');
+    const [activeTab, setActiveTab] = useState<DashboardNav>('view');
     const [medications, setMedications] = useState<Medication[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,7 +84,7 @@ const App: React.FC = () => {
         return () => window.removeEventListener('popstate', onPopState);
     }, []);
 
-    const requiresAuth = route === '/app' || route === '/account';
+    const requiresAuth = route === '/app' || route === '/account' || route === '/app/add';
 
     useEffect(() => {
         if (!authToken && requiresAuth) {
@@ -444,10 +450,30 @@ const App: React.FC = () => {
         });
     }, [medications, searchQuery]);
 
+    const marketingPages: Record<string, JSX.Element> = {
+        '/': <HomePage authToken={authToken} onNavigate={navigate} />,
+        '/product': <ProductPage authToken={authToken} onNavigate={navigate} />,
+        '/solutions': <SolutionsPage authToken={authToken} onNavigate={navigate} />,
+        '/resources': <ResourcesPage authToken={authToken} onNavigate={navigate} />,
+        '/customers': <CustomersPage authToken={authToken} onNavigate={navigate} />,
+        '/pricing': <PricingPage authToken={authToken} onNavigate={navigate} />
+    };
+
     const showDashboard = route === '/app' && !!authToken;
+    const showAddMedication = route === '/app/add' && !!authToken;
     const showAccount = route === '/account' && !!authToken;
     const showLogin = route === '/login' || (!authToken && requiresAuth);
-    const showHome = !showDashboard && !showLogin && !showAccount;
+    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount;
+    const marketingPage = marketingPages[route] ?? marketingPages['/'];
+
+    const handleNavSelect = (nav: DashboardNav) => {
+        if (nav === 'add') {
+            navigate('/app/add');
+            return;
+        }
+        setActiveTab(nav);
+        navigate('/app');
+    };
 
     return (
         <div className="app">
@@ -455,17 +481,9 @@ const App: React.FC = () => {
             <div className="app__glow app__glow--two" />
 
 
-            <Topbar authToken={authToken} profile={profile} onNavigate={navigate} onLogout={handleLogout} />
+            {/* Legacy topbar removed; homepage and dashboard have their own nav */} 
 
-            {showHome && (
-                <HomePage
-                    authToken={authToken}
-                    medicationsCount={medications.length}
-                    error={error}
-                    lastUpdated={lastUpdated}
-                    onNavigate={navigate}
-                />
-            )}
+            {showMarketing && marketingPage}
 
             {showLogin && (
                 <LoginPage
@@ -482,15 +500,12 @@ const App: React.FC = () => {
 
             {showDashboard && (
                 <DashboardPage
+                    userName={profile?.username || 'User'}
+                    onAccountClick={() => navigate('/account')}
+                    activeNav={activeTab}
+                    onNavSelect={handleNavSelect}
                     medications={medications}
                     filteredMedications={filteredMedications}
-                    activeTab={activeTab}
-                    onTabChange={setActiveTab}
-                    formData={formData}
-                    onInputChange={handleInputChange}
-                    onSubmit={handleSubmit}
-                    isSubmitting={isSubmitting}
-                    addError={addError}
                     isLoading={isLoading}
                     error={error}
                     onRefresh={fetchMedications}
@@ -507,6 +522,20 @@ const App: React.FC = () => {
                 />
             )}
 
+            {showAddMedication && (
+                <AddMedicationPage
+                    userName={profile?.username || 'User'}
+                    onAccountClick={() => navigate('/account')}
+                    activeNav="add"
+                    onNavSelect={handleNavSelect}
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    onSubmit={handleSubmit}
+                    isSubmitting={isSubmitting}
+                    addError={addError}
+                />
+            )}
+
             {showAccount && (
                 <AccountPage
                     profile={profile}
@@ -516,6 +545,7 @@ const App: React.FC = () => {
                     onProfileFormChange={handleProfileFormChange}
                     onProfileSave={handleProfileSave}
                     onBack={() => navigate('/app')}
+                    onLogout={handleLogout}
                     adminUsers={adminUsers}
                     adminLoading={adminLoading}
                     adminError={adminError}

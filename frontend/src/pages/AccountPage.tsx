@@ -10,6 +10,7 @@ type AccountPageProps = {
     onProfileFormChange: (field: 'companyType' | 'companyName', value: string) => void;
     onProfileSave: (e: React.FormEvent) => void;
     onBack: () => void;
+    onLogout: () => void;
     adminUsers: UserProfile[];
     adminLoading: boolean;
     adminError: string;
@@ -24,6 +25,7 @@ const AccountPage: React.FC<AccountPageProps> = ({
     onProfileFormChange,
     onProfileSave,
     onBack,
+    onLogout,
     adminUsers,
     adminLoading,
     adminError,
@@ -73,6 +75,9 @@ const AccountPage: React.FC<AccountPageProps> = ({
                         </button>
                         <button type="button" className="button button--ghost" onClick={onBack}>
                             Back to dashboard
+                        </button>
+                        <button type="button" className="button button--ghost" onClick={onLogout}>
+                            Log out
                         </button>
                     </div>
                 </form>

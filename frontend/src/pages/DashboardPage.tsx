@@ -1,25 +1,15 @@
 import React from 'react';
-import {
-    Plus,
-    List,
-    RefreshCw,
-    Search,
-    QrCode,
-    ShieldCheck,
-    Loader2
-} from 'lucide-react';
+import { RefreshCw, Search, QrCode } from 'lucide-react';
 import { Medication } from '../types';
+import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
 
 type DashboardPageProps = {
+    userName: string;
+    onAccountClick: () => void;
+    activeNav: DashboardNav;
+    onNavSelect: (nav: DashboardNav) => void;
     medications: Medication[];
     filteredMedications: Medication[];
-    activeTab: 'add' | 'view';
-    onTabChange: (tab: 'add' | 'view') => void;
-    formData: Medication;
-    onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    onSubmit: (e: React.FormEvent) => void;
-    isSubmitting: boolean;
-    addError: string;
     isLoading: boolean;
     error: string;
     onRefresh: () => void;
@@ -36,15 +26,12 @@ type DashboardPageProps = {
 };
 
 const DashboardPage: React.FC<DashboardPageProps> = ({
+    userName,
+    onAccountClick,
+    activeNav,
+    onNavSelect,
     medications,
     filteredMedications,
-    activeTab,
-    onTabChange,
-    formData,
-    onInputChange,
-    onSubmit,
-    isSubmitting,
-    addError,
     isLoading,
     error,
     onRefresh,
@@ -59,157 +46,75 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     lookupError,
     lookupResult
 }) => (
-    <>
-        <header className="hero">
-            <div className="hero__badge">
-                <ShieldCheck size={16} />
-                Trusted pharma traceability
+    <DashboardLayout
+        userName={userName}
+        onAccountClick={onAccountClick}
+        activeNav={activeNav}
+        onNavSelect={onNavSelect}
+        heading="Dashboard"
+        subheading="Track medications across manufacturing, distribution, and pharmacy delivery."
+    >
+        <div className="dashboard__stats">
+            <div>
+                <span>Total Records</span>
+                <strong>{medications.length}</strong>
             </div>
-            <h1>LedgRx Control Center</h1>
-            <p>
-                Anchor medication lineage to your private Fabric network. Track batches, verify origin, and generate QR
-                codes for downstream scanning.
-            </p>
-            <div className="hero__stats">
-                <div>
-                    <span>Total Records</span>
-                    <strong>{medications.length}</strong>
-                </div>
-                <div>
-                    <span>Network Status</span>
-                    <strong>{error ? 'Offline' : 'Online'}</strong>
-                </div>
-                <div>
-                    <span>Last Sync</span>
-                    <strong>{lastUpdated ?? '—'}</strong>
-                </div>
+            <div>
+                <span>Network Status</span>
+                <strong>{error ? 'Offline' : 'Online'}</strong>
             </div>
-        </header>
-
-        <section className="panel">
-            <div className="panel__tabs">
-                <button className={activeTab === 'add' ? 'tab tab--active' : 'tab'} onClick={() => onTabChange('add')}>
-                    <Plus size={16} />
-                    Add Medication
-                </button>
-                <button className={activeTab === 'view' ? 'tab tab--active' : 'tab'} onClick={() => onTabChange('view')}>
-                    <List size={16} />
-                    View Records
-                </button>
+            <div>
+                <span>Last Sync</span>
+                <strong>{lastUpdated ?? '—'}</strong>
             </div>
+        </div>
 
-            <div className="panel__body">
-                {activeTab === 'add' && (
-                    <div className="grid">
-                        <form className="card card--form" onSubmit={onSubmit}>
-                            <h2>New medication entry</h2>
-                            <p>All fields are required to generate a traceable QR payload.</p>
-
-                            <div className="field">
-                                <label>Serial Number (UID)</label>
-                                <input
-                                    type="text"
-                                    name="serialNumber"
-                                    placeholder="RX-2026-00001"
-                                    value={formData.serialNumber}
-                                    onChange={onInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="field">
-                                <label>Medication Name</label>
-                                <input
-                                    type="text"
-                                    name="medicationName"
-                                    placeholder="Aspirin"
-                                    value={formData.medicationName}
-                                    onChange={onInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="field">
-                                <label>GTIN</label>
-                                <input
-                                    type="text"
-                                    name="gtin"
-                                    placeholder="00312345678905"
-                                    value={formData.gtin}
-                                    onChange={onInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="field">
-                                <label>Batch Number</label>
-                                <input
-                                    type="text"
-                                    name="batchNumber"
-                                    placeholder="BATCH-APR-26"
-                                    value={formData.batchNumber}
-                                    onChange={onInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="field">
-                                <label>Expiry Date</label>
-                                <input
-                                    type="date"
-                                    name="expiryDate"
-                                    value={formData.expiryDate}
-                                    onChange={onInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="field">
-                                <label>Production Company</label>
-                                <input
-                                    type="text"
-                                    name="productionCompany"
-                                    placeholder="PharmaCorp"
-                                    value={formData.productionCompany}
-                                    onChange={onInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="field">
-                                <label>Distribution Company</label>
-                                <input
-                                    type="text"
-                                    name="distributionCompany"
-                                    placeholder="Global Logistics"
-                                    value={formData.distributionCompany}
-                                    onChange={onInputChange}
-                                    required
-                                />
-                            </div>
-
-                            <div className="form__actions">
-                                <button type="submit" className="button button--primary" disabled={isSubmitting}>
-                                    {isSubmitting ? <Loader2 size={16} className="spin" /> : <QrCode size={16} />}
-                                    {isSubmitting ? 'Anchoring...' : 'Add to Blockchain'}
-                                </button>
-                            </div>
-                            {addError && <div className="inline-error">{addError}</div>}
-                        </form>
-
-                        <div className="card card--preview">
-                            <div className="preview__header">
-                                <div>
-                                    <h3>QR readiness</h3>
-                                    <p>QR hash is generated after the transaction is committed.</p>
-                                </div>
-                                <div className="preview__status">Ready</div>
-                            </div>
-                            <div className="preview__body">
-                                <div className="preview__placeholder">
-                                    <QrCode size={32} />
-                                    <span>Submit to mint a QR hash</span>
-                                </div>
-                            </div>
+        {activeNav === 'receive' && (
+                <section className="dashboard__panel">
+                    <div className="card card--form">
+                        <h2>Mark medication as received</h2>
+                        <p>Log that a distributor has received a shipment from the manufacturer.</p>
+                        <div className="field">
+                            <label>Serial Number</label>
+                            <input type="text" placeholder="RX-2026-00001" />
+                        </div>
+                        <div className="field">
+                            <label>Receiving facility</label>
+                            <input type="text" placeholder="Distribution Hub" />
+                        </div>
+                        <div className="form__actions">
+                            <button type="button" className="button button--primary" disabled>
+                                Coming soon
+                            </button>
                         </div>
                     </div>
-                )}
+                </section>
+            )}
 
-                {activeTab === 'view' && (
+        {activeNav === 'arrived' && (
+                <section className="dashboard__panel">
+                    <div className="card card--form">
+                        <h2>Mark medication as arrived</h2>
+                        <p>Confirm arrival at a pharmacy or clinic for final verification.</p>
+                        <div className="field">
+                            <label>Serial Number</label>
+                            <input type="text" placeholder="RX-2026-00001" />
+                        </div>
+                        <div className="field">
+                            <label>Receiving pharmacy</label>
+                            <input type="text" placeholder="City Health Pharmacy" />
+                        </div>
+                        <div className="form__actions">
+                            <button type="button" className="button button--primary" disabled>
+                                Coming soon
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            )}
+
+        {activeNav === 'view' && (
+                <section className="dashboard__panel">
                     <div className="records">
                         <div className="records__toolbar">
                             <div className="search">
@@ -268,10 +173,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     </div>
                                     <div className="record-card__hash">
                                         <span>QR Hash</span>
-                                        <button
-                                            className="button button--ghost button--mini"
-                                            onClick={() => onShowQR(med.qrHash || '')}
-                                        >
+                                        <button className="button button--ghost button--mini" onClick={() => onShowQR(med.qrHash || '')}>
                                             Show
                                         </button>
                                     </div>
@@ -324,10 +226,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             )}
                         </div>
                     </div>
-                )}
-            </div>
-        </section>
-    </>
+                </section>
+            )}
+    </DashboardLayout>
 );
 
 export default DashboardPage;
