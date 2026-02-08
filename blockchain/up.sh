@@ -10,6 +10,12 @@ if [ -f "$ENV_FILE" ]; then
   set +a
 fi
 
+FABRIC_VERSION="${FABRIC_VERSION:-2.5.14}"
+FABRIC_CA_VERSION="${FABRIC_CA_VERSION:-1.5.15}"
+
+echo "Ensuring Fabric binaries and images are installed..."
+(cd "$FABRIC_DIR" && ./network.sh prereq -i "$FABRIC_VERSION" -cai "$FABRIC_CA_VERSION")
+
 echo "Starting Hyperledger Fabric network (with CA)..."
 (cd "$FABRIC_DIR" && ./network.sh up -ca)
 
