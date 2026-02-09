@@ -208,7 +208,33 @@ const loadUserForRequest = async (db, req) => {
     const username = req.user?.sub;
     if (!username) return null;
     const users = db.collection('users');
-    return users.findOne({ username });
+    const existing = await users.findOne({ username });
+    if (existing) return existing;
+    const newUser = {
+        username,
+        companyType: '',
+        companyName: '',
+        createdAt: new Date(),
+        isAdmin: isAdminUser(username)
+    };
+    await users.insertOne(newUser);
+    return newUser;
+};
+
+const ensureStatus = async (statusCollection, serialNumber) => {
+    const existing = await statusCollection.findOne({ serialNumber });
+    if (existing) return existing;
+    const now = new Date();
+    const seeded = {
+        serialNumber,
+        status: 'manufactured',
+        updatedAt: now,
+        updatedBy: 'system',
+        updatedByCompanyType: '',
+        updatedByCompanyName: ''
+    };
+    await statusCollection.insertOne(seeded);
+    return seeded;
 };
 
 const createApp = (contract, db) => {
@@ -521,10 +547,7 @@ const createApp = (contract, db) => {
             }
             const statusCollection = db.collection('medication_status');
             const auditCollection = db.collection('medication_audits');
-            const current = await statusCollection.findOne({ serialNumber });
-            if (!current) {
-                return res.status(404).json({ error: 'Medication status not found.' });
-            }
+            const current = await ensureStatus(statusCollection, serialNumber);
             if (current.status !== 'manufactured') {
                 return res.status(409).json({ error: `Cannot mark received from status '${current.status}'.` });
             }
@@ -570,10 +593,7 @@ const createApp = (contract, db) => {
             }
             const statusCollection = db.collection('medication_status');
             const auditCollection = db.collection('medication_audits');
-            const current = await statusCollection.findOne({ serialNumber });
-            if (!current) {
-                return res.status(404).json({ error: 'Medication status not found.' });
-            }
+            const current = await ensureStatus(statusCollection, serialNumber);
             if (current.status !== 'received') {
                 return res.status(409).json({ error: `Cannot mark arrived from status '${current.status}'.` });
             }
