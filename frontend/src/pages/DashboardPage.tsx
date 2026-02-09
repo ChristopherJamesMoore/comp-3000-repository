@@ -122,7 +122,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
                         {receiveError && <div className="inline-error">{receiveError}</div>}
                         {!canReceive && (
-                            <div className="inline-error">Only distribution companies can mark received.</div>
+                            <div className="inline-error">
+                                Set your account to Distribution to mark received.
+                            </div>
                         )}
                     </div>
                 </section>
@@ -150,7 +152,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
                         {arrivedError && <div className="inline-error">{arrivedError}</div>}
                         {!canArrived && (
-                            <div className="inline-error">Only pharmacies or clinics can mark arrived.</div>
+                            <div className="inline-error">
+                                Set your account to Pharmacy or Clinic to mark arrived.
+                            </div>
                         )}
                     </div>
                 </section>

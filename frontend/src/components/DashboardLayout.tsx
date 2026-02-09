@@ -39,7 +39,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <button
                     className={activeNav === 'add' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                     onClick={() => onNavSelect('add')}
-                    disabled={!canAdd}
                 >
                     <Plus size={16} />
                     Add medication
@@ -47,7 +46,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <button
                     className={activeNav === 'receive' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                     onClick={() => onNavSelect('receive')}
-                    disabled={!canReceive}
                 >
                     <Truck size={16} />
                     Mark received
@@ -55,7 +53,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <button
                     className={activeNav === 'arrived' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                     onClick={() => onNavSelect('arrived')}
-                    disabled={!canArrived}
                 >
                     <CheckCircle2 size={16} />
                     Mark arrived

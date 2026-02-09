@@ -49,10 +49,13 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         try {
             const response = await authFetch('/api/auth/me');
             if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                setProfileError(errorData.error || 'Failed to load profile.');
                 return;
             }
             const data = await response.json();
             setProfile(data);
+            setProfileError('');
             setProfileForm({
                 companyType: data.companyType || '',
                 companyName: data.companyName || ''
@@ -251,6 +254,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                 }
                 const data = await response.json();
                 setProfile(data);
+                setProfileError('');
                 if (setToast) {
                     setToast({ type: 'success', message: 'Account details updated.' });
                 }
