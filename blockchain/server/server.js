@@ -67,6 +67,11 @@ const readFileOrThrow = (filePath) => {
 const parseChaincodeJson = (buffer) => {
     const raw = Buffer.isBuffer(buffer) ? buffer.toString('utf8') : String(buffer ?? '');
     const cleaned = raw.replace(/\u0000/g, '').trim();
+    if (/^\d+(,\d+)+$/.test(cleaned)) {
+        const bytes = cleaned.split(',').map((value) => Number(value));
+        const decoded = Buffer.from(bytes).toString('utf8').trim();
+        return JSON.parse(decoded);
+    }
     return JSON.parse(cleaned);
 };
 
@@ -425,10 +430,6 @@ const createApp = (contract, db) => {
     app.get('/api/medications', async (req, res) => {
         try {
             const result = await contract.evaluateTransaction('getAllMedications');
-            if (getEnv('DEBUG_CHAINCODE', 'false') === 'true') {
-                const raw = Buffer.isBuffer(result) ? result.toString('utf8') : String(result ?? '');
-                console.log('[chaincode:getAllMedications] raw:', raw);
-            }
             res.json(parseChaincodeJson(result));
         } catch (error) {
             res.status(500).json({ error: error.message || 'Internal server error' });
@@ -442,10 +443,6 @@ const createApp = (contract, db) => {
                 return res.status(400).json({ error: 'Medication id is required.' });
             }
             const result = await contract.evaluateTransaction('getMedication', serialNumber);
-            if (getEnv('DEBUG_CHAINCODE', 'false') === 'true') {
-                const raw = Buffer.isBuffer(result) ? result.toString('utf8') : String(result ?? '');
-                console.log('[chaincode:getMedication] raw:', raw);
-            }
             res.json(parseChaincodeJson(result));
         } catch (error) {
             const message = error.message || 'Internal server error';
