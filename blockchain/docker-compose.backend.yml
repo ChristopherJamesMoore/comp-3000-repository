@@ -12,6 +12,7 @@ services:
       AUTH_USERS: "${AUTH_USERS:-}"
       AUTH_USERS_FILE: "${AUTH_USERS_FILE:-/data/users.json}"
       MONGODB_URI: "${MONGODB_URI:-mongodb://mongo:27017/ledgrx}"
+      DEBUG_CHAINCODE: "${DEBUG_CHAINCODE:-false}"
       FABRIC_CHANNEL: "${FABRIC_CHANNEL:-mychannel}"
       FABRIC_CHAINCODE: "${FABRIC_CHAINCODE:-pharma}"
       FABRIC_MSPID: "${FABRIC_MSPID:-Org1MSP}"
