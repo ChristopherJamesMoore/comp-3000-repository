@@ -61,13 +61,24 @@ const App: React.FC = () => {
         lookupResult,
         lookupError,
         lookupLoading,
+        lookupAudit,
         formData,
+        receiveSerial,
+        receiveLoading,
+        receiveError,
+        arrivedSerial,
+        arrivedLoading,
+        arrivedError,
         fetchMedications,
         setSearchQuery,
         setLookupSerial,
         handleInputChange,
         handleSubmit,
-        handleLookup
+        handleLookup,
+        setReceiveSerial,
+        setArrivedSerial,
+        handleMarkReceived,
+        handleMarkArrived
     } = useMedications({ authFetch, route, activeTab, setToast });
     const { showQRModal, selectedQRHash, copied, handleShowQR, handleCopyHash, closeQrModal } = useQrModal(setToast);
 
@@ -86,6 +97,11 @@ const App: React.FC = () => {
     const showLogin = route === '/login' || (!authToken && requiresAuth);
     const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount;
     const marketingPage = marketingPages[route] ?? marketingPages['/'];
+
+    const companyType = (profile?.companyType || '').toLowerCase();
+    const canAdd = companyType === 'production';
+    const canReceive = companyType === 'distribution';
+    const canArrived = companyType === 'pharmacy' || companyType === 'clinic';
 
     return (
         <div className="app">
@@ -116,6 +132,9 @@ const App: React.FC = () => {
                     onAccountClick={() => navigate('/account')}
                     activeNav={activeTab}
                     onNavSelect={handleNavSelect}
+                    canAdd={canAdd}
+                    canReceive={canReceive}
+                    canArrived={canArrived}
                     medications={medications}
                     filteredMedications={filteredMedications}
                     isLoading={isLoading}
@@ -131,6 +150,17 @@ const App: React.FC = () => {
                     lookupLoading={lookupLoading}
                     lookupError={lookupError}
                     lookupResult={lookupResult}
+                    lookupAudit={lookupAudit}
+                    receiveSerial={receiveSerial}
+                    receiveLoading={receiveLoading}
+                    receiveError={receiveError}
+                    onReceiveSerialChange={setReceiveSerial}
+                    onMarkReceived={handleMarkReceived}
+                    arrivedSerial={arrivedSerial}
+                    arrivedLoading={arrivedLoading}
+                    arrivedError={arrivedError}
+                    onArrivedSerialChange={setArrivedSerial}
+                    onMarkArrived={handleMarkArrived}
                 />
             )}
 
@@ -145,6 +175,7 @@ const App: React.FC = () => {
                     onSubmit={handleSubmit}
                     isSubmitting={isSubmitting}
                     addError={addError}
+                    canAdd={canAdd}
                 />
             )}
 

@@ -13,6 +13,7 @@ type AddMedicationPageProps = {
     onSubmit: (e: React.FormEvent) => void;
     isSubmitting: boolean;
     addError: string;
+    canAdd: boolean;
 };
 
 const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
@@ -24,7 +25,8 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
     onInputChange,
     onSubmit,
     isSubmitting,
-    addError
+    addError,
+    canAdd
 }) => (
     <DashboardLayout
         userName={userName}
@@ -33,11 +35,17 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
         onNavSelect={onNavSelect}
         heading="Add medication"
         subheading="Create a new on-chain medication record with a QR payload."
+        canAdd={canAdd}
+        canReceive={false}
+        canArrived={false}
     >
         <section className="dashboard__panel">
             <form className="card card--form" onSubmit={onSubmit}>
                 <h2>New medication entry</h2>
                 <p>All fields are required to generate a traceable QR payload.</p>
+                {!canAdd && (
+                    <div className="inline-error">Only production companies can add medications.</div>
+                )}
 
                 <div className="field">
                     <label>Serial Number (UID)</label>
@@ -48,6 +56,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                         value={formData.serialNumber}
                         onChange={onInputChange}
                         required
+                        disabled={!canAdd}
                     />
                 </div>
                 <div className="field">
@@ -59,6 +68,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                         value={formData.medicationName}
                         onChange={onInputChange}
                         required
+                        disabled={!canAdd}
                     />
                 </div>
                 <div className="field">
@@ -70,6 +80,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                         value={formData.gtin}
                         onChange={onInputChange}
                         required
+                        disabled={!canAdd}
                     />
                 </div>
                 <div className="field">
@@ -81,6 +92,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                         value={formData.batchNumber}
                         onChange={onInputChange}
                         required
+                        disabled={!canAdd}
                     />
                 </div>
                 <div className="field">
@@ -91,6 +103,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                         value={formData.expiryDate}
                         onChange={onInputChange}
                         required
+                        disabled={!canAdd}
                     />
                 </div>
                 <div className="field">
@@ -102,6 +115,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                         value={formData.productionCompany}
                         onChange={onInputChange}
                         required
+                        disabled={!canAdd}
                     />
                 </div>
                 <div className="field">
@@ -113,11 +127,12 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                         value={formData.distributionCompany}
                         onChange={onInputChange}
                         required
+                        disabled={!canAdd}
                     />
                 </div>
 
                 <div className="form__actions">
-                    <button type="submit" className="button button--primary" disabled={isSubmitting}>
+                    <button type="submit" className="button button--primary" disabled={isSubmitting || !canAdd}>
                         {isSubmitting ? <Loader2 size={16} className="spin" /> : <QrCode size={16} />}
                         {isSubmitting ? 'Anchoring...' : 'Add to Blockchain'}
                     </button>

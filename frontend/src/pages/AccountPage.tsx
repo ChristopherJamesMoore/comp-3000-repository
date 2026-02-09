@@ -30,7 +30,9 @@ const AccountPage: React.FC<AccountPageProps> = ({
     adminLoading,
     adminError,
     onReloadAdmin
-}) => (
+}) => {
+    const profileLocked = !!profile?.companyType && !!profile?.companyName;
+    return (
     <>
         <header className="hero">
             <div className="hero__badge">
@@ -48,15 +50,23 @@ const AccountPage: React.FC<AccountPageProps> = ({
                     <span>{profile?.username || 'Authenticated user'}</span>
                 </div>
                 <form onSubmit={onProfileSave}>
+                    {profileLocked && (
+                        <div className="inline-error">
+                            Company details are locked once saved. Contact an admin for changes.
+                        </div>
+                    )}
                     <div className="field">
                         <label>Company type</label>
                         <select
                             value={profileForm.companyType}
                             onChange={(e) => onProfileFormChange('companyType', e.target.value)}
+                            disabled={profileLocked}
                         >
                             <option value="">Select type</option>
                             <option value="production">Production</option>
                             <option value="distribution">Distribution</option>
+                            <option value="pharmacy">Pharmacy</option>
+                            <option value="clinic">Clinic</option>
                         </select>
                     </div>
                     <div className="field">
@@ -66,6 +76,7 @@ const AccountPage: React.FC<AccountPageProps> = ({
                             value={profileForm.companyName}
                             onChange={(e) => onProfileFormChange('companyName', e.target.value)}
                             placeholder="Company name"
+                            disabled={profileLocked}
                         />
                     </div>
                     {profileError && <div className="inline-error">{profileError}</div>}
@@ -118,6 +129,7 @@ const AccountPage: React.FC<AccountPageProps> = ({
             </section>
         )}
     </>
-);
+    );
+};
 
 export default AccountPage;

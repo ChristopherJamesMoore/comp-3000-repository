@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { DashboardNav } from '../components/DashboardLayout';
-import { Medication, Toast } from '../types';
+import { Medication, Toast, AuditEntry } from '../types';
 import type { AuthFetch } from './useAuth';
 
 type UseMedicationsOptions = {
@@ -22,6 +22,7 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
     const [lookupResult, setLookupResult] = useState<Medication | null>(null);
     const [lookupError, setLookupError] = useState('');
     const [lookupLoading, setLookupLoading] = useState(false);
+    const [lookupAudit, setLookupAudit] = useState<AuditEntry[]>([]);
     const [formData, setFormData] = useState<Medication>({
         serialNumber: '',
         medicationName: '',
@@ -31,6 +32,12 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
         productionCompany: '',
         distributionCompany: ''
     });
+    const [receiveSerial, setReceiveSerial] = useState('');
+    const [receiveLoading, setReceiveLoading] = useState(false);
+    const [receiveError, setReceiveError] = useState('');
+    const [arrivedSerial, setArrivedSerial] = useState('');
+    const [arrivedLoading, setArrivedLoading] = useState(false);
+    const [arrivedError, setArrivedError] = useState('');
 
     const fetchMedications = useCallback(async () => {
         setIsLoading(true);
@@ -125,6 +132,7 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
         setLookupLoading(true);
         setLookupError('');
         setLookupResult(null);
+        setLookupAudit([]);
         try {
             const response = await authFetch(`/api/medications/${encodeURIComponent(lookupSerial.trim())}`);
             if (response.status === 404) {
@@ -138,6 +146,11 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
             }
             const data = await response.json();
             setLookupResult(data);
+            const auditResponse = await authFetch(`/api/medications/${encodeURIComponent(lookupSerial.trim())}/audit`);
+            if (auditResponse.ok) {
+                const auditData = await auditResponse.json().catch(() => ({}));
+                setLookupAudit(Array.isArray(auditData.audit) ? auditData.audit : []);
+            }
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);
             setLookupError(message || 'Lookup failed.');
@@ -145,6 +158,60 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
             setLookupLoading(false);
         }
     }, [authFetch, lookupSerial]);
+
+    const handleMarkReceived = useCallback(async () => {
+        if (!receiveSerial.trim()) {
+            setReceiveError('Enter a serial number to mark received.');
+            return;
+        }
+        setReceiveLoading(true);
+        setReceiveError('');
+        try {
+            const response = await authFetch(`/api/medications/${encodeURIComponent(receiveSerial.trim())}/received`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to mark received.');
+            }
+            setToast({ type: 'success', message: 'Medication marked as received.' });
+            setReceiveSerial('');
+            fetchMedications();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setReceiveError(message || 'Failed to mark received.');
+            setToast({ type: 'error', message: message || 'Failed to mark received.' });
+        } finally {
+            setReceiveLoading(false);
+        }
+    }, [authFetch, fetchMedications, receiveSerial, setToast]);
+
+    const handleMarkArrived = useCallback(async () => {
+        if (!arrivedSerial.trim()) {
+            setArrivedError('Enter a serial number to mark arrived.');
+            return;
+        }
+        setArrivedLoading(true);
+        setArrivedError('');
+        try {
+            const response = await authFetch(`/api/medications/${encodeURIComponent(arrivedSerial.trim())}/arrived`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to mark arrived.');
+            }
+            setToast({ type: 'success', message: 'Medication marked as arrived.' });
+            setArrivedSerial('');
+            fetchMedications();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setArrivedError(message || 'Failed to mark arrived.');
+            setToast({ type: 'error', message: message || 'Failed to mark arrived.' });
+        } finally {
+            setArrivedLoading(false);
+        }
+    }, [arrivedSerial, authFetch, fetchMedications, setToast]);
 
     const filteredMedications = useMemo(() => {
         if (!searchQuery.trim()) return medications;
@@ -177,12 +244,23 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
         lookupResult,
         lookupError,
         lookupLoading,
+        lookupAudit,
         formData,
+        receiveSerial,
+        receiveLoading,
+        receiveError,
+        arrivedSerial,
+        arrivedLoading,
+        arrivedError,
         fetchMedications,
         setSearchQuery,
         setLookupSerial,
         handleInputChange,
         handleSubmit,
-        handleLookup
+        handleLookup,
+        setReceiveSerial,
+        setArrivedSerial,
+        handleMarkReceived,
+        handleMarkArrived
     };
 };

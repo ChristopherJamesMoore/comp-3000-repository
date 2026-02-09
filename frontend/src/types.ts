@@ -9,6 +9,20 @@ export type Medication = {
     productionCompany: string;
     distributionCompany: string;
     qrHash?: string;
+    status?: 'manufactured' | 'received' | 'arrived';
+    statusUpdatedAt?: string;
+    statusUpdatedBy?: string;
+    statusUpdatedByCompanyType?: string;
+    statusUpdatedByCompanyName?: string;
+};
+
+export type AuditEntry = {
+    serialNumber: string;
+    action: 'manufactured' | 'received' | 'arrived';
+    createdAt: string;
+    actorUsername: string;
+    actorCompanyType: string;
+    actorCompanyName: string;
 };
 
 export type UserProfile = {

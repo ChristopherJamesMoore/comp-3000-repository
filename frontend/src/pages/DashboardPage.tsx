@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshCw, Search, QrCode } from 'lucide-react';
-import { Medication } from '../types';
+import { Medication, AuditEntry } from '../types';
 import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
 
 type DashboardPageProps = {
@@ -8,6 +8,9 @@ type DashboardPageProps = {
     onAccountClick: () => void;
     activeNav: DashboardNav;
     onNavSelect: (nav: DashboardNav) => void;
+    canAdd: boolean;
+    canReceive: boolean;
+    canArrived: boolean;
     medications: Medication[];
     filteredMedications: Medication[];
     isLoading: boolean;
@@ -23,6 +26,17 @@ type DashboardPageProps = {
     lookupLoading: boolean;
     lookupError: string;
     lookupResult: Medication | null;
+    lookupAudit: AuditEntry[];
+    receiveSerial: string;
+    receiveLoading: boolean;
+    receiveError: string;
+    onReceiveSerialChange: (value: string) => void;
+    onMarkReceived: () => void;
+    arrivedSerial: string;
+    arrivedLoading: boolean;
+    arrivedError: string;
+    onArrivedSerialChange: (value: string) => void;
+    onMarkArrived: () => void;
 };
 
 const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -30,6 +44,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     onAccountClick,
     activeNav,
     onNavSelect,
+    canAdd,
+    canReceive,
+    canArrived,
     medications,
     filteredMedications,
     isLoading,
@@ -44,7 +61,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     onLookup,
     lookupLoading,
     lookupError,
-    lookupResult
+    lookupResult,
+    lookupAudit,
+    receiveSerial,
+    receiveLoading,
+    receiveError,
+    onReceiveSerialChange,
+    onMarkReceived,
+    arrivedSerial,
+    arrivedLoading,
+    arrivedError,
+    onArrivedSerialChange,
+    onMarkArrived
 }) => (
     <DashboardLayout
         userName={userName}
@@ -53,6 +81,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
         onNavSelect={onNavSelect}
         heading="Dashboard"
         subheading="Track medications across manufacturing, distribution, and pharmacy delivery."
+        canAdd={canAdd}
+        canReceive={canReceive}
+        canArrived={canArrived}
     >
         <div className="dashboard__stats">
             <div>
@@ -76,17 +107,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         <p>Log that a distributor has received a shipment from the manufacturer.</p>
                         <div className="field">
                             <label>Serial Number</label>
-                            <input type="text" placeholder="RX-2026-00001" />
-                        </div>
-                        <div className="field">
-                            <label>Receiving facility</label>
-                            <input type="text" placeholder="Distribution Hub" />
+                            <input
+                                type="text"
+                                placeholder="RX-2026-00001"
+                                value={receiveSerial}
+                                onChange={(e) => onReceiveSerialChange(e.target.value)}
+                                disabled={!canReceive}
+                            />
                         </div>
                         <div className="form__actions">
-                            <button type="button" className="button button--primary" disabled>
-                                Coming soon
+                            <button type="button" className="button button--primary" disabled={!canReceive || receiveLoading} onClick={onMarkReceived}>
+                                {receiveLoading ? 'Saving...' : 'Mark received'}
                             </button>
                         </div>
+                        {receiveError && <div className="inline-error">{receiveError}</div>}
+                        {!canReceive && (
+                            <div className="inline-error">Only distribution companies can mark received.</div>
+                        )}
                     </div>
                 </section>
             )}
@@ -98,17 +135,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         <p>Confirm arrival at a pharmacy or clinic for final verification.</p>
                         <div className="field">
                             <label>Serial Number</label>
-                            <input type="text" placeholder="RX-2026-00001" />
-                        </div>
-                        <div className="field">
-                            <label>Receiving pharmacy</label>
-                            <input type="text" placeholder="City Health Pharmacy" />
+                            <input
+                                type="text"
+                                placeholder="RX-2026-00001"
+                                value={arrivedSerial}
+                                onChange={(e) => onArrivedSerialChange(e.target.value)}
+                                disabled={!canArrived}
+                            />
                         </div>
                         <div className="form__actions">
-                            <button type="button" className="button button--primary" disabled>
-                                Coming soon
+                            <button type="button" className="button button--primary" disabled={!canArrived || arrivedLoading} onClick={onMarkArrived}>
+                                {arrivedLoading ? 'Saving...' : 'Mark arrived'}
                             </button>
                         </div>
+                        {arrivedError && <div className="inline-error">{arrivedError}</div>}
+                        {!canArrived && (
+                            <div className="inline-error">Only pharmacies or clinics can mark arrived.</div>
+                        )}
                     </div>
                 </section>
             )}
@@ -170,6 +213,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             <span>Expiry</span>
                                             <strong>{med.expiryDate}</strong>
                                         </div>
+                                        <div>
+                                            <span>Status</span>
+                                            <strong>{med.status || 'manufactured'}</strong>
+                                        </div>
                                     </div>
                                     <div className="record-card__hash">
                                         <span>QR Hash</span>
@@ -222,6 +269,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         <span>Distribution</span>
                                         <strong>{lookupResult.distributionCompany}</strong>
                                     </div>
+                                    <div>
+                                        <span>Status</span>
+                                        <strong>{lookupResult.status || 'manufactured'}</strong>
+                                    </div>
+                                </div>
+                            )}
+                            {lookupAudit.length > 0 && (
+                                <div className="lookup__result">
+                                    <div>
+                                        <span>Audit trail</span>
+                                        <strong>{lookupAudit.length} updates</strong>
+                                    </div>
+                                    {lookupAudit.map((entry, index) => (
+                                        <div key={`${entry.action}-${index}`}>
+                                            <span>{entry.action}</span>
+                                            <strong>
+                                                {entry.actorCompanyName || 'Unknown'} • {new Date(entry.createdAt).toLocaleString()}
+                                            </strong>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>

@@ -110,6 +110,20 @@ const readUsersFromEnv = () => {
     return parsed;
 };
 
+const getCompanyRole = (user) => {
+    const role = String(user?.companyType || '').trim().toLowerCase();
+    return role;
+};
+
+const buildAuditEntry = (serialNumber, action, user) => ({
+    serialNumber,
+    action,
+    createdAt: new Date(),
+    actorUsername: user?.username || '',
+    actorCompanyType: user?.companyType || '',
+    actorCompanyName: user?.companyName || ''
+});
+
 const loadAuthUsers = ({ allowEmpty = false } = {}) => {
     const envUsers = readUsersFromEnv();
     const fileUsers = readUsersFromFile();
@@ -187,6 +201,14 @@ const requireAdmin = (db) => async (req, res, next) => {
         return res.status(403).json({ error: 'Admin access required.' });
     }
     return next();
+};
+
+const loadUserForRequest = async (db, req) => {
+    if (!db) return null;
+    const username = req.user?.sub;
+    if (!username) return null;
+    const users = db.collection('users');
+    return users.findOne({ username });
 };
 
 const createApp = (contract, db) => {
@@ -323,12 +345,19 @@ const createApp = (contract, db) => {
                 return res.status(400).json({ error: 'Company type and name are required.' });
             }
             const normalizedType = String(companyType).trim().toLowerCase();
-            if (!['production', 'distribution'].includes(normalizedType)) {
-                return res.status(400).json({ error: 'Company type must be production or distribution.' });
+            if (!['production', 'distribution', 'pharmacy', 'clinic'].includes(normalizedType)) {
+                return res.status(400).json({ error: 'Company type must be production, distribution, pharmacy, or clinic.' });
             }
             const normalizedName = String(companyName).trim();
             if (normalizedName.length < 2) {
                 return res.status(400).json({ error: 'Company name is too short.' });
+            }
+            const existing = await usersCollection.findOne({ username });
+            if (!existing) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            if ((existing.companyType && existing.companyType.trim()) || (existing.companyName && existing.companyName.trim())) {
+                return res.status(409).json({ error: 'Profile is locked once set. Contact an admin for changes.' });
             }
             const result = await usersCollection.findOneAndUpdate(
                 { username },
@@ -384,6 +413,20 @@ const createApp = (contract, db) => {
 
     app.post('/api/medications', async (req, res) => {
         try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            const user = await loadUserForRequest(db, req);
+            if (!user) {
+                return res.status(401).json({ error: 'Invalid user.' });
+            }
+            const role = getCompanyRole(user);
+            if (!role) {
+                return res.status(403).json({ error: 'Set your company profile before adding medications.' });
+            }
+            if (role !== 'production') {
+                return res.status(403).json({ error: 'Only production companies can add medications.' });
+            }
             const {
                 gtin,
                 batchNumber,
@@ -418,6 +461,24 @@ const createApp = (contract, db) => {
                 distributionCompany,
                 qrHash
             );
+            const statusCollection = db.collection('medication_status');
+            const auditCollection = db.collection('medication_audits');
+            const now = new Date();
+            await statusCollection.updateOne(
+                { serialNumber },
+                {
+                    $set: {
+                        serialNumber,
+                        status: 'manufactured',
+                        updatedAt: now,
+                        updatedBy: user.username,
+                        updatedByCompanyType: user.companyType || '',
+                        updatedByCompanyName: user.companyName || ''
+                    }
+                },
+                { upsert: true }
+            );
+            await auditCollection.insertOne(buildAuditEntry(serialNumber, 'manufactured', user));
             res.status(201).json({
                 id: serialNumber,
                 qrHash
@@ -427,10 +488,148 @@ const createApp = (contract, db) => {
         }
     });
 
+    app.post('/api/medications/:id/received', async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            const user = await loadUserForRequest(db, req);
+            if (!user) {
+                return res.status(401).json({ error: 'Invalid user.' });
+            }
+            const role = getCompanyRole(user);
+            if (!role) {
+                return res.status(403).json({ error: 'Set your company profile before updating status.' });
+            }
+            if (role !== 'distribution') {
+                return res.status(403).json({ error: 'Only distribution companies can mark received.' });
+            }
+            const serialNumber = req.params.id;
+            if (!serialNumber) {
+                return res.status(400).json({ error: 'Medication id is required.' });
+            }
+            const statusCollection = db.collection('medication_status');
+            const auditCollection = db.collection('medication_audits');
+            const current = await statusCollection.findOne({ serialNumber });
+            if (!current) {
+                return res.status(404).json({ error: 'Medication status not found.' });
+            }
+            if (current.status !== 'manufactured') {
+                return res.status(409).json({ error: `Cannot mark received from status '${current.status}'.` });
+            }
+            const now = new Date();
+            await statusCollection.updateOne(
+                { serialNumber },
+                {
+                    $set: {
+                        status: 'received',
+                        updatedAt: now,
+                        updatedBy: user.username,
+                        updatedByCompanyType: user.companyType || '',
+                        updatedByCompanyName: user.companyName || ''
+                    }
+                }
+            );
+            await auditCollection.insertOne(buildAuditEntry(serialNumber, 'received', user));
+            return res.json({ ok: true, status: 'received' });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Internal server error' });
+        }
+    });
+
+    app.post('/api/medications/:id/arrived', async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            const user = await loadUserForRequest(db, req);
+            if (!user) {
+                return res.status(401).json({ error: 'Invalid user.' });
+            }
+            const role = getCompanyRole(user);
+            if (!role) {
+                return res.status(403).json({ error: 'Set your company profile before updating status.' });
+            }
+            if (!['pharmacy', 'clinic'].includes(role)) {
+                return res.status(403).json({ error: 'Only pharmacies or clinics can mark arrived.' });
+            }
+            const serialNumber = req.params.id;
+            if (!serialNumber) {
+                return res.status(400).json({ error: 'Medication id is required.' });
+            }
+            const statusCollection = db.collection('medication_status');
+            const auditCollection = db.collection('medication_audits');
+            const current = await statusCollection.findOne({ serialNumber });
+            if (!current) {
+                return res.status(404).json({ error: 'Medication status not found.' });
+            }
+            if (current.status !== 'received') {
+                return res.status(409).json({ error: `Cannot mark arrived from status '${current.status}'.` });
+            }
+            const now = new Date();
+            await statusCollection.updateOne(
+                { serialNumber },
+                {
+                    $set: {
+                        status: 'arrived',
+                        updatedAt: now,
+                        updatedBy: user.username,
+                        updatedByCompanyType: user.companyType || '',
+                        updatedByCompanyName: user.companyName || ''
+                    }
+                }
+            );
+            await auditCollection.insertOne(buildAuditEntry(serialNumber, 'arrived', user));
+            return res.json({ ok: true, status: 'arrived' });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Internal server error' });
+        }
+    });
+
+    app.get('/api/medications/:id/audit', async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            const serialNumber = req.params.id;
+            if (!serialNumber) {
+                return res.status(400).json({ error: 'Medication id is required.' });
+            }
+            const auditCollection = db.collection('medication_audits');
+            const entries = await auditCollection
+                .find({ serialNumber }, { projection: { _id: 0 } })
+                .sort({ createdAt: 1 })
+                .toArray();
+            return res.json({ audit: entries });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Internal server error' });
+        }
+    });
+
     app.get('/api/medications', async (req, res) => {
         try {
             const result = await contract.evaluateTransaction('getAllMedications');
-            res.json(parseChaincodeJson(result));
+            const medications = parseChaincodeJson(result);
+            if (!usersCollection) {
+                return res.json(medications);
+            }
+            const statusCollection = db.collection('medication_status');
+            const serials = medications.map((med) => med.serialNumber).filter(Boolean);
+            const statuses = await statusCollection.find({ serialNumber: { $in: serials } }).toArray();
+            const statusMap = new Map(statuses.map((entry) => [entry.serialNumber, entry]));
+            const merged = medications.map((med) => {
+                const status = statusMap.get(med.serialNumber);
+                if (!status) return med;
+                return {
+                    ...med,
+                    status: status.status,
+                    statusUpdatedAt: status.updatedAt,
+                    statusUpdatedBy: status.updatedBy,
+                    statusUpdatedByCompanyType: status.updatedByCompanyType,
+                    statusUpdatedByCompanyName: status.updatedByCompanyName
+                };
+            });
+            res.json(merged);
         } catch (error) {
             res.status(500).json({ error: error.message || 'Internal server error' });
         }
@@ -443,7 +642,23 @@ const createApp = (contract, db) => {
                 return res.status(400).json({ error: 'Medication id is required.' });
             }
             const result = await contract.evaluateTransaction('getMedication', serialNumber);
-            res.json(parseChaincodeJson(result));
+            const medication = parseChaincodeJson(result);
+            if (!usersCollection) {
+                return res.json(medication);
+            }
+            const statusCollection = db.collection('medication_status');
+            const status = await statusCollection.findOne({ serialNumber });
+            if (!status) {
+                return res.json(medication);
+            }
+            return res.json({
+                ...medication,
+                status: status.status,
+                statusUpdatedAt: status.updatedAt,
+                statusUpdatedBy: status.updatedBy,
+                statusUpdatedByCompanyType: status.updatedByCompanyType,
+                statusUpdatedByCompanyName: status.updatedByCompanyName
+            });
         } catch (error) {
             const message = error.message || 'Internal server error';
             if (message.includes('does not exist')) {
