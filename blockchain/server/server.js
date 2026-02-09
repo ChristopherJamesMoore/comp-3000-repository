@@ -353,24 +353,35 @@ const createApp = (contract, db) => {
                 return res.status(400).json({ error: 'Company name is too short.' });
             }
             const existing = await usersCollection.findOne({ username });
-            if (!existing) {
-                return res.status(404).json({ error: 'User not found.' });
+            if (existing) {
+                if ((existing.companyType && existing.companyType.trim()) || (existing.companyName && existing.companyName.trim())) {
+                    return res.status(409).json({ error: 'Profile is locked once set. Contact an admin for changes.' });
+                }
+                const result = await usersCollection.findOneAndUpdate(
+                    { username },
+                    { $set: { companyType: normalizedType, companyName: normalizedName } },
+                    { returnDocument: 'after' }
+                );
+                if (!result.value) {
+                    return res.status(404).json({ error: 'User not found.' });
+                }
+                return res.json({
+                    username: result.value.username,
+                    companyType: result.value.companyType || '',
+                    companyName: result.value.companyName || ''
+                });
             }
-            if ((existing.companyType && existing.companyType.trim()) || (existing.companyName && existing.companyName.trim())) {
-                return res.status(409).json({ error: 'Profile is locked once set. Contact an admin for changes.' });
-            }
-            const result = await usersCollection.findOneAndUpdate(
-                { username },
-                { $set: { companyType: normalizedType, companyName: normalizedName } },
-                { returnDocument: 'after' }
-            );
-            if (!result.value) {
-                return res.status(404).json({ error: 'User not found.' });
-            }
+            await usersCollection.insertOne({
+                username,
+                companyType: normalizedType,
+                companyName: normalizedName,
+                createdAt: new Date(),
+                isAdmin: isAdminUser(username)
+            });
             return res.json({
-                username: result.value.username,
-                companyType: result.value.companyType || '',
-                companyName: result.value.companyName || ''
+                username,
+                companyType: normalizedType,
+                companyName: normalizedName
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to update profile.' });
