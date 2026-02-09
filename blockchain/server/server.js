@@ -64,6 +64,12 @@ const readFileOrThrow = (filePath) => {
     return fs.readFileSync(filePath);
 };
 
+const parseChaincodeJson = (buffer) => {
+    const raw = Buffer.isBuffer(buffer) ? buffer.toString('utf8') : String(buffer ?? '');
+    const cleaned = raw.replace(/\u0000/g, '').trim();
+    return JSON.parse(cleaned);
+};
+
 const getAuthUsersFile = () => getEnv('AUTH_USERS_FILE', '');
 
 const readUsersFromFile = () => {
@@ -419,7 +425,7 @@ const createApp = (contract, db) => {
     app.get('/api/medications', async (req, res) => {
         try {
             const result = await contract.evaluateTransaction('getAllMedications');
-            res.json(JSON.parse(result.toString()));
+            res.json(parseChaincodeJson(result));
         } catch (error) {
             res.status(500).json({ error: error.message || 'Internal server error' });
         }
@@ -432,7 +438,7 @@ const createApp = (contract, db) => {
                 return res.status(400).json({ error: 'Medication id is required.' });
             }
             const result = await contract.evaluateTransaction('getMedication', serialNumber);
-            res.json(JSON.parse(result.toString()));
+            res.json(parseChaincodeJson(result));
         } catch (error) {
             const message = error.message || 'Internal server error';
             if (message.includes('does not exist')) {
