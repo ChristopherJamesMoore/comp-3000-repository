@@ -24,6 +24,7 @@ FABRIC_CHANNEL="${FABRIC_CHANNEL:-mychannel}"
 FABRIC_CHAINCODE="${FABRIC_CHAINCODE:-pharma}"
 CHAINCODE_PATH="${CHAINCODE_PATH:-$BLOCKCHAIN_DIR/chaincode}"
 CHAINCODE_LANG="${CHAINCODE_LANG:-javascript}"
+CHAINCODE_MODE="${CHAINCODE_MODE:-ccaas}"
 FABRIC_VERSION="${FABRIC_VERSION:-2.5.14}"
 FABRIC_CA_VERSION="${FABRIC_CA_VERSION:-1.5.15}"
 
@@ -61,7 +62,11 @@ fi
 
 echo "Ensuring chaincode is deployed..."
 set +e
-(cd "$FABRIC_DIR" && ./network.sh deployCC -c "$FABRIC_CHANNEL" -ccn "$FABRIC_CHAINCODE" -ccp "$CHAINCODE_PATH" -ccl "$CHAINCODE_LANG")
+if [ "$CHAINCODE_MODE" = "ccaas" ]; then
+  (cd "$FABRIC_DIR" && ./network.sh deployCCAAS -c "$FABRIC_CHANNEL" -ccn "$FABRIC_CHAINCODE" -ccp "$CHAINCODE_PATH" -ccaasdocker true)
+else
+  (cd "$FABRIC_DIR" && ./network.sh deployCC -c "$FABRIC_CHANNEL" -ccn "$FABRIC_CHAINCODE" -ccp "$CHAINCODE_PATH" -ccl "$CHAINCODE_LANG")
+fi
 set -e
 
 echo "Starting backend API..."
