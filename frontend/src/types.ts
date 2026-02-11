@@ -33,3 +33,16 @@ export type UserProfile = {
 };
 
 export type AuthMode = 'login' | 'signup';
+
+export type BatchResultItem = {
+    serialNumber: string;
+    status?: string;
+    error?: string;
+};
+
+export type BatchResult = {
+    ok: boolean;
+    processed: number;
+    succeeded: BatchResultItem[];
+    failed: BatchResultItem[];
+};

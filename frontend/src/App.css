@@ -1119,3 +1119,135 @@ body {
     justify-content: center;
   }
 }
+
+/* --- Batch UI --- */
+.batch-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.batch-input-row input {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.batch-input-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+}
+
+.batch-queue {
+  margin-top: 12px;
+}
+
+.batch-queue__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.batch-queue__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.batch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.batch-chip__remove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 0 2px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.batch-chip__remove:hover {
+  color: #b91c1c;
+}
+
+.batch-results {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.batch-result {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.batch-result--success {
+  background: rgba(22, 163, 74, 0.1);
+  color: #16a34a;
+}
+
+.batch-result--error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+/* --- QR Scanner --- */
+.qr-scanner {
+  margin: 12px 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--stroke);
+}
+
+.qr-scanner__viewport {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.qr-scanner__placeholder {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* --- Select field styling --- */
+.field select {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+}

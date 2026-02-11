@@ -12,6 +12,7 @@ import ResourcesPage from './pages/ResourcesPage';
 import CustomersPage from './pages/CustomersPage';
 import PricingPage from './pages/PricingPage';
 import AddMedicationPage from './pages/AddMedicationPage';
+import OnboardingPage from './pages/OnboardingPage';
 import { useAuth } from './hooks/useAuth';
 import { useDashboardNav } from './hooks/useDashboardNav';
 import { useMedications } from './hooks/useMedications';
@@ -69,6 +70,14 @@ const App: React.FC = () => {
         arrivedSerial,
         arrivedLoading,
         arrivedError,
+        receiveBatch,
+        arrivedBatch,
+        batchReceiveLoading,
+        batchReceiveError,
+        batchReceiveResults,
+        batchArrivedLoading,
+        batchArrivedError,
+        batchArrivedResults,
         fetchMedications,
         setSearchQuery,
         setLookupSerial,
@@ -78,7 +87,16 @@ const App: React.FC = () => {
         setReceiveSerial,
         setArrivedSerial,
         handleMarkReceived,
-        handleMarkArrived
+        handleMarkArrived,
+        addToReceiveBatch,
+        removeFromReceiveBatch,
+        clearReceiveBatch,
+        handleBatchReceived,
+        addToArrivedBatch,
+        removeFromArrivedBatch,
+        clearArrivedBatch,
+        handleBatchArrived,
+        resolveQrHash
     } = useMedications({ authFetch, route, activeTab, setToast });
     const { showQRModal, selectedQRHash, copied, handleShowQR, handleCopyHash, closeQrModal } = useQrModal(setToast);
 
@@ -91,11 +109,13 @@ const App: React.FC = () => {
         '/pricing': <PricingPage authToken={authToken} onNavigate={onNavigate} />
     };
 
-    const showDashboard = route === '/app' && !!authToken;
-    const showAddMedication = route === '/app/add' && !!authToken;
-    const showAccount = route === '/account' && !!authToken;
+    const profileIncomplete = !!authToken && profile !== null && !profile.companyType;
+    const showOnboarding = profileIncomplete && (route === '/app' || route === '/app/add' || route === '/account');
+    const showDashboard = route === '/app' && !!authToken && !profileIncomplete;
+    const showAddMedication = route === '/app/add' && !!authToken && !profileIncomplete;
+    const showAccount = route === '/account' && !!authToken && !profileIncomplete;
     const showLogin = route === '/login' || (!authToken && requiresAuth);
-    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount;
+    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding;
     const marketingPage = marketingPages[route] ?? marketingPages['/'];
 
     const companyType = (profile?.companyType || '').toLowerCase();
@@ -112,6 +132,16 @@ const App: React.FC = () => {
             {/* Legacy topbar removed; homepage and dashboard have their own nav */} 
 
             {showMarketing && marketingPage}
+
+            {showOnboarding && (
+                <OnboardingPage
+                    profileForm={profileForm}
+                    profileError={profileError}
+                    profileSaving={profileSaving}
+                    onProfileFormChange={handleProfileFormChange}
+                    onProfileSave={handleProfileSave}
+                />
+            )}
 
             {showLogin && (
                 <LoginPage
@@ -161,6 +191,23 @@ const App: React.FC = () => {
                     arrivedError={arrivedError}
                     onArrivedSerialChange={setArrivedSerial}
                     onMarkArrived={handleMarkArrived}
+                    receiveBatch={receiveBatch}
+                    batchReceiveLoading={batchReceiveLoading}
+                    batchReceiveError={batchReceiveError}
+                    batchReceiveResults={batchReceiveResults}
+                    onAddToReceiveBatch={addToReceiveBatch}
+                    onRemoveFromReceiveBatch={removeFromReceiveBatch}
+                    onClearReceiveBatch={clearReceiveBatch}
+                    onBatchReceived={handleBatchReceived}
+                    arrivedBatch={arrivedBatch}
+                    batchArrivedLoading={batchArrivedLoading}
+                    batchArrivedError={batchArrivedError}
+                    batchArrivedResults={batchArrivedResults}
+                    onAddToArrivedBatch={addToArrivedBatch}
+                    onRemoveFromArrivedBatch={removeFromArrivedBatch}
+                    onClearArrivedBatch={clearArrivedBatch}
+                    onBatchArrived={handleBatchArrived}
+                    onResolveQrHash={resolveQrHash}
                 />
             )}
 

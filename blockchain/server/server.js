@@ -448,6 +448,161 @@ const createApp = (contract, db) => {
 
     app.use('/api/medications', authMiddleware);
 
+    app.post('/api/medications/batch/received', async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            const user = await loadUserForRequest(db, req);
+            if (!user) {
+                return res.status(401).json({ error: 'Invalid user.' });
+            }
+            const role = getCompanyRole(user);
+            if (!role) {
+                return res.status(403).json({ error: 'Set your company profile before updating status.' });
+            }
+            if (role !== 'distribution') {
+                return res.status(403).json({ error: 'Only distribution companies can mark received.' });
+            }
+            const { serialNumbers } = req.body;
+            if (!Array.isArray(serialNumbers) || serialNumbers.length === 0) {
+                return res.status(400).json({ error: 'serialNumbers must be a non-empty array.' });
+            }
+            if (serialNumbers.length > 500) {
+                return res.status(400).json({ error: 'Maximum 500 serial numbers per batch.' });
+            }
+            const statusCollection = db.collection('medication_status');
+            const auditCollection = db.collection('medication_audits');
+            const succeeded = [];
+            const failed = [];
+            for (const serial of serialNumbers) {
+                try {
+                    const trimmed = String(serial).trim();
+                    if (!trimmed) {
+                        failed.push({ serialNumber: serial, error: 'Empty serial number.' });
+                        continue;
+                    }
+                    const current = await ensureStatus(statusCollection, trimmed);
+                    if (current.status !== 'manufactured') {
+                        failed.push({ serialNumber: trimmed, error: `Cannot mark received from status '${current.status}'.` });
+                        continue;
+                    }
+                    const now = new Date();
+                    await statusCollection.updateOne(
+                        { serialNumber: trimmed },
+                        {
+                            $set: {
+                                status: 'received',
+                                updatedAt: now,
+                                updatedBy: user.username,
+                                updatedByCompanyType: user.companyType || '',
+                                updatedByCompanyName: user.companyName || ''
+                            }
+                        }
+                    );
+                    await auditCollection.insertOne(buildAuditEntry(trimmed, 'received', user));
+                    succeeded.push({ serialNumber: trimmed, status: 'received' });
+                } catch (err) {
+                    failed.push({ serialNumber: String(serial), error: err.message || 'Unknown error.' });
+                }
+            }
+            return res.json({ ok: true, processed: serialNumbers.length, succeeded, failed });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Internal server error' });
+        }
+    });
+
+    app.post('/api/medications/batch/arrived', async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            const user = await loadUserForRequest(db, req);
+            if (!user) {
+                return res.status(401).json({ error: 'Invalid user.' });
+            }
+            const role = getCompanyRole(user);
+            if (!role) {
+                return res.status(403).json({ error: 'Set your company profile before updating status.' });
+            }
+            if (!['pharmacy', 'clinic'].includes(role)) {
+                return res.status(403).json({ error: 'Only pharmacies or clinics can mark arrived.' });
+            }
+            const { serialNumbers } = req.body;
+            if (!Array.isArray(serialNumbers) || serialNumbers.length === 0) {
+                return res.status(400).json({ error: 'serialNumbers must be a non-empty array.' });
+            }
+            if (serialNumbers.length > 500) {
+                return res.status(400).json({ error: 'Maximum 500 serial numbers per batch.' });
+            }
+            const statusCollection = db.collection('medication_status');
+            const auditCollection = db.collection('medication_audits');
+            const succeeded = [];
+            const failed = [];
+            for (const serial of serialNumbers) {
+                try {
+                    const trimmed = String(serial).trim();
+                    if (!trimmed) {
+                        failed.push({ serialNumber: serial, error: 'Empty serial number.' });
+                        continue;
+                    }
+                    const current = await ensureStatus(statusCollection, trimmed);
+                    if (current.status !== 'received') {
+                        failed.push({ serialNumber: trimmed, error: `Cannot mark arrived from status '${current.status}'.` });
+                        continue;
+                    }
+                    const now = new Date();
+                    await statusCollection.updateOne(
+                        { serialNumber: trimmed },
+                        {
+                            $set: {
+                                status: 'arrived',
+                                updatedAt: now,
+                                updatedBy: user.username,
+                                updatedByCompanyType: user.companyType || '',
+                                updatedByCompanyName: user.companyName || ''
+                            }
+                        }
+                    );
+                    await auditCollection.insertOne(buildAuditEntry(trimmed, 'arrived', user));
+                    succeeded.push({ serialNumber: trimmed, status: 'arrived' });
+                } catch (err) {
+                    failed.push({ serialNumber: String(serial), error: err.message || 'Unknown error.' });
+                }
+            }
+            return res.json({ ok: true, processed: serialNumbers.length, succeeded, failed });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Internal server error' });
+        }
+    });
+
+    app.get('/api/medications/by-hash/:hash', async (req, res) => {
+        try {
+            const hash = req.params.hash;
+            if (!hash || hash.length !== 64) {
+                return res.status(400).json({ error: 'Invalid hash format.' });
+            }
+            const result = await contract.evaluateTransaction('getAllMedications');
+            const medications = parseChaincodeJson(result);
+            const match = medications.find((med) => med.qrHash === hash);
+            if (!match) {
+                return res.status(404).json({ error: 'No medication found for this QR hash.' });
+            }
+            if (usersCollection) {
+                const statusCollection = db.collection('medication_status');
+                const status = await statusCollection.findOne({ serialNumber: match.serialNumber });
+                if (status) {
+                    match.status = status.status;
+                    match.statusUpdatedAt = status.updatedAt;
+                    match.statusUpdatedBy = status.updatedBy;
+                }
+            }
+            return res.json(match);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Internal server error' });
+        }
+    });
+
     app.post('/api/medications', async (req, res) => {
         try {
             if (!usersCollection) {

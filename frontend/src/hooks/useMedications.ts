@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { DashboardNav } from '../components/DashboardLayout';
-import { Medication, Toast, AuditEntry } from '../types';
+import { Medication, Toast, AuditEntry, BatchResult } from '../types';
 import type { AuthFetch } from './useAuth';
 
 type UseMedicationsOptions = {
@@ -38,6 +38,18 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
     const [arrivedSerial, setArrivedSerial] = useState('');
     const [arrivedLoading, setArrivedLoading] = useState(false);
     const [arrivedError, setArrivedError] = useState('');
+
+    // Batch receive state
+    const [receiveBatch, setReceiveBatch] = useState<string[]>([]);
+    const [batchReceiveLoading, setBatchReceiveLoading] = useState(false);
+    const [batchReceiveError, setBatchReceiveError] = useState('');
+    const [batchReceiveResults, setBatchReceiveResults] = useState<BatchResult | null>(null);
+
+    // Batch arrived state
+    const [arrivedBatch, setArrivedBatch] = useState<string[]>([]);
+    const [batchArrivedLoading, setBatchArrivedLoading] = useState(false);
+    const [batchArrivedError, setBatchArrivedError] = useState('');
+    const [batchArrivedResults, setBatchArrivedResults] = useState<BatchResult | null>(null);
 
     const fetchMedications = useCallback(async () => {
         setIsLoading(true);
@@ -213,6 +225,133 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
         }
     }, [arrivedSerial, authFetch, fetchMedications, setToast]);
 
+    // Batch queue handlers
+    const addToReceiveBatch = useCallback((serial: string) => {
+        const trimmed = serial.trim();
+        if (!trimmed) return;
+        setReceiveBatch((current) => {
+            if (current.includes(trimmed)) return current;
+            return [...current, trimmed];
+        });
+    }, []);
+
+    const removeFromReceiveBatch = useCallback((serial: string) => {
+        setReceiveBatch((current) => current.filter((s) => s !== serial));
+    }, []);
+
+    const clearReceiveBatch = useCallback(() => {
+        setReceiveBatch([]);
+        setBatchReceiveResults(null);
+        setBatchReceiveError('');
+    }, []);
+
+    const addToArrivedBatch = useCallback((serial: string) => {
+        const trimmed = serial.trim();
+        if (!trimmed) return;
+        setArrivedBatch((current) => {
+            if (current.includes(trimmed)) return current;
+            return [...current, trimmed];
+        });
+    }, []);
+
+    const removeFromArrivedBatch = useCallback((serial: string) => {
+        setArrivedBatch((current) => current.filter((s) => s !== serial));
+    }, []);
+
+    const clearArrivedBatch = useCallback(() => {
+        setArrivedBatch([]);
+        setBatchArrivedResults(null);
+        setBatchArrivedError('');
+    }, []);
+
+    // Batch submit handlers
+    const handleBatchReceived = useCallback(async () => {
+        if (receiveBatch.length === 0) {
+            setBatchReceiveError('Add at least one serial number to the batch.');
+            return;
+        }
+        setBatchReceiveLoading(true);
+        setBatchReceiveError('');
+        setBatchReceiveResults(null);
+        try {
+            const response = await authFetch('/api/medications/batch/received', {
+                method: 'POST',
+                body: JSON.stringify({ serialNumbers: receiveBatch })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Batch receive failed.');
+            }
+            const data: BatchResult = await response.json();
+            setBatchReceiveResults(data);
+            if (data.failed.length === 0) {
+                setToast({ type: 'success', message: `All ${data.succeeded.length} medications marked received.` });
+                setReceiveBatch([]);
+            } else {
+                setToast({ type: 'info', message: `${data.succeeded.length} succeeded, ${data.failed.length} failed.` });
+            }
+            fetchMedications();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setBatchReceiveError(message || 'Batch receive failed.');
+            setToast({ type: 'error', message: message || 'Batch receive failed.' });
+        } finally {
+            setBatchReceiveLoading(false);
+        }
+    }, [authFetch, fetchMedications, receiveBatch, setToast]);
+
+    const handleBatchArrived = useCallback(async () => {
+        if (arrivedBatch.length === 0) {
+            setBatchArrivedError('Add at least one serial number to the batch.');
+            return;
+        }
+        setBatchArrivedLoading(true);
+        setBatchArrivedError('');
+        setBatchArrivedResults(null);
+        try {
+            const response = await authFetch('/api/medications/batch/arrived', {
+                method: 'POST',
+                body: JSON.stringify({ serialNumbers: arrivedBatch })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Batch arrived failed.');
+            }
+            const data: BatchResult = await response.json();
+            setBatchArrivedResults(data);
+            if (data.failed.length === 0) {
+                setToast({ type: 'success', message: `All ${data.succeeded.length} medications marked arrived.` });
+                setArrivedBatch([]);
+            } else {
+                setToast({ type: 'info', message: `${data.succeeded.length} succeeded, ${data.failed.length} failed.` });
+            }
+            fetchMedications();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setBatchArrivedError(message || 'Batch arrived failed.');
+            setToast({ type: 'error', message: message || 'Batch arrived failed.' });
+        } finally {
+            setBatchArrivedLoading(false);
+        }
+    }, [arrivedBatch, authFetch, fetchMedications, setToast]);
+
+    // QR hash resolution
+    const resolveQrHash = useCallback(async (hash: string): Promise<string | null> => {
+        try {
+            const response = await authFetch(`/api/medications/by-hash/${encodeURIComponent(hash)}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                setToast({ type: 'error', message: errorData.error || 'QR code not recognized.' });
+                return null;
+            }
+            const data = await response.json();
+            return data.serialNumber || null;
+        } catch (error: unknown) {
+            setToast({ type: 'error', message: 'Failed to resolve QR code.' });
+            return null;
+        }
+    }, [authFetch, setToast]);
+
     const filteredMedications = useMemo(() => {
         if (!searchQuery.trim()) return medications;
         const q = searchQuery.trim().toLowerCase();
@@ -252,6 +391,14 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
         arrivedSerial,
         arrivedLoading,
         arrivedError,
+        receiveBatch,
+        arrivedBatch,
+        batchReceiveLoading,
+        batchReceiveError,
+        batchReceiveResults,
+        batchArrivedLoading,
+        batchArrivedError,
+        batchArrivedResults,
         fetchMedications,
         setSearchQuery,
         setLookupSerial,
@@ -261,6 +408,15 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
         setReceiveSerial,
         setArrivedSerial,
         handleMarkReceived,
-        handleMarkArrived
+        handleMarkArrived,
+        addToReceiveBatch,
+        removeFromReceiveBatch,
+        clearReceiveBatch,
+        handleBatchReceived,
+        addToArrivedBatch,
+        removeFromArrivedBatch,
+        clearArrivedBatch,
+        handleBatchArrived,
+        resolveQrHash
     };
 };
