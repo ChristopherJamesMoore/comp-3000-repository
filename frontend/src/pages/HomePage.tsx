@@ -47,7 +47,7 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
                         pharmacists verify origin, track custody, and deliver instant QR verification.
                     </p>
                 </div>
-            </section>
+            </section>/plan
 
         <section className="home-section">
             <div className="home-section__inner">

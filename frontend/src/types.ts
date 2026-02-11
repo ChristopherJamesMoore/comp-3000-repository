@@ -30,6 +30,10 @@ export type UserProfile = {
     companyType?: string;
     companyName?: string;
     isAdmin?: boolean;
+    approvalStatus?: 'pending' | 'approved' | 'rejected';
+    registrationNumber?: string;
+    approvedBy?: string;
+    approvedAt?: string;
 };
 
 export type AuthMode = 'login' | 'signup';

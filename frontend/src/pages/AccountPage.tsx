@@ -4,10 +4,10 @@ import { UserProfile } from '../types';
 
 type AccountPageProps = {
     profile: UserProfile | null;
-    profileForm: { companyType: string; companyName: string };
+    profileForm: { companyType: string; companyName: string; registrationNumber: string };
     profileError: string;
     profileSaving: boolean;
-    onProfileFormChange: (field: 'companyType' | 'companyName', value: string) => void;
+    onProfileFormChange: (field: 'companyType' | 'companyName' | 'registrationNumber', value: string) => void;
     onProfileSave: (e: React.FormEvent) => void;
     onBack: () => void;
     onLogout: () => void;
@@ -15,6 +15,8 @@ type AccountPageProps = {
     adminLoading: boolean;
     adminError: string;
     onReloadAdmin: () => void;
+    onApproveUser: (username: string) => Promise<unknown>;
+    onRejectUser: (username: string) => Promise<unknown>;
 };
 
 const AccountPage: React.FC<AccountPageProps> = ({
@@ -29,8 +31,22 @@ const AccountPage: React.FC<AccountPageProps> = ({
     adminUsers,
     adminLoading,
     adminError,
-    onReloadAdmin
+    onReloadAdmin,
+    onApproveUser,
+    onRejectUser
 }) => {
+    const handleApprove = async (username: string) => {
+        try {
+            await onApproveUser(username);
+            onReloadAdmin();
+        } catch { /* toast handled upstream */ }
+    };
+    const handleReject = async (username: string) => {
+        try {
+            await onRejectUser(username);
+            onReloadAdmin();
+        } catch { /* toast handled upstream */ }
+    };
     const profileLocked = !!profile?.companyType && !!profile?.companyName;
     return (
     <>
@@ -109,14 +125,40 @@ const AccountPage: React.FC<AccountPageProps> = ({
                                 <span>Username</span>
                                 <span>Company Type</span>
                                 <span>Company Name</span>
+                                <span>Status</span>
                             </div>
-                            {adminUsers.map((user) => (
-                                <div className="admin-table__row" key={user.username}>
-                                    <span>{user.username}</span>
-                                    <span>{user.companyType || '—'}</span>
-                                    <span>{user.companyName || '—'}</span>
-                                </div>
-                            ))}
+                            {adminUsers.map((user) => {
+                                const status = user.approvalStatus || 'approved';
+                                return (
+                                    <div className="admin-table__row" key={user.username}>
+                                        <span>{user.username}</span>
+                                        <span>{user.companyType || '—'}</span>
+                                        <span>{user.companyName || '—'}</span>
+                                        <span>
+                                            {status === 'pending' ? (
+                                                <span className="admin-table__actions">
+                                                    <button
+                                                        className="button button--primary button--mini"
+                                                        onClick={() => handleApprove(user.username)}
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        className="button button--ghost button--mini"
+                                                        onClick={() => handleReject(user.username)}
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </span>
+                                            ) : (
+                                                <span className={`pill pill--${status}`}>
+                                                    {status}
+                                                </span>
+                                            )}
+                                        </span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                     <div className="form__actions">

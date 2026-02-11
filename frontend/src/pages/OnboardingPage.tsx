@@ -1,10 +1,10 @@
 import React from 'react';
 
 type OnboardingPageProps = {
-    profileForm: { companyType: string; companyName: string };
+    profileForm: { companyType: string; companyName: string; registrationNumber: string };
     profileError: string;
     profileSaving: boolean;
-    onProfileFormChange: (field: 'companyType' | 'companyName', value: string) => void;
+    onProfileFormChange: (field: 'companyType' | 'companyName' | 'registrationNumber', value: string) => void;
     onProfileSave: (e: React.FormEvent) => void;
 };
 
@@ -44,6 +44,15 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
                         value={profileForm.companyName}
                         onChange={(e) => onProfileFormChange('companyName', e.target.value)}
                         placeholder="Your company name"
+                    />
+                </div>
+                <div className="field">
+                    <label>Registration number</label>
+                    <input
+                        type="text"
+                        value={profileForm.registrationNumber}
+                        onChange={(e) => onProfileFormChange('registrationNumber', e.target.value)}
+                        placeholder="Company registration number"
                     />
                 </div>
                 {profileError && <div className="inline-error">{profileError}</div>}

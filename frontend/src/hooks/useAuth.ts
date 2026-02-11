@@ -16,7 +16,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     const [loginForm, setLoginForm] = useState({ username: '', password: '' });
     const [authMode, setAuthMode] = useState<AuthMode>('login');
     const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [profileForm, setProfileForm] = useState({ companyType: '', companyName: '' });
+    const [profileForm, setProfileForm] = useState({ companyType: '', companyName: '', registrationNumber: '' });
     const [profileError, setProfileError] = useState('');
     const [profileSaving, setProfileSaving] = useState(false);
     const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
@@ -58,7 +58,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
             setProfileError('');
             setProfileForm({
                 companyType: data.companyType || '',
-                companyName: data.companyName || ''
+                companyName: data.companyName || '',
+                registrationNumber: data.registrationNumber || ''
             });
         } catch (error) {
             setProfileError('Failed to load profile.');
@@ -112,7 +113,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         setLoginForm((current) => ({ ...current, [field]: value }));
     };
 
-    const handleProfileFormChange = (field: 'companyType' | 'companyName', value: string) => {
+    const handleProfileFormChange = (field: 'companyType' | 'companyName' | 'registrationNumber', value: string) => {
         setProfileForm((current) => ({ ...current, [field]: value }));
     };
 
@@ -152,7 +153,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     setProfile(data.user);
                     setProfileForm({
                         companyType: data.user.companyType || '',
-                        companyName: data.user.companyName || ''
+                        companyName: data.user.companyName || '',
+                        registrationNumber: data.user.registrationNumber || ''
                     });
                 }
                 navigate('/app');
@@ -206,7 +208,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     setProfile(data.user);
                     setProfileForm({
                         companyType: data.user.companyType || '',
-                        companyName: data.user.companyName || ''
+                        companyName: data.user.companyName || '',
+                        registrationNumber: data.user.registrationNumber || ''
                     });
                 }
                 setAuthMode('login');
@@ -226,7 +229,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         localStorage.removeItem('authToken');
         setAuthToken(null);
         setProfile(null);
-        setProfileForm({ companyType: '', companyName: '' });
+        setProfileForm({ companyType: '', companyName: '', registrationNumber: '' });
         navigate('/');
     }, [authFetch, authToken, navigate]);
 
@@ -244,7 +247,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     method: 'POST',
                     body: JSON.stringify({
                         companyType: profileForm.companyType,
-                        companyName: profileForm.companyName.trim()
+                        companyName: profileForm.companyName.trim(),
+                        registrationNumber: profileForm.registrationNumber.trim()
                     })
                 });
                 if (!response.ok) {
@@ -268,6 +272,34 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch, profileForm, setToast]
     );
 
+    const approveUser = useCallback(
+        async (username: string) => {
+            const response = await authFetch(`/api/admin/users/${encodeURIComponent(username)}/approve`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to approve user.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const rejectUser = useCallback(
+        async (username: string) => {
+            const response = await authFetch(`/api/admin/users/${encodeURIComponent(username)}/reject`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to reject user.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
     return {
         authToken,
         authMode,
@@ -289,6 +321,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         handleLogin,
         handleSignup,
         handleLogout,
-        handleProfileSave
+        handleProfileSave,
+        approveUser,
+        rejectUser
     };
 };

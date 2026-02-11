@@ -13,6 +13,7 @@ import CustomersPage from './pages/CustomersPage';
 import PricingPage from './pages/PricingPage';
 import AddMedicationPage from './pages/AddMedicationPage';
 import OnboardingPage from './pages/OnboardingPage';
+import PendingApprovalPage from './pages/PendingApprovalPage';
 import { useAuth } from './hooks/useAuth';
 import { useDashboardNav } from './hooks/useDashboardNav';
 import { useMedications } from './hooks/useMedications';
@@ -45,7 +46,9 @@ const App: React.FC = () => {
         handleLogin,
         handleSignup,
         handleLogout,
-        handleProfileSave
+        handleProfileSave,
+        approveUser,
+        rejectUser
     } = useAuth({ requiresAuth, navigate, setToast });
     const onNavigate = useNavigateWithAuthMode(navigate, setAuthMode);
     const { activeTab, handleNavSelect } = useDashboardNav(navigate);
@@ -110,12 +113,16 @@ const App: React.FC = () => {
     };
 
     const profileIncomplete = !!authToken && profile !== null && !profile.companyType;
+    const approvalStatus = profile?.approvalStatus || 'approved';
+    const isPendingApproval = !!authToken && profile !== null && !profileIncomplete
+        && approvalStatus !== 'approved' && !profile.isAdmin;
     const showOnboarding = profileIncomplete && (route === '/app' || route === '/app/add' || route === '/account');
-    const showDashboard = route === '/app' && !!authToken && !profileIncomplete;
-    const showAddMedication = route === '/app/add' && !!authToken && !profileIncomplete;
-    const showAccount = route === '/account' && !!authToken && !profileIncomplete;
+    const showPendingApproval = isPendingApproval && (route === '/app' || route === '/app/add' || route === '/account');
+    const showDashboard = route === '/app' && !!authToken && !profileIncomplete && !isPendingApproval;
+    const showAddMedication = route === '/app/add' && !!authToken && !profileIncomplete && !isPendingApproval;
+    const showAccount = route === '/account' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showLogin = route === '/login' || (!authToken && requiresAuth);
-    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding;
+    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding && !showPendingApproval;
     const marketingPage = marketingPages[route] ?? marketingPages['/'];
 
     const companyType = (profile?.companyType || '').toLowerCase();
@@ -132,6 +139,13 @@ const App: React.FC = () => {
             {/* Legacy topbar removed; homepage and dashboard have their own nav */} 
 
             {showMarketing && marketingPage}
+
+            {showPendingApproval && (
+                <PendingApprovalPage
+                    status={approvalStatus === 'rejected' ? 'rejected' : 'pending'}
+                    onLogout={handleLogout}
+                />
+            )}
 
             {showOnboarding && (
                 <OnboardingPage
@@ -240,6 +254,8 @@ const App: React.FC = () => {
                     adminLoading={adminLoading}
                     adminError={adminError}
                     onReloadAdmin={loadAdminUsers}
+                    onApproveUser={approveUser}
+                    onRejectUser={rejectUser}
                 />
             )}
 

@@ -115,6 +115,11 @@ const getCompanyRole = (user) => {
     return role;
 };
 
+const getUserApprovalStatus = (user) => {
+    if (!user) return 'pending';
+    return user.approvalStatus || 'approved';
+};
+
 const buildAuditEntry = (serialNumber, action, user) => ({
     serialNumber,
     action,
@@ -203,6 +208,24 @@ const requireAdmin = (db) => async (req, res, next) => {
     return next();
 };
 
+const requireApproved = (db) => async (req, res, next) => {
+    const username = req.user?.sub;
+    if (!username) {
+        return res.status(401).json({ error: 'Invalid token.' });
+    }
+    if (isAdminUser(username)) return next();
+    if (db) {
+        const users = db.collection('users');
+        const user = await users.findOne({ username });
+        if (user?.isAdmin) return next();
+        const status = getUserApprovalStatus(user);
+        if (status !== 'approved') {
+            return res.status(403).json({ error: 'Your account is pending approval.' });
+        }
+    }
+    return next();
+};
+
 const loadUserForRequest = async (db, req) => {
     if (!db) return null;
     const username = req.user?.sub;
@@ -210,12 +233,17 @@ const loadUserForRequest = async (db, req) => {
     const users = db.collection('users');
     const existing = await users.findOne({ username });
     if (existing) return existing;
+    const admin = isAdminUser(username);
     const newUser = {
         username,
         companyType: '',
         companyName: '',
         createdAt: new Date(),
-        isAdmin: isAdminUser(username)
+        isAdmin: admin,
+        approvalStatus: admin ? 'approved' : 'pending',
+        registrationNumber: '',
+        approvedBy: null,
+        approvedAt: null
     };
     await users.insertOne(newUser);
     return newUser;
@@ -257,7 +285,10 @@ const createApp = (contract, db) => {
                 return res.status(401).json({ error: 'Invalid token.' });
             }
             if (usersCollection) {
-                const user = await usersCollection.findOne({ username });
+                let user = await usersCollection.findOne({ username });
+                if (!user) {
+                    user = await loadUserForRequest(db, req);
+                }
                 if (!user) {
                     return res.status(404).json({ error: 'User not found.' });
                 }
@@ -265,10 +296,12 @@ const createApp = (contract, db) => {
                     username: user.username,
                     companyType: user.companyType || '',
                     companyName: user.companyName || '',
-                    isAdmin: !!user.isAdmin || isAdminUser(username)
+                    isAdmin: !!user.isAdmin || isAdminUser(username),
+                    approvalStatus: getUserApprovalStatus(user),
+                    registrationNumber: user.registrationNumber || ''
                 });
             }
-            return res.json({ username, isAdmin: isAdminUser(username) });
+            return res.json({ username, isAdmin: isAdminUser(username), approvalStatus: 'approved' });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to load profile.' });
         }
@@ -300,7 +333,9 @@ const createApp = (contract, db) => {
                     username,
                     companyType: user.companyType || '',
                     companyName: user.companyName || '',
-                    isAdmin: !!user.isAdmin || isAdminUser(username)
+                    isAdmin: !!user.isAdmin || isAdminUser(username),
+                    approvalStatus: getUserApprovalStatus(user),
+                    registrationNumber: user.registrationNumber || ''
                 }
             });
         } catch (error) {
@@ -324,13 +359,18 @@ const createApp = (contract, db) => {
                 const existing = await usersCollection.findOne({ username });
                 if (existing) return res.status(409).json({ error: 'Username already exists.' });
                 const passwordHash = await bcrypt.hash(password, 10);
+                const admin = isAdminUser(username);
                 await usersCollection.insertOne({
                     username,
                     passwordHash,
                     companyType: '',
                     companyName: '',
                     createdAt: new Date(),
-                    isAdmin: isAdminUser(username)
+                    isAdmin: admin,
+                    approvalStatus: admin ? 'approved' : 'pending',
+                    registrationNumber: '',
+                    approvedBy: null,
+                    approvedAt: null
                 });
             } else {
                 const usersFile = getAuthUsersFile();
@@ -349,9 +389,10 @@ const createApp = (contract, db) => {
                 fs.writeFileSync(usersFile, JSON.stringify(updatedUsers, null, 2));
             }
             const token = createToken({ sub: username, jti: crypto.randomUUID() });
+            const signupAdmin = isAdminUser(username);
             return res
                 .status(201)
-                .json({ token, user: { username, companyType: '', companyName: '', isAdmin: isAdminUser(username) } });
+                .json({ token, user: { username, companyType: '', companyName: '', isAdmin: signupAdmin, approvalStatus: signupAdmin ? 'approved' : 'pending', registrationNumber: '' } });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Signup failed.' });
         }
@@ -366,7 +407,7 @@ const createApp = (contract, db) => {
             if (!username) {
                 return res.status(401).json({ error: 'Invalid token.' });
             }
-            const { companyType, companyName } = req.body;
+            const { companyType, companyName, registrationNumber } = req.body;
             if (!companyType || !companyName) {
                 return res.status(400).json({ error: 'Company type and name are required.' });
             }
@@ -383,31 +424,44 @@ const createApp = (contract, db) => {
                 if ((existing.companyType && existing.companyType.trim()) || (existing.companyName && existing.companyName.trim())) {
                     return res.status(409).json({ error: 'Profile is locked once set. Contact an admin for changes.' });
                 }
+                const normalizedRegNum = String(registrationNumber || '').trim();
                 const result = await usersCollection.findOneAndUpdate(
                     { username },
-                    { $set: { companyType: normalizedType, companyName: normalizedName } },
+                    { $set: { companyType: normalizedType, companyName: normalizedName, registrationNumber: normalizedRegNum } },
                     { returnDocument: 'after' }
                 );
-                if (!result.value) {
+                if (!result) {
                     return res.status(404).json({ error: 'User not found.' });
                 }
                 return res.json({
-                    username: result.value.username,
-                    companyType: result.value.companyType || '',
-                    companyName: result.value.companyName || ''
+                    username: result.username,
+                    companyType: result.companyType || '',
+                    companyName: result.companyName || '',
+                    isAdmin: !!result.isAdmin || isAdminUser(username),
+                    approvalStatus: getUserApprovalStatus(result),
+                    registrationNumber: result.registrationNumber || ''
                 });
             }
+            const profileAdmin = isAdminUser(username);
+            const normalizedRegNum = String(registrationNumber || '').trim();
             await usersCollection.insertOne({
                 username,
                 companyType: normalizedType,
                 companyName: normalizedName,
+                registrationNumber: normalizedRegNum,
                 createdAt: new Date(),
-                isAdmin: isAdminUser(username)
+                isAdmin: profileAdmin,
+                approvalStatus: profileAdmin ? 'approved' : 'pending',
+                approvedBy: null,
+                approvedAt: null
             });
             return res.json({
                 username,
                 companyType: normalizedType,
-                companyName: normalizedName
+                companyName: normalizedName,
+                isAdmin: profileAdmin,
+                approvalStatus: profileAdmin ? 'approved' : 'pending',
+                registrationNumber: normalizedRegNum
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to update profile.' });
@@ -438,7 +492,7 @@ const createApp = (contract, db) => {
                 return res.status(501).json({ error: 'User listing requires MONGODB_URI.' });
             }
             const users = await usersCollection
-                .find({}, { projection: { _id: 0, username: 1, companyType: 1, companyName: 1, createdAt: 1 } })
+                .find({}, { projection: { _id: 0, username: 1, companyType: 1, companyName: 1, createdAt: 1, approvalStatus: 1, registrationNumber: 1, isAdmin: 1, approvedBy: 1, approvedAt: 1 } })
                 .toArray();
             return res.json({ users });
         } catch (error) {
@@ -446,7 +500,48 @@ const createApp = (contract, db) => {
         }
     });
 
+    app.post('/api/admin/users/:username/approve', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'User management requires MONGODB_URI.' });
+            }
+            const targetUsername = req.params.username;
+            const result = await usersCollection.findOneAndUpdate(
+                { username: targetUsername },
+                { $set: { approvalStatus: 'approved', approvedBy: req.user.sub, approvedAt: new Date() } },
+                { returnDocument: 'after' }
+            );
+            if (!result) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            return res.json({ ok: true, user: { username: result.username, approvalStatus: result.approvalStatus } });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to approve user.' });
+        }
+    });
+
+    app.post('/api/admin/users/:username/reject', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'User management requires MONGODB_URI.' });
+            }
+            const targetUsername = req.params.username;
+            const result = await usersCollection.findOneAndUpdate(
+                { username: targetUsername },
+                { $set: { approvalStatus: 'rejected', approvedBy: req.user.sub, approvedAt: new Date() } },
+                { returnDocument: 'after' }
+            );
+            if (!result) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            return res.json({ ok: true, user: { username: result.username, approvalStatus: result.approvalStatus } });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to reject user.' });
+        }
+    });
+
     app.use('/api/medications', authMiddleware);
+    app.use('/api/medications', requireApproved(db));
 
     app.post('/api/medications/batch/received', async (req, res) => {
         try {
