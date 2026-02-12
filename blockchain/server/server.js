@@ -316,11 +316,9 @@ const createApp = (contract, db) => {
             let user = null;
             if (usersCollection) {
                 user = await usersCollection.findOne({ username });
-            } else {
+            }
+            if (!user) {
                 const users = loadAuthUsers({ allowEmpty: true });
-                if (users.length === 0) {
-                    return res.status(503).json({ error: 'No users configured.' });
-                }
                 user = users.find((entry) => entry.username === username) || null;
             }
             if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
