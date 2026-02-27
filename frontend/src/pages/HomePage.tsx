@@ -62,37 +62,26 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
 
         media.add('(prefers-reduced-motion: no-preference)', () => {
             const ctx = gsap.context(() => {
-                const nodes = gsap.utils.toArray<HTMLElement>('.home-chain__node');
                 const links = gsap.utils.toArray<HTMLElement>('.home-chain__link');
                 const caption = gsap.utils.toArray<HTMLElement>('.home-chain__caption-line');
 
                 gsap.timeline({
                     scrollTrigger: {
                         trigger: chainSectionRef.current,
-                        start: 'top 85%',
-                        end: 'bottom 18%',
+                        start: 'top 82%',
+                        end: 'top 24%',
                         scrub: true
                     }
                 })
                     .fromTo(
                         chainModelRef.current,
-                        { rotateY: -14, rotateX: 10, scale: 0.9 },
-                        { rotateY: 145, rotateX: -9, scale: 1.2, ease: 'none' }
-                    )
-                    .to(
-                        nodes,
-                        {
-                            y: (index) => (index % 2 === 0 ? -18 : 18),
-                            z: (index) => (index % 2 === 0 ? 46 : -46),
-                            stagger: 0.03,
-                            ease: 'none'
-                        },
-                        0
+                        { rotateY: -20, rotateX: 12, rotateZ: -4, scale: 0.92 },
+                        { rotateY: 385, rotateX: -10, rotateZ: 6, scale: 1.16, ease: 'none' }
                     )
                     .fromTo(
                         links,
-                        { opacity: 0.38 },
-                        { opacity: 1, stagger: 0.04, ease: 'none' },
+                        { opacity: 0.45, scaleX: 0.9, transformOrigin: 'center center' },
+                        { opacity: 1, scaleX: 1, stagger: 0.03, ease: 'none' },
                         0
                     );
 
