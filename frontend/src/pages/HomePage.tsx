@@ -1,10 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { AuthMode } from '../types';
 import MarketingNav from '../components/MarketingNav';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type HomePageProps = {
     authToken: string | null;
@@ -56,56 +53,40 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
     }, []);
 
     useLayoutEffect(() => {
-        if (!chainSectionRef.current || !chainModelRef.current) return undefined;
+        if (!chainModelRef.current) return undefined;
 
         const media = gsap.matchMedia();
+        let activeTween: gsap.core.Tween | null = null;
+
+        const spinRandomly = () => {
+            if (!chainModelRef.current) return;
+            const randomSign = () => (Math.random() > 0.5 ? 1 : -1);
+            const xStep = randomSign() * gsap.utils.random(55, 160);
+            const yStep = randomSign() * gsap.utils.random(80, 240);
+            const zStep = randomSign() * gsap.utils.random(20, 80);
+
+            activeTween = gsap.to(chainModelRef.current, {
+                rotateX: `+=${xStep}`,
+                rotateY: `+=${yStep}`,
+                rotateZ: `+=${zStep}`,
+                duration: gsap.utils.random(2.6, 4.8),
+                ease: 'sine.inOut',
+                onComplete: spinRandomly
+            });
+        };
 
         media.add('(prefers-reduced-motion: no-preference)', () => {
             const ctx = gsap.context(() => {
-                const links = gsap.utils.toArray<HTMLElement>('.home-chain__link');
-                const caption = gsap.utils.toArray<HTMLElement>('.home-chain__caption-line');
-
-                gsap.timeline({
-                    scrollTrigger: {
-                        trigger: chainSectionRef.current,
-                        start: 'top 82%',
-                        end: 'top 24%',
-                        scrub: true
-                    }
-                })
-                    .fromTo(
-                        chainModelRef.current,
-                        { rotateY: -20, rotateX: 12, rotateZ: -4, scale: 0.92 },
-                        { rotateY: 385, rotateX: -10, rotateZ: 6, scale: 1.16, ease: 'none' }
-                    )
-                    .fromTo(
-                        links,
-                        { opacity: 0.45, scaleX: 0.9, transformOrigin: 'center center' },
-                        { opacity: 1, scaleX: 1, stagger: 0.03, ease: 'none' },
-                        0
-                    );
-
-                gsap.fromTo(
-                    caption,
-                    { opacity: 0, y: 16 },
-                    {
-                        opacity: 1,
-                        y: 0,
-                        stagger: 0.18,
-                        scrollTrigger: {
-                            trigger: chainSectionRef.current,
-                            start: 'top 72%',
-                            end: 'top 36%',
-                            scrub: true
-                        }
-                    }
-                );
+                gsap.set(chainModelRef.current, { rotateX: 12, rotateY: -18, rotateZ: -4, scale: 1 });
+                spinRandomly();
             }, chainSectionRef);
-
             return () => ctx.revert();
         });
 
-        return () => media.revert();
+        return () => {
+            if (activeTween) activeTween.kill();
+            media.revert();
+        };
     }, []);
 
     return (
@@ -141,16 +122,14 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
                         <div className="home-chain__model" ref={chainModelRef}>
                             {Array.from({ length: 8 }).map((_, index) => (
                                 <React.Fragment key={index}>
-                                    <div className="home-chain__node">
-                                        <span>{String(index + 1).padStart(2, '0')}</span>
-                                    </div>
+                                    <div className="home-chain__node" />
                                     {index < 7 && <div className="home-chain__link" />}
                                 </React.Fragment>
                             ))}
                         </div>
                     </div>
                     <div className="home-chain__caption">
-                        <p className="home-chain__caption-line">Scroll to rotate the chain</p>
+                        <p className="home-chain__caption-line">Autonomous random rotation</p>
                         <p className="home-chain__caption-line">Every transfer keeps cryptographic continuity</p>
                     </div>
                 </div>
