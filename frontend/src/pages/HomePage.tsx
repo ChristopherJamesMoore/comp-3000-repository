@@ -1,6 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { AuthMode } from '../types';
 import MarketingNav from '../components/MarketingNav';
+
+gsap.registerPlugin(ScrollTrigger);
 
 type HomePageProps = {
     authToken: string | null;
@@ -20,7 +24,7 @@ function useFadeOnScroll() {
         );
         targets.forEach((t) => io.observe(t));
         return () => io.disconnect();
-    }, []);
+}, []);
     return ref;
 }
 
@@ -29,6 +33,8 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
     const [typed, setTyped] = useState('');
     const [showCaret, setShowCaret] = useState(true);
     const mainRef = useFadeOnScroll();
+    const chainSectionRef = useRef<HTMLElement>(null);
+    const chainModelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         let index = 0;
@@ -47,6 +53,70 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
             setShowCaret((prev) => !prev);
         }, 500);
         return () => window.clearInterval(blinkTimer);
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!chainSectionRef.current || !chainModelRef.current) return undefined;
+
+        const media = gsap.matchMedia();
+
+        media.add('(prefers-reduced-motion: no-preference)', () => {
+            const ctx = gsap.context(() => {
+                const nodes = gsap.utils.toArray<HTMLElement>('.home-chain__node');
+                const links = gsap.utils.toArray<HTMLElement>('.home-chain__link');
+                const caption = gsap.utils.toArray<HTMLElement>('.home-chain__caption-line');
+
+                gsap.timeline({
+                    scrollTrigger: {
+                        trigger: chainSectionRef.current,
+                        start: 'top 85%',
+                        end: 'bottom 18%',
+                        scrub: true
+                    }
+                })
+                    .fromTo(
+                        chainModelRef.current,
+                        { rotateY: -14, rotateX: 10, scale: 0.9 },
+                        { rotateY: 145, rotateX: -9, scale: 1.2, ease: 'none' }
+                    )
+                    .to(
+                        nodes,
+                        {
+                            y: (index) => (index % 2 === 0 ? -18 : 18),
+                            z: (index) => (index % 2 === 0 ? 46 : -46),
+                            stagger: 0.03,
+                            ease: 'none'
+                        },
+                        0
+                    )
+                    .fromTo(
+                        links,
+                        { opacity: 0.38 },
+                        { opacity: 1, stagger: 0.04, ease: 'none' },
+                        0
+                    );
+
+                gsap.fromTo(
+                    caption,
+                    { opacity: 0, y: 16 },
+                    {
+                        opacity: 1,
+                        y: 0,
+                        stagger: 0.18,
+                        scrollTrigger: {
+                            trigger: chainSectionRef.current,
+                            start: 'top 72%',
+                            end: 'top 36%',
+                            scrub: true
+                        }
+                    }
+                );
+            }, chainSectionRef);
+
+            return () => ctx.revert();
+        });
+
+        return () => media.revert();
     }, []);
 
     return (
@@ -69,6 +139,30 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
                         <div><strong>Hyperledger Fabric</strong><span>Private blockchain</span></div>
                         <div><strong>QR verification</strong><span>Instant scan</span></div>
                         <div><strong>Full audit trail</strong><span>Every handoff logged</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="home-chain fade-section" ref={chainSectionRef} aria-label="Blockchain visualization">
+                <div className="home-chain__inner">
+                    <p className="home-chain__eyebrow">Immutable event sequence</p>
+                    <h2>Follow each block through the supply chain.</h2>
+                    <div className="home-chain__stage">
+                        <div className="home-chain__halo" />
+                        <div className="home-chain__model" ref={chainModelRef}>
+                            {Array.from({ length: 8 }).map((_, index) => (
+                                <React.Fragment key={index}>
+                                    <div className="home-chain__node">
+                                        <span>{String(index + 1).padStart(2, '0')}</span>
+                                    </div>
+                                    {index < 7 && <div className="home-chain__link" />}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="home-chain__caption">
+                        <p className="home-chain__caption-line">Scroll to rotate the chain</p>
+                        <p className="home-chain__caption-line">Every transfer keeps cryptographic continuity</p>
                     </div>
                 </div>
             </section>

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "gsap": "^3.14.2",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.553.0",
     "qrcode.react": "^4.2.0",

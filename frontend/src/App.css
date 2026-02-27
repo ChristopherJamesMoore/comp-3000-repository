@@ -343,6 +343,106 @@ body {
   box-shadow: 0 4px 16px rgba(255,255,255,0.15);
 }
 
+.home-chain {
+  min-height: 165vh;
+  position: relative;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.home-chain__inner {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.home-chain__eyebrow {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.home-chain h2 {
+  margin: 10px 0 0;
+  font-family: 'Fraunces', serif;
+}
+
+.home-chain__stage {
+  position: sticky;
+  top: 10vh;
+  min-height: 72vh;
+  display: grid;
+  place-items: center;
+  perspective: 1100px;
+}
+
+.home-chain__halo {
+  position: absolute;
+  width: min(580px, 84vw);
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(56, 189, 248, 0.2), transparent 62%),
+    radial-gradient(circle at 72% 65%, rgba(37, 99, 235, 0.2), transparent 58%);
+  filter: blur(3px);
+}
+
+.home-chain__model {
+  transform-style: preserve-3d;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transform: rotateX(10deg) rotateY(-14deg) scale(0.9);
+}
+
+.home-chain__node {
+  width: clamp(48px, 5.4vw, 68px);
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: linear-gradient(145deg, #f9fcff, #e7f0ff);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+}
+
+.home-chain__node span {
+  font-weight: 700;
+  color: #1d4ed8;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+}
+
+.home-chain__link {
+  width: clamp(22px, 3vw, 36px);
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.24), rgba(56, 189, 248, 0.7));
+  opacity: 0.38;
+}
+
+.home-chain__caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8vh;
+  text-align: center;
+}
+
+.home-chain__caption-line {
+  margin: 0;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.home-chain__caption-line + .home-chain__caption-line {
+  margin-top: 8px;
+}
+
 .auth-page {
   min-height: 80vh;
   display: grid;
@@ -1186,6 +1286,22 @@ body {
   .panel__tabs {
     width: 100%;
     justify-content: center;
+  }
+
+  .home-chain {
+    min-height: 130vh;
+  }
+
+  .home-chain__stage {
+    top: 12vh;
+  }
+
+  .home-chain__model {
+    gap: 10px;
+  }
+
+  .home-chain__caption {
+    bottom: 12vh;
   }
 }
 
