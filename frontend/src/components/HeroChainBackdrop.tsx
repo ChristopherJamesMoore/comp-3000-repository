@@ -5,7 +5,6 @@ const HeroChainBackdrop: React.FC = () => {
     const [pillGrid, setPillGrid] = useState({ cols: 18, rows: 7 });
     const pillCount = pillGrid.cols * pillGrid.rows;
     const stageRef = useRef<HTMLDivElement>(null);
-    const modelRef = useRef<HTMLDivElement>(null);
     const pillFieldRef = useRef<HTMLDivElement>(null);
 
     useLayoutEffect(() => {
@@ -15,11 +14,11 @@ const HeroChainBackdrop: React.FC = () => {
         const deriveGrid = (width: number, height: number) => {
             const isMobile = width <= 640;
             const isTablet = width > 640 && width <= 1024;
-            const spacingX = isMobile ? 44 : isTablet ? 62 : 86;
-            const spacingY = isMobile ? 70 : isTablet ? 82 : 90;
+            const spacingX = isMobile ? 32 : isTablet ? 46 : 64;
+            const spacingY = isMobile ? 54 : isTablet ? 64 : 72;
             // +1 ensures edge-to-edge fill without visible empty bands.
-            const cols = Math.max(10, Math.ceil(width / spacingX) + 1);
-            const rows = Math.max(6, Math.ceil(height / spacingY) + 1);
+            const cols = Math.max(14, Math.ceil(width / spacingX) + 1);
+            const rows = Math.max(8, Math.ceil(height / spacingY) + 1);
             return { cols, rows };
         };
 
@@ -41,7 +40,7 @@ const HeroChainBackdrop: React.FC = () => {
     }, []);
 
     useLayoutEffect(() => {
-        if (!stageRef.current || !modelRef.current || !pillFieldRef.current) return undefined;
+        if (!stageRef.current || !pillFieldRef.current) return undefined;
 
         const media = gsap.matchMedia();
         let tickerFn: (() => void) | null = null;
@@ -51,50 +50,33 @@ const HeroChainBackdrop: React.FC = () => {
         media.add('(prefers-reduced-motion: no-preference)', () => {
             const ctx = gsap.context(() => {
                 const stage = stageRef.current;
-                const model = modelRef.current;
                 const pillField = pillFieldRef.current;
-                if (!stage || !model || !pillField) return;
+                if (!stage || !pillField) return;
 
-                const segments = gsap.utils.toArray<HTMLElement>('.home-chain__segment', model);
-                const baseModelY = 86;
-                gsap.set(model, { rotateX: 12, rotateY: -18, rotateZ: -4, scale: 1, x: 0, y: baseModelY });
-                gsap.set(segments, { transformOrigin: 'center center', y: 0, z: 0, rotateX: 0, rotateZ: 0 });
+                const hover = { x: -9999, y: -9999, active: false };
+                const effectRadius = 120;
 
-                const modelXTo = gsap.quickTo(model, 'x', { duration: 0.32, ease: 'power2.out' });
-                const modelYTo = gsap.quickTo(model, 'y', { duration: 0.32, ease: 'power2.out' });
-                const waveTarget = { amp: 8, cursorX: 0, cursorY: 0 };
-                const ampTo = gsap.quickTo(waveTarget, 'amp', { duration: 0.24, ease: 'power2.out' });
-                const cursorXTo = gsap.quickTo(waveTarget, 'cursorX', { duration: 0.22, ease: 'power2.out' });
-                const cursorYTo = gsap.quickTo(waveTarget, 'cursorY', { duration: 0.22, ease: 'power2.out' });
-
-                const handleWindowPointerMove = (event: PointerEvent) => {
-                    const rect = stage.getBoundingClientRect();
+                const handlePointerMove = (event: PointerEvent) => {
+                    const rect = pillField.getBoundingClientRect();
                     const inside = event.clientX >= rect.left
                         && event.clientX <= rect.right
                         && event.clientY >= rect.top
                         && event.clientY <= rect.bottom;
-
-                    if (!inside) {
-                        modelXTo(0);
-                        modelYTo(baseModelY);
-                        ampTo(8);
-                        cursorXTo(0);
-                        cursorYTo(0);
-                        return;
-                    }
-
-                    const nx = (event.clientX - rect.left) / rect.width - 0.5;
-                    const ny = (event.clientY - rect.top) / rect.height - 0.5;
-                    modelXTo(nx * 24);
-                    modelYTo(baseModelY + ny * 17);
-                    ampTo(8.5 + (Math.abs(nx) + Math.abs(ny)) * 9.5);
-                    cursorXTo(nx);
-                    cursorYTo(ny);
+                    hover.active = inside;
+                    if (!inside) return;
+                    hover.x = event.clientX - rect.left;
+                    hover.y = event.clientY - rect.top;
                 };
 
-                window.addEventListener('pointermove', handleWindowPointerMove);
+                const handlePointerLeave = () => {
+                    hover.active = false;
+                };
+
+                window.addEventListener('pointermove', handlePointerMove);
+                stage.addEventListener('pointerleave', handlePointerLeave);
                 detachPointerHandlers = () => {
-                    window.removeEventListener('pointermove', handleWindowPointerMove);
+                    window.removeEventListener('pointermove', handlePointerMove);
+                    stage.removeEventListener('pointerleave', handlePointerLeave);
                 };
 
                 const pills = pillField.querySelectorAll<HTMLElement>('.home-chain__pill');
@@ -107,32 +89,58 @@ const HeroChainBackdrop: React.FC = () => {
                 const minY = 2;
                 const maxX = Math.max(minX, bounds.width - pillWidth - 2);
                 const maxY = Math.max(minY, bounds.height - pillHeight - 2);
+                const cellWidth = pillGrid.cols > 1 ? (maxX - minX) / (pillGrid.cols - 1) : maxX - minX;
+                const cellHeight = pillGrid.rows > 1 ? (maxY - minY) / (pillGrid.rows - 1) : maxY - minY;
+                const jitterXMax = cellWidth * 0.24;
+                const jitterYMax = cellHeight * 0.24;
+
+                const fract = (value: number) => value - Math.floor(value);
+                const jitterNoise = (row: number, col: number, seed: number) =>
+                    fract(Math.sin((row + 1) * 12.9898 + (col + 1) * 78.233 + seed) * 43758.5453123);
+
+                const pillEntries: Array<{
+                    x: number;
+                    y: number;
+                    scaleTo: (value: number) => gsap.core.Tween;
+                    yTo: (value: number) => gsap.core.Tween;
+                }> = [];
 
                 pills.forEach((pill, index) => {
                     const row = Math.floor(index / pillGrid.cols);
                     const col = index % pillGrid.cols;
-                    const x = pillGrid.cols > 1
+                    const baseX = pillGrid.cols > 1
                         ? minX + (col / (pillGrid.cols - 1)) * (maxX - minX)
                         : (minX + maxX) * 0.5;
-                    const y = pillGrid.rows > 1
+                    const baseY = pillGrid.rows > 1
                         ? minY + (row / (pillGrid.rows - 1)) * (maxY - minY)
                         : (minY + maxY) * 0.5;
+                    const jitterX = (jitterNoise(row, col, 0.17) - 0.5) * 2 * jitterXMax;
+                    const jitterY = (jitterNoise(row, col, 1.91) - 0.5) * 2 * jitterYMax;
+                    const x = Math.min(maxX, Math.max(minX, baseX + jitterX));
+                    const y = Math.min(maxY, Math.max(minY, baseY + jitterY));
 
                     gsap.set(pill, {
                         x,
                         y,
                         rotation: Math.random() * 360,
-                        scale: 0.85,
+                        scale: 0.75,
+                    });
+
+                    pillEntries.push({
+                        x,
+                        y,
+                        scaleTo: gsap.quickTo(pill, 'scale', { duration: 0.24, ease: 'power2.out' }),
+                        yTo: gsap.quickTo(pill, 'y', { duration: 0.24, ease: 'power2.out' }),
                     });
 
                     pillTweens.push(
                         gsap.to(pill, {
                             rotation: '+=360',
                             duration: isMobile
-                                ? Math.random() * 3 + 7
+                                ? Math.random() * 1.5 + 3.5
                                 : isTablet
-                                    ? Math.random() * 3 + 6
-                                    : Math.random() * 4 + 4,
+                                    ? Math.random() * 1.5 + 3
+                                    : Math.random() * 2 + 2,
                             repeat: -1,
                             ease: 'none',
                         })
@@ -140,17 +148,17 @@ const HeroChainBackdrop: React.FC = () => {
                 });
 
                 tickerFn = () => {
-                    const t = gsap.ticker.time;
-                    const amp = waveTarget.amp;
-                    segments.forEach((segment, index) => {
-                        const phase = index * 0.72 + t * 2.1 + waveTarget.cursorX * 2.4;
-                        const secondary = index * 0.5 + t * 1.55 + waveTarget.cursorY * 1.8;
-                        gsap.set(segment, {
-                            y: Math.sin(phase) * amp,
-                            z: Math.cos(secondary) * (amp * 0.72),
-                            rotateX: Math.cos(phase * 0.9) * (amp * 0.34),
-                            rotateZ: Math.sin(secondary * 0.95) * (amp * 0.42)
-                        });
+                    pillEntries.forEach((entry) => {
+                        let influence = 0;
+                        if (hover.active) {
+                            const dx = entry.x - hover.x;
+                            const dy = entry.y - hover.y;
+                            const distance = Math.hypot(dx, dy);
+                            influence = Math.max(0, 1 - distance / effectRadius);
+                        }
+
+                        entry.scaleTo(0.75 + influence * 1.95);
+                        entry.yTo(entry.y - influence * 14);
                     });
                 };
                 gsap.ticker.add(tickerFn);
@@ -176,7 +184,7 @@ const HeroChainBackdrop: React.FC = () => {
                     </div>
                 ))}
             </div>
-            <div className="home-chain__model" ref={modelRef}>
+            {/* <div className="home-chain__model" ref={modelRef}>
                 {Array.from({ length: 8 }).map((_, index) => (
                     <div className="home-chain__segment" key={index}>
                         <div className="home-chain__node">
@@ -190,7 +198,7 @@ const HeroChainBackdrop: React.FC = () => {
                         </div>
                     </div>
                 ))}
-            </div>
+            </div> */}
         </div>
     );
 };

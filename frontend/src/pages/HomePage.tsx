@@ -35,6 +35,7 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
     useEffect(() => {
         let index = 0;
         setTypingComplete(false);
+        setShowCaret(true);
         const typeTimer = window.setInterval(() => {
             index += 1;
             setTyped(headline.slice(0, index));
@@ -48,31 +49,35 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
     }, []);
 
     useEffect(() => {
-        if (typingComplete) {
-            setShowCaret(true);
-            return undefined;
-        }
-        const blinkTimer = window.setInterval(() => {
-            setShowCaret((prev) => !prev);
-        }, 500);
-        return () => window.clearInterval(blinkTimer);
+        setShowCaret(true);
+        return undefined;
     }, [typingComplete]);
 
     return (
         <main className="home" ref={mainRef}>
-            <MarketingNav authToken={authToken} onNavigate={onNavigate} />
-
-            <section className="home-hero">
+            <section className="home-fold">
                 <HeroChainBackdrop />
-                <div className="home-hero__inner">
-                    <h1 className="home-hero__typing">
-                        {typed || '\u00A0'}
-                        <span className={showCaret ? 'home-hero__caret' : 'home-hero__caret home-hero__caret--off'}>|</span>
-                    </h1>
-                </div>
+                <MarketingNav authToken={authToken} onNavigate={onNavigate} />
+
+                <section className="home-hero">
+                    <div className="home-hero__inner">
+                        <h1 className="home-hero__typing">
+                            {typed || '\u00A0'}
+                            <span
+                                className={
+                                    showCaret
+                                        ? `home-hero__caret${typingComplete ? ' home-hero__caret--blink' : ''}`
+                                        : 'home-hero__caret home-hero__caret--off'
+                                }
+                            >
+                                |
+                            </span>
+                        </h1>
+                    </div>
+                </section>
             </section>
 
-            <section className="home-hero-meta fade-section">
+            {/* <section className="home-hero-meta fade-section">
                 <div className="home-hero-meta__inner">
                     <p className="home-hero__eyebrow">LedgRx &bull; Private pharma traceability</p>
                     <p className="home-hero__lead">
@@ -84,6 +89,26 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
                         <div><strong>QR verification</strong><span>Instant scan</span></div>
                         <div><strong>Full audit trail</strong><span>Every handoff logged</span></div>
                     </div>
+                </div>
+            </section> */}
+
+            <section className="home-demo fade-section">
+                <div className="home-demo__top">
+                    <p className="home-demo__eyebrow">Product walkthrough</p>
+                    <h2>See the core LedgRx workflow in action</h2>
+                </div>
+                <div className="home-demo__frame">
+                    <video
+                        className="home-demo__video"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        controls
+                        preload="metadata"
+                    >
+                        <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
+                    </video>
                 </div>
             </section>
 

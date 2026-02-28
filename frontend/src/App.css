@@ -108,6 +108,26 @@ body {
   gap: 32px;
 }
 
+.home-fold {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  min-height: 100vh;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.home-fold > .home-nav,
+.home-fold > .home-hero {
+  position: relative;
+  z-index: 2;
+}
+
+.home-fold > .home-nav {
+  margin-left: 6vw;
+  margin-right: 6vw;
+}
+
 /* Scroll-triggered fade-in */
 .fade-section {
   opacity: 0;
@@ -123,23 +143,38 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 8px 0 14px;
-  border-bottom: 1px solid var(--stroke);
+  gap: 22px;
+  padding: 6px 14px;
+  margin: 6px 0 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  position: sticky;
+  top: 10px;
+  z-index: 15;
 }
 
 .home-nav__brand {
   border: none;
   background: transparent;
-  font-size: 1.4rem;
+  font-size: 1.26rem;
   font-weight: 700;
   font-family: 'Fraunces', serif;
   cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.home-nav__brand:hover {
+  transform: translateY(-1px);
+  opacity: 0.88;
 }
 
 .home-nav__links {
   display: flex;
-  gap: 28px;
+  gap: 24px;
   flex: 1;
   justify-content: center;
 }
@@ -148,14 +183,23 @@ body {
   border: none;
   background: transparent;
   font-weight: 600;
-  color: var(--ink);
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+  color: #111827;
+  opacity: 0.88;
   cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.home-nav__link:hover {
+  opacity: 1;
+  transform: translateY(-1px);
 }
 
 .home-nav__menu {
   display: none;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border: 1px solid #d1d5db;
   background: #ffffff;
   color: var(--ink);
@@ -166,6 +210,12 @@ body {
   flex-direction: column;
   gap: 5px;
   cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.home-nav__menu:hover {
+  background: #f8fafc;
+  border-color: #9ca3af;
 }
 
 .home-nav__menu-bar {
@@ -193,7 +243,7 @@ body {
 .home-nav__actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .home-nav__mobile-auth {
@@ -204,24 +254,38 @@ body {
   border: none;
   background: transparent;
   font-weight: 600;
-  color: var(--ink);
+  color: #111827;
+  opacity: 0.9;
   cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.home-nav__action:hover {
+  opacity: 1;
+  transform: translateY(-1px);
 }
 
 .home-nav__cta {
   border: none;
-  background: #0b0b0b;
+  background: #0b1220;
   color: #ffffff;
-  padding: 10px 20px;
+  padding: 8px 14px;
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-nav__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.26);
 }
 
 @media (max-width: 1024px) {
   .home-nav {
-    gap: 14px;
-    padding: 8px 0 12px;
+    gap: 12px;
+    padding: 6px 10px;
   }
 
   .home-nav__brand {
@@ -229,7 +293,7 @@ body {
   }
 
   .home-nav__links {
-    gap: 18px;
+    gap: 14px;
   }
 
   .home-nav__link,
@@ -242,7 +306,7 @@ body {
   }
 
   .home-nav__cta {
-    padding: 8px 14px;
+    padding: 7px 12px;
     font-size: 0.92rem;
   }
 }
@@ -252,13 +316,13 @@ body {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
-  border-bottom: 1px solid var(--stroke);
+  border-bottom: none;
   padding: 40px 6vw 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  min-height: 520px;
+  min-height: calc(100vh - 104px);
 }
 
 .home-hero__inner {
@@ -275,7 +339,7 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 0;
 }
 
@@ -310,6 +374,24 @@ body {
   opacity: 0;
 }
 
+.home-hero__caret--blink {
+  animation: home-caret-blink 1s step-end infinite;
+}
+
+@keyframes home-caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  95% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .home-hero__lead {
   font-size: 1.1rem;
   color: var(--muted);
@@ -323,6 +405,50 @@ body {
 
 .home-hero-meta__inner {
   max-width: 720px;
+}
+
+.home-demo {
+  border-bottom: 1px solid var(--stroke);
+  padding: 34px 0 36px;
+}
+
+.home-demo__top {
+  max-width: 880px;
+  margin: 0 auto 14px;
+}
+
+.home-demo__eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.home-demo h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 3.1vw, 2.4rem);
+  font-family: 'Fraunces', serif;
+}
+
+.home-demo__frame {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  border-radius: 24px;
+  border: 1px solid #d7deec;
+  background: linear-gradient(165deg, #ffffff 0%, #f5f8ff 62%, #eef4ff 100%);
+  padding: 14px;
+  box-shadow: 0 24px 58px rgba(15, 23, 42, 0.12);
+}
+
+.home-demo__video {
+  width: 100%;
+  display: block;
+  border-radius: 16px;
+  border: 1px solid #d8e2fb;
+  background: #dde7ff;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
 }
 
 .home-hero__stats {
@@ -495,7 +621,7 @@ body {
   display: flex;
   flex-direction: column;
   opacity: 0.78;
-  box-shadow: 0 3px 5px -1px rgba(15, 23, 42, 0.12);
+  box-shadow: none;
   border: 1px solid rgba(59, 130, 246, 0.32);
   overflow: hidden;
 }
@@ -1504,7 +1630,14 @@ body {
     align-items: center;
     column-gap: 10px;
     row-gap: 10px;
-    padding: 6px 0 10px;
+    padding: 6px 8px;
+    border-radius: 14px;
+    top: 8px;
+  }
+
+  .home-fold > .home-nav {
+    margin-left: 5vw;
+    margin-right: 5vw;
   }
 
   .home-nav__brand {
@@ -1528,10 +1661,10 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-    border: 1px solid var(--stroke);
+    border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 12px;
     padding: 10px;
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.96);
   }
 
   .home-nav--open .home-nav__links {
@@ -1575,7 +1708,21 @@ body {
 
   .home-hero {
     padding: 30px 5vw 26px;
-    min-height: 500px;
+    min-height: calc(100vh - 86px);
+  }
+
+  .home-demo {
+    padding: 24px 0 26px;
+  }
+
+  .home-demo__frame {
+    border-radius: 18px;
+    padding: 10px;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+  }
+
+  .home-demo__video {
+    border-radius: 12px;
   }
 
   .home-chain__caption {
