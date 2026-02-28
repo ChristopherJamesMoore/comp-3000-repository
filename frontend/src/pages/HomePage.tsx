@@ -1,7 +1,7 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import gsap from 'gsap';
+import React, { useEffect, useRef, useState } from 'react';
 import { AuthMode } from '../types';
 import MarketingNav from '../components/MarketingNav';
+import HeroChainBackdrop from '../components/HeroChainBackdrop';
 
 type HomePageProps = {
     authToken: string | null;
@@ -29,108 +29,60 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
     const headline = 'Trust every medication handoff.';
     const [typed, setTyped] = useState('');
     const [showCaret, setShowCaret] = useState(true);
+    const [typingComplete, setTypingComplete] = useState(false);
     const mainRef = useFadeOnScroll();
-    const chainSectionRef = useRef<HTMLElement>(null);
-    const chainModelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         let index = 0;
+        setTypingComplete(false);
         const typeTimer = window.setInterval(() => {
             index += 1;
             setTyped(headline.slice(0, index));
             if (index >= headline.length) {
                 window.clearInterval(typeTimer);
+                setTypingComplete(true);
+                setShowCaret(true);
             }
         }, 45);
         return () => window.clearInterval(typeTimer);
     }, []);
 
     useEffect(() => {
+        if (typingComplete) {
+            setShowCaret(true);
+            return undefined;
+        }
         const blinkTimer = window.setInterval(() => {
             setShowCaret((prev) => !prev);
         }, 500);
         return () => window.clearInterval(blinkTimer);
-    }, []);
-
-    useLayoutEffect(() => {
-        if (!chainModelRef.current) return undefined;
-
-        const media = gsap.matchMedia();
-        let activeTween: gsap.core.Tween | null = null;
-
-        const spinRandomly = () => {
-            if (!chainModelRef.current) return;
-            const randomSign = () => (Math.random() > 0.5 ? 1 : -1);
-            const xStep = randomSign() * gsap.utils.random(55, 160);
-            const yStep = randomSign() * gsap.utils.random(80, 240);
-            const zStep = randomSign() * gsap.utils.random(20, 80);
-
-            activeTween = gsap.to(chainModelRef.current, {
-                rotateX: `+=${xStep}`,
-                rotateY: `+=${yStep}`,
-                rotateZ: `+=${zStep}`,
-                duration: gsap.utils.random(2.6, 4.8),
-                ease: 'sine.inOut',
-                onComplete: spinRandomly
-            });
-        };
-
-        media.add('(prefers-reduced-motion: no-preference)', () => {
-            const ctx = gsap.context(() => {
-                gsap.set(chainModelRef.current, { rotateX: 12, rotateY: -18, rotateZ: -4, scale: 1 });
-                spinRandomly();
-            }, chainSectionRef);
-            return () => ctx.revert();
-        });
-
-        return () => {
-            if (activeTween) activeTween.kill();
-            media.revert();
-        };
-    }, []);
+    }, [typingComplete]);
 
     return (
         <main className="home" ref={mainRef}>
             <MarketingNav authToken={authToken} onNavigate={onNavigate} />
 
             <section className="home-hero">
+                <HeroChainBackdrop />
                 <div className="home-hero__inner">
-                    <p className="home-hero__eyebrow">LedgRx &bull; Private pharma traceability</p>
                     <h1 className="home-hero__typing">
-                        <span>{typed || '\u00A0'}</span>
+                        {typed || '\u00A0'}
                         <span className={showCaret ? 'home-hero__caret' : 'home-hero__caret home-hero__caret--off'}>|</span>
                     </h1>
+                </div>
+            </section>
+
+            <section className="home-hero-meta fade-section">
+                <div className="home-hero-meta__inner">
+                    <p className="home-hero__eyebrow">LedgRx &bull; Private pharma traceability</p>
                     <p className="home-hero__lead">
                         LedgRx is a private, auditable trail for medications. We help manufacturers, distributors, and
                         pharmacists verify origin, track custody, and deliver instant QR verification.
                     </p>
-
-                    <div className="home-hero__stats fade-section">
+                    <div className="home-hero__stats">
                         <div><strong>Hyperledger Fabric</strong><span>Private blockchain</span></div>
                         <div><strong>QR verification</strong><span>Instant scan</span></div>
                         <div><strong>Full audit trail</strong><span>Every handoff logged</span></div>
-                    </div>
-                </div>
-            </section>
-
-            <section className="home-chain fade-section" ref={chainSectionRef} aria-label="Blockchain visualization">
-                <div className="home-chain__inner">
-                    <p className="home-chain__eyebrow">Immutable event sequence</p>
-                    <h2>Follow each block through the supply chain.</h2>
-                    <div className="home-chain__stage">
-                        <div className="home-chain__halo" />
-                        <div className="home-chain__model" ref={chainModelRef}>
-                            {Array.from({ length: 8 }).map((_, index) => (
-                                <React.Fragment key={index}>
-                                    <div className="home-chain__node" />
-                                    {index < 7 && <div className="home-chain__link" />}
-                                </React.Fragment>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="home-chain__caption">
-                        <p className="home-chain__caption-line">Autonomous random rotation</p>
-                        <p className="home-chain__caption-line">Every transfer keeps cryptographic continuity</p>
                     </div>
                 </div>
             </section>
