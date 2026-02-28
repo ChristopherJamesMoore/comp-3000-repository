@@ -46,7 +46,8 @@ const HeroChainBackdrop: React.FC = () => {
                 if (!stage || !model || !pillField) return;
 
                 const segments = gsap.utils.toArray<HTMLElement>('.home-chain__segment', model);
-                gsap.set(model, { rotateX: 12, rotateY: -18, rotateZ: -4, scale: 1, x: 0, y: 0 });
+                const baseModelY = 86;
+                gsap.set(model, { rotateX: 12, rotateY: -18, rotateZ: -4, scale: 1, x: 0, y: baseModelY });
                 gsap.set(segments, { transformOrigin: 'center center', y: 0, z: 0, rotateX: 0, rotateZ: 0 });
 
                 const modelXTo = gsap.quickTo(model, 'x', { duration: 0.32, ease: 'power2.out' });
@@ -65,7 +66,7 @@ const HeroChainBackdrop: React.FC = () => {
 
                     if (!inside) {
                         modelXTo(0);
-                        modelYTo(0);
+                        modelYTo(baseModelY);
                         ampTo(8);
                         cursorXTo(0);
                         cursorYTo(0);
@@ -75,7 +76,7 @@ const HeroChainBackdrop: React.FC = () => {
                     const nx = (event.clientX - rect.left) / rect.width - 0.5;
                     const ny = (event.clientY - rect.top) / rect.height - 0.5;
                     modelXTo(nx * 24);
-                    modelYTo(ny * 17);
+                    modelYTo(baseModelY + ny * 17);
                     ampTo(8.5 + (Math.abs(nx) + Math.abs(ny)) * 9.5);
                     cursorXTo(nx);
                     cursorYTo(ny);

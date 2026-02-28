@@ -193,6 +193,7 @@ body {
   z-index: 2;
   width: 100%;
   text-align: center;
+  transform: translateY(-84px);
 }
 
 .hero-chain-backdrop {
@@ -1421,6 +1422,10 @@ body {
 
   .home-chain__model {
     gap: 0;
+  }
+
+  .home-hero__inner {
+    transform: translateY(-52px);
   }
 
   .home-chain__caption {
