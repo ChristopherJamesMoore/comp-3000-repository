@@ -89,8 +89,8 @@ const HeroChainBackdrop: React.FC = () => {
                 const bounds = pillField.getBoundingClientRect();
                 const isMobile = bounds.width <= 640;
                 const isTablet = bounds.width > 640 && bounds.width <= 1024;
-                const pillWidth = 9;
-                const pillHeight = 21;
+                const pillWidth = 7;
+                const pillHeight = 16;
                 const minX = 2;
                 const minY = 2;
                 const maxX = Math.max(minX, bounds.width - pillWidth - 2);

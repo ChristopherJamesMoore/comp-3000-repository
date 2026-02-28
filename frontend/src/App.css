@@ -615,8 +615,8 @@ body {
 
 .home-chain__pill {
   position: absolute;
-  width: 9px;
-  height: 21px;
+  width: 7px;
+  height: 16px;
   border-radius: 999px;
   display: flex;
   flex-direction: column;
@@ -632,7 +632,7 @@ body {
 }
 
 .home-chain__pill-half--color {
-  background: #4f8ef7;
+  background: #2563eb;
 }
 
 .home-chain__pill-half--white {
@@ -645,7 +645,7 @@ body {
 }
 
 .home-chain__pill--blue .home-chain__pill-half--color {
-  background: #4f8ef7;
+  background: #2563eb;
 }
 
 .home-chain__pill--blue .home-chain__pill-half--white {
@@ -657,7 +657,7 @@ body {
 }
 
 .home-chain__pill--teal .home-chain__pill-half--color {
-  background: #14b8a6;
+  background: #0d9488;
 }
 
 .home-chain__pill--teal .home-chain__pill-half--white {
