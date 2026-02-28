@@ -154,19 +154,50 @@ body {
 
 .home-nav__menu {
   display: none;
-  border: 1px solid var(--stroke);
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d1d5db;
   background: #ffffff;
   color: var(--ink);
-  padding: 7px 12px;
-  border-radius: 999px;
-  font-weight: 600;
+  padding: 0;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
   cursor: pointer;
+}
+
+.home-nav__menu-bar {
+  display: block;
+  width: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: #111827;
+  transform-origin: center;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.home-nav--open .home-nav__menu-bar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.home-nav--open .home-nav__menu-bar:nth-child(2) {
+  opacity: 0;
+}
+
+.home-nav--open .home-nav__menu-bar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
 }
 
 .home-nav__actions {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.home-nav__mobile-auth {
+  display: none;
 }
 
 .home-nav__action {
@@ -1469,7 +1500,7 @@ body {
 
   .home-nav {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
     align-items: center;
     column-gap: 10px;
     row-gap: 10px;
@@ -1482,14 +1513,11 @@ body {
 
   .home-nav__menu {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.84rem;
+    justify-self: end;
   }
 
   .home-nav__actions {
-    justify-self: end;
-    gap: 8px;
+    display: none;
   }
 
   .home-nav__links {
@@ -1500,7 +1528,7 @@ body {
     gap: 8px;
     border: 1px solid var(--stroke);
     border-radius: 12px;
-    padding: 8px;
+    padding: 10px;
     background: #ffffff;
   }
 
@@ -1522,11 +1550,25 @@ body {
 
   .home-nav__action {
     font-size: 0.9rem;
+    border: 1px solid var(--stroke);
+    border-radius: 999px;
+    padding: 7px 12px;
   }
 
   .home-nav__cta {
     padding: 7px 12px;
     font-size: 0.84rem;
+  }
+
+  .home-nav__mobile-auth {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--stroke);
   }
 
   .home-hero {

@@ -27,7 +27,9 @@ const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, onNavigate }) =>
                 aria-label="Toggle navigation menu"
                 onClick={() => setMobileOpen((prev) => !prev)}
             >
-                {mobileOpen ? 'Close' : 'Menu'}
+                <span className="home-nav__menu-bar" />
+                <span className="home-nav__menu-bar" />
+                <span className="home-nav__menu-bar" />
             </button>
 
             <nav className="home-nav__links">
@@ -46,6 +48,22 @@ const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, onNavigate }) =>
                 <button type="button" onClick={() => handleNavigate('/pricing')} className="home-nav__link">
                     Pricing
                 </button>
+                <div className="home-nav__mobile-auth">
+                    {authToken ? (
+                        <button className="home-nav__cta" onClick={() => handleNavigate('/app')}>
+                            Open dashboard
+                        </button>
+                    ) : (
+                        <>
+                            <button className="home-nav__action" onClick={() => handleNavigate('/login', 'login')}>
+                                Log in
+                            </button>
+                            <button className="home-nav__cta" onClick={() => handleNavigate('/login', 'signup')}>
+                                Sign up
+                            </button>
+                        </>
+                    )}
+                </div>
             </nav>
             <div className="home-nav__actions">
                 {authToken ? (
