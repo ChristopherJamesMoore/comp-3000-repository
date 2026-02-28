@@ -12,10 +12,20 @@ const HeroChainBackdrop: React.FC = () => {
         if (!stageRef.current) return undefined;
 
         const stage = stageRef.current;
+        const deriveGrid = (width: number, height: number) => {
+            const isMobile = width <= 640;
+            const isTablet = width > 640 && width <= 1024;
+            const spacingX = isMobile ? 44 : isTablet ? 62 : 86;
+            const spacingY = isMobile ? 70 : isTablet ? 82 : 90;
+            // +1 ensures edge-to-edge fill without visible empty bands.
+            const cols = Math.max(10, Math.ceil(width / spacingX) + 1);
+            const rows = Math.max(6, Math.ceil(height / spacingY) + 1);
+            return { cols, rows };
+        };
+
         const updateGrid = () => {
             const rect = stage.getBoundingClientRect();
-            const cols = Math.max(12, Math.ceil(rect.width / 86));
-            const rows = Math.max(6, Math.ceil(rect.height / 90));
+            const { cols, rows } = deriveGrid(rect.width, rect.height);
             setPillGrid((prev) => (prev.cols === cols && prev.rows === rows ? prev : { cols, rows }));
         };
 
@@ -89,6 +99,8 @@ const HeroChainBackdrop: React.FC = () => {
 
                 const pills = pillField.querySelectorAll<HTMLElement>('.home-chain__pill');
                 const bounds = pillField.getBoundingClientRect();
+                const isMobile = bounds.width <= 640;
+                const isTablet = bounds.width > 640 && bounds.width <= 1024;
                 const pillWidth = 7;
                 const pillHeight = 16;
                 const minX = 2;
@@ -116,7 +128,11 @@ const HeroChainBackdrop: React.FC = () => {
                     pillTweens.push(
                         gsap.to(pill, {
                             rotation: '+=360',
-                            duration: Math.random() * 4 + 4,
+                            duration: isMobile
+                                ? Math.random() * 3 + 7
+                                : isTablet
+                                    ? Math.random() * 3 + 6
+                                    : Math.random() * 4 + 4,
                             repeat: -1,
                             ease: 'none',
                         })
