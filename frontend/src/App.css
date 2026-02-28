@@ -1509,6 +1509,8 @@ body {
 
   .home-nav__brand {
     font-size: 1.05rem;
+    justify-self: start;
+    text-align: left;
   }
 
   .home-nav__menu {
