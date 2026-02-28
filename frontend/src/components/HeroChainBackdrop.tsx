@@ -1,6 +1,12 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 
+const getPillVariant = (index: number): 'blue' | 'teal' => {
+    const bucket = (index * 37 + 13) % 10;
+    if (bucket < 7) return 'blue';
+    return 'teal';
+};
+
 const HeroChainBackdrop: React.FC = () => {
     const [pillGrid, setPillGrid] = useState({ cols: 18, rows: 7 });
     const pillCount = pillGrid.cols * pillGrid.rows;
@@ -83,8 +89,8 @@ const HeroChainBackdrop: React.FC = () => {
                 const bounds = pillField.getBoundingClientRect();
                 const isMobile = bounds.width <= 640;
                 const isTablet = bounds.width > 640 && bounds.width <= 1024;
-                const pillWidth = 7;
-                const pillHeight = 16;
+                const pillWidth = 9;
+                const pillHeight = 21;
                 const minX = 2;
                 const minY = 2;
                 const maxX = Math.max(minX, bounds.width - pillWidth - 2);
@@ -178,8 +184,8 @@ const HeroChainBackdrop: React.FC = () => {
         <div className="hero-chain-backdrop" ref={stageRef} aria-hidden="true">
             <div className="home-chain__pillfield" ref={pillFieldRef}>
                 {Array.from({ length: pillCount }).map((_, index) => (
-                    <div className="home-chain__pill" key={index}>
-                        <span className="home-chain__pill-half home-chain__pill-half--blue" />
+                    <div className={`home-chain__pill home-chain__pill--${getPillVariant(index)}`} key={index}>
+                        <span className="home-chain__pill-half home-chain__pill-half--color" />
                         <span className="home-chain__pill-half home-chain__pill-half--white" />
                     </div>
                 ))}
