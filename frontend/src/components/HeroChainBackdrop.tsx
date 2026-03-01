@@ -52,6 +52,7 @@ const HeroChainBackdrop: React.FC = () => {
         let tickerFn: (() => void) | null = null;
         let detachPointerHandlers: (() => void) | null = null;
         let pillTweens: gsap.core.Tween[] = [];
+        let visibilityObserver: IntersectionObserver | null = null;
 
         media.add('(prefers-reduced-motion: no-preference)', () => {
             const ctx = gsap.context(() => {
@@ -153,7 +154,10 @@ const HeroChainBackdrop: React.FC = () => {
                     );
                 });
 
+                let wasHoverActive = false;
                 tickerFn = () => {
+                    if (!hover.active && !wasHoverActive) return;
+                    wasHoverActive = hover.active;
                     pillEntries.forEach((entry) => {
                         let influence = 0;
                         if (hover.active) {
@@ -168,6 +172,20 @@ const HeroChainBackdrop: React.FC = () => {
                     });
                 };
                 gsap.ticker.add(tickerFn);
+
+                visibilityObserver = new IntersectionObserver(
+                    ([entry]) => {
+                        if (entry.isIntersecting) {
+                            pillTweens.forEach((t) => t.resume());
+                            if (tickerFn) gsap.ticker.add(tickerFn);
+                        } else {
+                            pillTweens.forEach((t) => t.pause());
+                            if (tickerFn) gsap.ticker.remove(tickerFn);
+                        }
+                    },
+                    { threshold: 0 }
+                );
+                visibilityObserver.observe(stage);
             }, stageRef);
             return () => ctx.revert();
         });
@@ -175,6 +193,7 @@ const HeroChainBackdrop: React.FC = () => {
         return () => {
             if (tickerFn) gsap.ticker.remove(tickerFn);
             if (detachPointerHandlers) detachPointerHandlers();
+            if (visibilityObserver) visibilityObserver.disconnect();
             pillTweens.forEach((tween) => tween.kill());
             media.revert();
         };
