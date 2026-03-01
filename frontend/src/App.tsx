@@ -13,6 +13,8 @@ import CustomersPage from './pages/CustomersPage';
 import PricingPage from './pages/PricingPage';
 import PolicyPage from './pages/PolicyPage';
 import AddMedicationPage from './pages/AddMedicationPage';
+import AdminSetupPage from './pages/AdminSetupPage';
+import AdminPage from './pages/AdminPage';
 import OnboardingPage from './pages/OnboardingPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import MarketingFooter from './components/MarketingFooter';
@@ -40,6 +42,7 @@ const App: React.FC = () => {
         adminUsers,
         adminError,
         adminLoading,
+        hasAdmin,
         authFetch,
         loadAdminUsers,
         handleLoginFormChange,
@@ -50,7 +53,8 @@ const App: React.FC = () => {
         handleLogout,
         handleProfileSave,
         approveUser,
-        rejectUser
+        rejectUser,
+        bootstrapAdmin
     } = useAuth({ requiresAuth, navigate, setToast });
     const onNavigate = useNavigateWithAuthMode(navigate, setAuthMode);
     const { activeTab, handleNavSelect } = useDashboardNav(navigate);
@@ -202,13 +206,15 @@ const App: React.FC = () => {
     const approvalStatus = profile?.approvalStatus || 'approved';
     const isPendingApproval = !!authToken && profile !== null && !profileIncomplete
         && approvalStatus !== 'approved' && !profile.isAdmin;
+    const showSetup = route === '/setup';
     const showOnboarding = profileIncomplete && (route === '/app' || route === '/app/add' || route === '/account');
     const showPendingApproval = isPendingApproval && (route === '/app' || route === '/app/add' || route === '/account');
     const showDashboard = route === '/app' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAddMedication = route === '/app/add' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAccount = route === '/account' && !!authToken && !profileIncomplete && !isPendingApproval;
-    const showLogin = route === '/login' || (!authToken && requiresAuth);
-    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding && !showPendingApproval;
+    const showAdmin = route === '/app/admin' && !!authToken && !profileIncomplete && !isPendingApproval;
+    const showLogin = (route === '/login' || (!authToken && requiresAuth)) && !showSetup;
+    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding && !showPendingApproval && !showSetup && !showAdmin;
     const marketingPage = marketingPages[route] ?? marketingPages['/'];
 
     const companyType = (profile?.companyType || '').toLowerCase();
@@ -248,6 +254,16 @@ const App: React.FC = () => {
                 />
             )}
 
+            {showSetup && (
+                <AdminSetupPage
+                    onBootstrap={async (username, password) => {
+                        await bootstrapAdmin(username, password);
+                        navigate('/app');
+                    }}
+                    onNavigateLogin={() => navigate('/login')}
+                />
+            )}
+
             {showLogin && (
                 <LoginPage
                     authMode={authMode}
@@ -258,6 +274,7 @@ const App: React.FC = () => {
                     onSubmitLogin={handleLogin}
                     onSubmitSignup={handleSignup}
                     onNavigateHome={() => onNavigate('/')}
+                    onSetup={!hasAdmin ? () => navigate('/setup') : undefined}
                 />
             )}
 
@@ -267,6 +284,7 @@ const App: React.FC = () => {
                     onAccountClick={() => navigate('/account')}
                     activeNav={activeTab}
                     onNavSelect={handleNavSelect}
+                    isAdmin={!!profile?.isAdmin}
                     canAdd={canAdd}
                     canReceive={canReceive}
                     canArrived={canArrived}
@@ -328,6 +346,21 @@ const App: React.FC = () => {
                     isSubmitting={isSubmitting}
                     addError={addError}
                     canAdd={canAdd}
+                    isAdmin={!!profile?.isAdmin}
+                />
+            )}
+
+            {showAdmin && (
+                <AdminPage
+                    userName={profile?.username || 'User'}
+                    onAccountClick={() => navigate('/account')}
+                    onNavSelect={handleNavSelect}
+                    adminUsers={adminUsers}
+                    adminLoading={adminLoading}
+                    adminError={adminError}
+                    onReloadAdmin={loadAdminUsers}
+                    onApproveUser={approveUser}
+                    onRejectUser={rejectUser}
                 />
             )}
 
@@ -341,12 +374,7 @@ const App: React.FC = () => {
                     onProfileSave={handleProfileSave}
                     onBack={() => navigate('/app')}
                     onLogout={handleLogout}
-                    adminUsers={adminUsers}
-                    adminLoading={adminLoading}
-                    adminError={adminError}
-                    onReloadAdmin={loadAdminUsers}
-                    onApproveUser={approveUser}
-                    onRejectUser={rejectUser}
+                    onAdminClick={() => navigate('/app/admin')}
                 />
             )}
 

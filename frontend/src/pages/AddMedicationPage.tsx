@@ -14,6 +14,7 @@ type AddMedicationPageProps = {
     isSubmitting: boolean;
     addError: string;
     canAdd: boolean;
+    isAdmin?: boolean;
 };
 
 const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
@@ -26,7 +27,8 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
     onSubmit,
     isSubmitting,
     addError,
-    canAdd
+    canAdd,
+    isAdmin
 }) => (
     <DashboardLayout
         userName={userName}
@@ -38,6 +40,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
         canAdd={canAdd}
         canReceive={false}
         canArrived={false}
+        isAdmin={isAdmin}
     >
         <section className="dashboard__panel">
             <form className="card card--form" onSubmit={onSubmit}>

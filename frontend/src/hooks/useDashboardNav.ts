@@ -10,6 +10,10 @@ export const useDashboardNav = (navigate: (path: string) => void) => {
                 navigate('/app/add');
                 return;
             }
+            if (nav === 'admin') {
+                navigate('/app/admin');
+                return;
+            }
             setActiveTab(nav);
             navigate('/app');
         },

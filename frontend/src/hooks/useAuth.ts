@@ -22,12 +22,17 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
     const [adminError, setAdminError] = useState('');
     const [adminLoading, setAdminLoading] = useState(false);
+    const [hasAdmin, setHasAdmin] = useState(true);
 
     useEffect(() => {
         const stored = localStorage.getItem('authToken');
         if (stored) {
             setAuthToken(stored);
         }
+        fetch(buildUrl('/api/admin/check'))
+            .then((r) => r.json())
+            .then((d) => setHasAdmin(!!d.hasAdmin))
+            .catch(() => setHasAdmin(true));
     }, []);
 
     const authFetch = useCallback<AuthFetch>(
@@ -300,6 +305,29 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
+    const bootstrapAdmin = useCallback(
+        async (username: string, password: string) => {
+            const response = await fetch(buildUrl('/api/admin/bootstrap'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Bootstrap failed.');
+            }
+            localStorage.setItem('authToken', data.token);
+            setAuthToken(data.token);
+            if (data.user) {
+                setProfile(data.user);
+                setProfileForm({ companyType: '', companyName: '', registrationNumber: '' });
+            }
+            setHasAdmin(true);
+            return data;
+        },
+        []
+    );
+
     return {
         authToken,
         authMode,
@@ -313,6 +341,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         adminUsers,
         adminError,
         adminLoading,
+        hasAdmin,
         authFetch,
         loadAdminUsers,
         handleLoginFormChange,
@@ -323,6 +352,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         handleLogout,
         handleProfileSave,
         approveUser,
-        rejectUser
+        rejectUser,
+        bootstrapAdmin
     };
 };

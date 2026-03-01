@@ -278,6 +278,70 @@ const createApp = (contract, db) => {
         res.json({ ok: true });
     });
 
+    app.get('/api/admin/check', async (req, res) => {
+        try {
+            if (getEnv('ADMIN_USERNAMES', '').trim()) {
+                return res.json({ hasAdmin: true });
+            }
+            if (usersCollection) {
+                const adminUser = await usersCollection.findOne({ isAdmin: true });
+                return res.json({ hasAdmin: !!adminUser });
+            }
+            return res.json({ hasAdmin: false });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Check failed.' });
+        }
+    });
+
+    app.post('/api/admin/bootstrap', async (req, res) => {
+        try {
+            if (getEnv('ADMIN_USERNAMES', '').trim()) {
+                return res.status(409).json({ error: 'Admin already exists.' });
+            }
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Bootstrap requires MONGODB_URI.' });
+            }
+            const adminUser = await usersCollection.findOne({ isAdmin: true });
+            if (adminUser) {
+                return res.status(409).json({ error: 'Admin already exists.' });
+            }
+            const { username, password } = req.body;
+            if (!username || !password) {
+                return res.status(400).json({ error: 'Username and password are required.' });
+            }
+            if (username.length < 3) {
+                return res.status(400).json({ error: 'Username must be at least 3 characters.' });
+            }
+            if (password.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+            }
+            const existing = await usersCollection.findOne({ username });
+            if (existing) {
+                return res.status(409).json({ error: 'Username already exists.' });
+            }
+            const passwordHash = await bcrypt.hash(password, 10);
+            await usersCollection.insertOne({
+                username,
+                passwordHash,
+                companyType: '',
+                companyName: '',
+                createdAt: new Date(),
+                isAdmin: true,
+                approvalStatus: 'approved',
+                registrationNumber: '',
+                approvedBy: null,
+                approvedAt: null
+            });
+            const token = createToken({ sub: username, jti: crypto.randomUUID() });
+            return res.json({
+                token,
+                user: { username, isAdmin: true, approvalStatus: 'approved' }
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Bootstrap failed.' });
+        }
+    });
+
     app.get('/api/auth/me', authMiddleware, async (req, res) => {
         try {
             const username = req.user?.sub;

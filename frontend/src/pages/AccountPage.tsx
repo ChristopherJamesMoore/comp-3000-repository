@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, RefreshCw } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { UserProfile } from '../types';
 
 type AccountPageProps = {
@@ -11,12 +11,7 @@ type AccountPageProps = {
     onProfileSave: (e: React.FormEvent) => void;
     onBack: () => void;
     onLogout: () => void;
-    adminUsers: UserProfile[];
-    adminLoading: boolean;
-    adminError: string;
-    onReloadAdmin: () => void;
-    onApproveUser: (username: string) => Promise<unknown>;
-    onRejectUser: (username: string) => Promise<unknown>;
+    onAdminClick?: () => void;
 };
 
 const AccountPage: React.FC<AccountPageProps> = ({
@@ -28,25 +23,8 @@ const AccountPage: React.FC<AccountPageProps> = ({
     onProfileSave,
     onBack,
     onLogout,
-    adminUsers,
-    adminLoading,
-    adminError,
-    onReloadAdmin,
-    onApproveUser,
-    onRejectUser
+    onAdminClick
 }) => {
-    const handleApprove = async (username: string) => {
-        try {
-            await onApproveUser(username);
-            onReloadAdmin();
-        } catch { /* toast handled upstream */ }
-    };
-    const handleReject = async (username: string) => {
-        try {
-            await onRejectUser(username);
-            onReloadAdmin();
-        } catch { /* toast handled upstream */ }
-    };
     const profileLocked = !!profile?.companyType && !!profile?.companyName;
     return (
     <>
@@ -100,6 +78,11 @@ const AccountPage: React.FC<AccountPageProps> = ({
                         <button type="submit" className="button button--primary" disabled={profileSaving}>
                             {profileSaving ? 'Saving...' : 'Save details'}
                         </button>
+                        {profile?.isAdmin && onAdminClick && (
+                            <button type="button" className="button button--ghost" onClick={onAdminClick}>
+                                Admin dashboard →
+                            </button>
+                        )}
                         <button type="button" className="button button--ghost" onClick={onBack}>
                             Back to dashboard
                         </button>
@@ -110,66 +93,6 @@ const AccountPage: React.FC<AccountPageProps> = ({
                 </form>
             </div>
         </section>
-
-        {profile?.isAdmin && (
-            <section className="panel panel--account">
-                <div className="card card--form account-card">
-                    <div className="account-card__header">
-                        <h2>Admin: user directory</h2>
-                        <span>{adminLoading ? 'Loading…' : `${adminUsers.length} users`}</span>
-                    </div>
-                    {adminError && <div className="inline-error">{adminError}</div>}
-                    {!adminError && (
-                        <div className="admin-table">
-                            <div className="admin-table__row admin-table__row--head">
-                                <span>Username</span>
-                                <span>Company Type</span>
-                                <span>Company Name</span>
-                                <span>Status</span>
-                            </div>
-                            {adminUsers.map((user) => {
-                                const status = user.approvalStatus || 'approved';
-                                return (
-                                    <div className="admin-table__row" key={user.username}>
-                                        <span>{user.username}</span>
-                                        <span>{user.companyType || '—'}</span>
-                                        <span>{user.companyName || '—'}</span>
-                                        <span>
-                                            {status === 'pending' ? (
-                                                <span className="admin-table__actions">
-                                                    <button
-                                                        className="button button--primary button--mini"
-                                                        onClick={() => handleApprove(user.username)}
-                                                    >
-                                                        Approve
-                                                    </button>
-                                                    <button
-                                                        className="button button--ghost button--mini"
-                                                        onClick={() => handleReject(user.username)}
-                                                    >
-                                                        Reject
-                                                    </button>
-                                                </span>
-                                            ) : (
-                                                <span className={`pill pill--${status}`}>
-                                                    {status}
-                                                </span>
-                                            )}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                    <div className="form__actions">
-                        <button type="button" className="button button--ghost" onClick={onReloadAdmin}>
-                            <RefreshCw size={16} />
-                            Refresh
-                        </button>
-                    </div>
-                </div>
-            </section>
-        )}
     </>
     );
 };

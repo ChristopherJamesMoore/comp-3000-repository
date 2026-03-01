@@ -12,6 +12,7 @@ type DashboardPageProps = {
     canAdd: boolean;
     canReceive: boolean;
     canArrived: boolean;
+    isAdmin?: boolean;
     medications: Medication[];
     filteredMedications: Medication[];
     isLoading: boolean;
@@ -119,6 +120,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             canAdd={props.canAdd}
             canReceive={props.canReceive}
             canArrived={props.canArrived}
+            isAdmin={props.isAdmin}
         >
             <div className="dashboard__stats">
                 <div>
@@ -138,7 +140,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             {props.activeNav === 'receive' && (
                 <section className="dashboard__panel">
                     <div className="card card--form">
-                        <h2>Mark medications as received</h2>
+                        <h2>Mark medications as received by distributor</h2>
                         <p>Add serial numbers manually or scan QR codes, then submit the batch.</p>
 
                         <div className="batch-input-row">
@@ -210,7 +212,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                             >
                                 {props.batchReceiveLoading
                                     ? 'Processing...'
-                                    : `Mark all received (${props.receiveBatch.length})`}
+                                    : `Mark all received by distributor (${props.receiveBatch.length})`}
                             </button>
                         </div>
 
@@ -220,7 +222,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                             <div className="batch-results">
                                 {props.batchReceiveResults.succeeded.map((item) => (
                                     <div className="batch-result batch-result--success" key={item.serialNumber}>
-                                        {item.serialNumber} — received
+                                        {item.serialNumber} — received by distributor
                                     </div>
                                 ))}
                                 {props.batchReceiveResults.failed.map((item) => (
@@ -233,7 +235,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
 
                         {!props.canReceive && (
                             <div className="inline-error">
-                                Set your account to Distribution to mark received.
+                                Set your account to Distribution to mark received by distributor.
                             </div>
                         )}
                     </div>
@@ -243,7 +245,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             {props.activeNav === 'arrived' && (
                 <section className="dashboard__panel">
                     <div className="card card--form">
-                        <h2>Mark medications as arrived</h2>
+                        <h2>Mark medications as arrived at pharmacy</h2>
                         <p>Add serial numbers manually or scan QR codes, then submit the batch.</p>
 
                         <div className="batch-input-row">
@@ -315,7 +317,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                             >
                                 {props.batchArrivedLoading
                                     ? 'Processing...'
-                                    : `Mark all arrived (${props.arrivedBatch.length})`}
+                                    : `Mark all arrived at pharmacy (${props.arrivedBatch.length})`}
                             </button>
                         </div>
 
@@ -325,7 +327,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                             <div className="batch-results">
                                 {props.batchArrivedResults.succeeded.map((item) => (
                                     <div className="batch-result batch-result--success" key={item.serialNumber}>
-                                        {item.serialNumber} — arrived
+                                        {item.serialNumber} — arrived at pharmacy
                                     </div>
                                 ))}
                                 {props.batchArrivedResults.failed.map((item) => (
@@ -338,7 +340,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
 
                         {!props.canArrived && (
                             <div className="inline-error">
-                                Set your account to Pharmacy or Clinic to mark arrived.
+                                Set your account to Pharmacy or Clinic to mark arrived at pharmacy.
                             </div>
                         )}
                     </div>

@@ -186,7 +186,7 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || 'Failed to mark received.');
             }
-            setToast({ type: 'success', message: 'Medication marked as received.' });
+            setToast({ type: 'success', message: 'Medication marked as received by distributor.' });
             setReceiveSerial('');
             fetchMedications();
         } catch (error: unknown) {
@@ -213,7 +213,7 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || 'Failed to mark arrived.');
             }
-            setToast({ type: 'success', message: 'Medication marked as arrived.' });
+            setToast({ type: 'success', message: 'Medication marked as arrived at pharmacy.' });
             setArrivedSerial('');
             fetchMedications();
         } catch (error: unknown) {
@@ -285,7 +285,7 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
             const data: BatchResult = await response.json();
             setBatchReceiveResults(data);
             if (data.failed.length === 0) {
-                setToast({ type: 'success', message: `All ${data.succeeded.length} medications marked received.` });
+                setToast({ type: 'success', message: `All ${data.succeeded.length} medications marked received by distributor.` });
                 setReceiveBatch([]);
             } else {
                 setToast({ type: 'info', message: `${data.succeeded.length} succeeded, ${data.failed.length} failed.` });
@@ -320,7 +320,7 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
             const data: BatchResult = await response.json();
             setBatchArrivedResults(data);
             if (data.failed.length === 0) {
-                setToast({ type: 'success', message: `All ${data.succeeded.length} medications marked arrived.` });
+                setToast({ type: 'success', message: `All ${data.succeeded.length} medications marked arrived at pharmacy.` });
                 setArrivedBatch([]);
             } else {
                 setToast({ type: 'info', message: `${data.succeeded.length} succeeded, ${data.failed.length} failed.` });

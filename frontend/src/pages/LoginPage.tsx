@@ -11,6 +11,7 @@ type LoginPageProps = {
     onSubmitLogin: (e: React.FormEvent) => void;
     onSubmitSignup: (e: React.FormEvent) => void;
     onNavigateHome: () => void;
+    onSetup?: () => void;
 };
 
 const LoginPage: React.FC<LoginPageProps> = ({
@@ -21,7 +22,8 @@ const LoginPage: React.FC<LoginPageProps> = ({
     onToggleMode,
     onSubmitLogin,
     onSubmitSignup,
-    onNavigateHome
+    onNavigateHome,
+    onSetup
 }) => (
     <main className="auth-page">
         <div className="auth-card">
@@ -68,6 +70,11 @@ const LoginPage: React.FC<LoginPageProps> = ({
                         <Home size={16} />
                         Back to home
                     </button>
+                    {onSetup && (
+                        <button type="button" className="button button--ghost" onClick={onSetup}>
+                            First-time setup
+                        </button>
+                    )}
                 </div>
             </form>
         </div>

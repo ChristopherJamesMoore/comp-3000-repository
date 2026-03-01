@@ -1,7 +1,7 @@
 import React from 'react';
-import { Plus, Truck, CheckCircle2, List } from 'lucide-react';
+import { Plus, Truck, CheckCircle2, List, Shield } from 'lucide-react';
 
-export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view';
+export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view' | 'admin';
 
 type DashboardLayoutProps = {
     userName: string;
@@ -14,6 +14,7 @@ type DashboardLayoutProps = {
     canAdd?: boolean;
     canReceive?: boolean;
     canArrived?: boolean;
+    isAdmin?: boolean;
 };
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -26,7 +27,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     children,
     canAdd = true,
     canReceive = true,
-    canArrived = true
+    canArrived = true,
+    isAdmin = false
 }) => (
     <div className="dashboard">
         <aside className="dashboard__sidebar">
@@ -48,14 +50,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     onClick={() => onNavSelect('receive')}
                 >
                     <Truck size={16} />
-                    Mark received
+                    Mark received by distributor
                 </button>
                 <button
                     className={activeNav === 'arrived' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                     onClick={() => onNavSelect('arrived')}
                 >
                     <CheckCircle2 size={16} />
-                    Mark arrived
+                    Mark arrived at pharmacy
                 </button>
                 <button
                     className={activeNav === 'view' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
@@ -64,6 +66,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <List size={16} />
                     View records
                 </button>
+                {isAdmin && (
+                    <button
+                        className={activeNav === 'admin' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => onNavSelect('admin')}
+                    >
+                        <Shield size={16} />
+                        Admin
+                    </button>
+                )}
             </nav>
         </aside>
 
