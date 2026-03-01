@@ -8,6 +8,7 @@ export type Medication = {
     expiryDate: string;
     productionCompany: string;
     distributionCompany: string;
+    pharmacyCompany: string;
     qrHash?: string;
     status?: 'manufactured' | 'received' | 'arrived';
     statusUpdatedAt?: string;

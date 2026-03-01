@@ -30,7 +30,8 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
         batchNumber: '',
         expiryDate: '',
         productionCompany: '',
-        distributionCompany: ''
+        distributionCompany: '',
+        pharmacyCompany: ''
     });
     const [receiveSerial, setReceiveSerial] = useState('');
     const [receiveLoading, setReceiveLoading] = useState(false);
@@ -92,8 +93,8 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
                 !formData.gtin ||
                 !formData.batchNumber ||
                 !formData.expiryDate ||
-                !formData.productionCompany ||
-                !formData.distributionCompany
+                !formData.distributionCompany ||
+                !formData.pharmacyCompany
             ) {
                 setAddError('All fields are required.');
                 return;
@@ -117,7 +118,8 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
                         batchNumber: '',
                         expiryDate: '',
                         productionCompany: '',
-                        distributionCompany: ''
+                        distributionCompany: '',
+                        pharmacyCompany: ''
                     });
                 } else {
                     const errorData = await response.json();

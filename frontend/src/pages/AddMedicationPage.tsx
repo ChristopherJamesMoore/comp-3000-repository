@@ -15,6 +15,7 @@ type AddMedicationPageProps = {
     addError: string;
     canAdd: boolean;
     isAdmin?: boolean;
+    companyName: string;
 };
 
 const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
@@ -28,7 +29,8 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
     isSubmitting,
     addError,
     canAdd,
-    isAdmin
+    isAdmin,
+    companyName
 }) => (
     <DashboardLayout
         userName={userName}
@@ -111,15 +113,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                 </div>
                 <div className="field">
                     <label>Production Company</label>
-                    <input
-                        type="text"
-                        name="productionCompany"
-                        placeholder="PharmaCorp"
-                        value={formData.productionCompany}
-                        onChange={onInputChange}
-                        required
-                        disabled={!canAdd}
-                    />
+                    <p className="field__info">Auto-filled from your account: <strong>{companyName}</strong></p>
                 </div>
                 <div className="field">
                     <label>Distribution Company</label>
@@ -128,6 +122,18 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                         name="distributionCompany"
                         placeholder="Global Logistics"
                         value={formData.distributionCompany}
+                        onChange={onInputChange}
+                        required
+                        disabled={!canAdd}
+                    />
+                </div>
+                <div className="field">
+                    <label>Destination Pharmacy / Clinic</label>
+                    <input
+                        type="text"
+                        name="pharmacyCompany"
+                        placeholder="Destination pharmacy or clinic name"
+                        value={formData.pharmacyCompany}
                         onChange={onInputChange}
                         required
                         disabled={!canAdd}

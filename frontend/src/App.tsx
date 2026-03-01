@@ -347,6 +347,7 @@ const App: React.FC = () => {
                     addError={addError}
                     canAdd={canAdd}
                     isAdmin={!!profile?.isAdmin}
+                    companyName={profile?.companyName || ''}
                 />
             )}
 

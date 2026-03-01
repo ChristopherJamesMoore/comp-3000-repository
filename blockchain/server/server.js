@@ -776,14 +776,15 @@ const createApp = (contract, db) => {
             if (role !== 'production') {
                 return res.status(403).json({ error: 'Only production companies can add medications.' });
             }
+            const productionCompany = user.companyName;
             const {
                 gtin,
                 batchNumber,
                 expiryDate,
                 serialNumber,
                 medicationName,
-                productionCompany,
-                distributionCompany
+                distributionCompany,
+                pharmacyCompany
             } = req.body;
             if (
                 !gtin ||
@@ -791,8 +792,8 @@ const createApp = (contract, db) => {
                 !expiryDate ||
                 !serialNumber ||
                 !medicationName ||
-                !productionCompany ||
-                !distributionCompany
+                !distributionCompany ||
+                !pharmacyCompany
             ) {
                 return res.status(400).json({ error: 'Missing required fields.' });
             }
@@ -808,6 +809,7 @@ const createApp = (contract, db) => {
                 expiryDate,
                 productionCompany,
                 distributionCompany,
+                pharmacyCompany,
                 qrHash
             );
             const statusCollection = db.collection('medication_status');
@@ -972,7 +974,20 @@ const createApp = (contract, db) => {
                     statusUpdatedByCompanyName: status.updatedByCompanyName
                 };
             });
-            res.json(merged);
+            const requestUser = await loadUserForRequest(db, req);
+            const requestRole = requestUser ? getCompanyRole(requestUser) : null;
+            const companyLower = (requestUser?.companyName || '').toLowerCase();
+            const isAdmin = !!(requestUser?.isAdmin || isAdminUser(requestUser?.username || ''));
+            const visible = isAdmin ? merged : merged.filter((med) => {
+                if (requestRole === 'production')
+                    return (med.productionCompany || '').toLowerCase() === companyLower;
+                if (requestRole === 'distribution')
+                    return (med.distributionCompany || '').toLowerCase() === companyLower;
+                if (requestRole === 'pharmacy' || requestRole === 'clinic')
+                    return (med.pharmacyCompany || '').toLowerCase() === companyLower;
+                return false;
+            });
+            res.json(visible);
         } catch (error) {
             res.status(500).json({ error: error.message || 'Internal server error' });
         }
@@ -988,6 +1003,19 @@ const createApp = (contract, db) => {
             const medication = parseChaincodeJson(result);
             if (!usersCollection) {
                 return res.json(medication);
+            }
+            const requestUser = await loadUserForRequest(db, req);
+            const requestRole = requestUser ? getCompanyRole(requestUser) : null;
+            const companyLower = (requestUser?.companyName || '').toLowerCase();
+            const isAdmin = !!(requestUser?.isAdmin || isAdminUser(requestUser?.username || ''));
+            if (!isAdmin) {
+                const allowed =
+                    (requestRole === 'production' && (medication.productionCompany || '').toLowerCase() === companyLower) ||
+                    (requestRole === 'distribution' && (medication.distributionCompany || '').toLowerCase() === companyLower) ||
+                    ((requestRole === 'pharmacy' || requestRole === 'clinic') && (medication.pharmacyCompany || '').toLowerCase() === companyLower);
+                if (!allowed) {
+                    return res.status(403).json({ error: 'Access denied.' });
+                }
             }
             const statusCollection = db.collection('medication_status');
             const status = await statusCollection.findOne({ serialNumber });
