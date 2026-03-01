@@ -14,14 +14,45 @@ function useFadeOnScroll() {
     useEffect(() => {
         const root = ref.current;
         if (!root) return;
-        const targets = root.querySelectorAll('.fade-section');
-        const io = new IntersectionObserver(
-            (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('visible'); }),
-            { threshold: 0.15 },
-        );
-        targets.forEach((t) => io.observe(t));
-        return () => io.disconnect();
-}, []);
+        const targets = Array.from(root.querySelectorAll<HTMLElement>('.fade-section'));
+        const videoTargets = targets.filter((t) => t.classList.contains('home-demo'));
+        const standardTargets = targets.filter((t) => !t.classList.contains('home-demo'));
+        let lastScrollY = window.scrollY;
+
+        const makeObserver = (revealRatio: number) =>
+            new IntersectionObserver(
+                (entries) => {
+                    const currentScrollY = window.scrollY;
+                    const isScrollingDown = currentScrollY >= lastScrollY;
+                    lastScrollY = currentScrollY;
+
+                    entries.forEach((e) => {
+                        if (e.isIntersecting && e.intersectionRatio >= revealRatio) {
+                            e.target.classList.add('visible');
+                            return;
+                        }
+
+                        // Reset only after scrolling up past the section,
+                        // so the reveal replays on the next downward pass.
+                        if (!isScrollingDown && e.boundingClientRect.top > 0) {
+                            e.target.classList.remove('visible');
+                        }
+                    });
+                },
+                { threshold: [0, revealRatio] },
+            );
+
+        const standardObserver = makeObserver(0.2);
+        const videoObserver = makeObserver(0.5);
+
+        standardTargets.forEach((t) => standardObserver.observe(t));
+        videoTargets.forEach((t) => videoObserver.observe(t));
+
+        return () => {
+            standardObserver.disconnect();
+            videoObserver.disconnect();
+        };
+    }, []);
     return ref;
 }
 
@@ -104,7 +135,6 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
                         loop
                         muted
                         playsInline
-                        controls
                         preload="metadata"
                     >
                         <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />

@@ -11,9 +11,11 @@ import SolutionsPage from './pages/SolutionsPage';
 import ResourcesPage from './pages/ResourcesPage';
 import CustomersPage from './pages/CustomersPage';
 import PricingPage from './pages/PricingPage';
+import PolicyPage from './pages/PolicyPage';
 import AddMedicationPage from './pages/AddMedicationPage';
 import OnboardingPage from './pages/OnboardingPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
+import MarketingFooter from './components/MarketingFooter';
 import { useAuth } from './hooks/useAuth';
 import { useDashboardNav } from './hooks/useDashboardNav';
 import { useMedications } from './hooks/useMedications';
@@ -109,7 +111,91 @@ const App: React.FC = () => {
         '/solutions': <SolutionsPage authToken={authToken} onNavigate={onNavigate} />,
         '/resources': <ResourcesPage authToken={authToken} onNavigate={onNavigate} />,
         '/customers': <CustomersPage authToken={authToken} onNavigate={onNavigate} />,
-        '/pricing': <PricingPage authToken={authToken} onNavigate={onNavigate} />
+        '/pricing': <PricingPage authToken={authToken} onNavigate={onNavigate} />,
+        '/iso-compliance': (
+            <PolicyPage
+                authToken={authToken}
+                onNavigate={onNavigate}
+                eyebrow="Compliance"
+                title="ISO compliance framework"
+                intro="LedgRx aligns private blockchain operations with quality and security control expectations for regulated pharma distribution workflows."
+                points={[
+                    'Operational controls mapped to documented quality procedures.',
+                    'Access control, audit logging, and record retention by default.',
+                    'Continuous review process for control effectiveness and updates.'
+                ]}
+            />
+        ),
+        '/governance-standards': (
+            <PolicyPage
+                authToken={authToken}
+                onNavigate={onNavigate}
+                eyebrow="Governance"
+                title="Governance standards"
+                intro="Our governance model defines ownership, change control, and accountability across organizations participating in the LedgRx network."
+                points={[
+                    'Defined roles for administrators, operators, and compliance teams.',
+                    'Formal change approval for chaincode, API, and infrastructure updates.',
+                    'Traceable decision records for policy and operational exceptions.'
+                ]}
+            />
+        ),
+        '/service-level-agreement': (
+            <PolicyPage
+                authToken={authToken}
+                onNavigate={onNavigate}
+                eyebrow="Service"
+                title="Service level agreement"
+                intro="LedgRx service commitments cover platform uptime, support response windows, incident handling, and recovery objectives."
+                points={[
+                    'Availability targets and planned maintenance communication policy.',
+                    'Severity-based response and escalation timelines.',
+                    'Incident reporting, postmortem process, and remediation tracking.'
+                ]}
+            />
+        ),
+        '/user-data': (
+            <PolicyPage
+                authToken={authToken}
+                onNavigate={onNavigate}
+                eyebrow="Data"
+                title="User data handling"
+                intro="LedgRx limits and protects user data through strict access controls, minimization practices, and auditable processing workflows."
+                points={[
+                    'Least-privilege access for personnel and service accounts.',
+                    'Data minimization and purpose-bound processing standards.',
+                    'Retention windows and secure deletion procedures.'
+                ]}
+            />
+        ),
+        '/privacy-security': (
+            <PolicyPage
+                authToken={authToken}
+                onNavigate={onNavigate}
+                eyebrow="Security"
+                title="Privacy and security controls"
+                intro="Security controls are built around private-network architecture, strong credential governance, and continuous monitoring."
+                points={[
+                    'Private blockchain topology with restricted network exposure.',
+                    'Credential lifecycle management and rotation requirements.',
+                    'Monitoring, alerting, and anomaly response playbooks.'
+                ]}
+            />
+        ),
+        '/data-governance': (
+            <PolicyPage
+                authToken={authToken}
+                onNavigate={onNavigate}
+                eyebrow="Governance"
+                title="Data governance"
+                intro="LedgRx establishes clear ownership for data quality, lineage, and stewardship across manufacturers, distributors, and care providers."
+                points={[
+                    'Data ownership and stewardship responsibilities by role.',
+                    'Validation controls for critical medication traceability fields.',
+                    'End-to-end lineage expectations for compliance and reporting.'
+                ]}
+            />
+        )
     };
 
     const profileIncomplete = !!authToken && profile !== null && !profile.companyType;
@@ -138,7 +224,12 @@ const App: React.FC = () => {
 
             {/* Legacy topbar removed; homepage and dashboard have their own nav */} 
 
-            {showMarketing && marketingPage}
+            {showMarketing && (
+                <>
+                    {marketingPage}
+                    <MarketingFooter onNavigate={onNavigate} />
+                </>
+            )}
 
             {showPendingApproval && (
                 <PendingApprovalPage

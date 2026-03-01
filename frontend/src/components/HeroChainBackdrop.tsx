@@ -143,10 +143,10 @@ const HeroChainBackdrop: React.FC = () => {
                         gsap.to(pill, {
                             rotation: '+=360',
                             duration: isMobile
-                                ? Math.random() * 2 + 10
+                                ? Math.random() * 1.8 + 8.6
                                 : isTablet
-                                    ? Math.random() * 2 + 9
-                                    : Math.random() * 2 + 8,
+                                    ? Math.random() * 1.8 + 7.8
+                                    : Math.random() * 1.8 + 7,
                             repeat: -1,
                             ease: 'none',
                         })
@@ -163,8 +163,8 @@ const HeroChainBackdrop: React.FC = () => {
                             influence = Math.max(0, 1 - distance / effectRadius);
                         }
 
-                        entry.scaleTo(1 + influence * 0.85);
-                        entry.yTo(entry.y - influence * 9);
+                        entry.scaleTo(1 + influence * 3);
+                        entry.yTo(entry.y - influence * 16);
                     });
                 };
                 gsap.ticker.add(tickerFn);
