@@ -164,9 +164,7 @@ body {
   margin: 6px 0 14px;
   border: 1px solid var(--stroke);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 8px 20px rgba(26, 39, 67, 0.06);
   position: sticky;
   top: 10px;
@@ -1298,8 +1296,7 @@ body {
   position: relative;
   z-index: 1;
   margin-top: 36px;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.97);
   border-radius: 28px;
   border: 1px solid var(--stroke);
   padding: 24px;
