@@ -1,5 +1,27 @@
 import React, { useState, useCallback } from 'react';
 import { RefreshCw, Search, QrCode, X } from 'lucide-react';
+
+const STAGES = [
+    { key: 'manufactured', label: 'Production' },
+    { key: 'received',     label: 'Distribution' },
+    { key: 'arrived',      label: 'Pharmacy' },
+] as const;
+
+const StageTrack: React.FC<{ status?: string }> = ({ status = 'manufactured' }) => {
+    const activeIndex = STAGES.findIndex((s) => s.key === status);
+    return (
+        <span className="stage-track">
+            {STAGES.map((stage, i) => (
+                <React.Fragment key={stage.key}>
+                    <span className={`stage-track__step${i === activeIndex ? ' stage-track__step--active' : i < activeIndex ? ' stage-track__step--done' : ''}`}>
+                        {stage.label}
+                    </span>
+                    {i < STAGES.length - 1 && <span className="stage-track__sep">›</span>}
+                </React.Fragment>
+            ))}
+        </span>
+    );
+};
 import { Medication, AuditEntry, BatchResult } from '../types';
 import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
 import QrScanner from '../components/QrScanner';
@@ -406,7 +428,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                                         </div>
                                         <div>
                                             <span>Status</span>
-                                            <strong>{med.status || 'manufactured'}</strong>
+                                            <StageTrack status={med.status} />
                                         </div>
                                     </div>
                                     <div className="record-card__hash">
@@ -462,7 +484,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                                     </div>
                                     <div>
                                         <span>Status</span>
-                                        <strong>{props.lookupResult.status || 'manufactured'}</strong>
+                                        <StageTrack status={props.lookupResult.status} />
                                     </div>
                                 </div>
                             )}
