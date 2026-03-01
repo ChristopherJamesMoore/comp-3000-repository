@@ -305,6 +305,50 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
+    const deleteUser = useCallback(
+        async (username: string) => {
+            const response = await authFetch(`/api/admin/users/${encodeURIComponent(username)}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to delete user.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const updateUserCompany = useCallback(
+        async (username: string, data: { companyType: string; companyName: string; registrationNumber: string }) => {
+            const response = await authFetch(`/api/admin/users/${encodeURIComponent(username)}/company`, {
+                method: 'PATCH',
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to update company info.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const resetUserPassword = useCallback(
+        async (username: string, newPassword: string) => {
+            const response = await authFetch(`/api/admin/users/${encodeURIComponent(username)}/reset-password`, {
+                method: 'POST',
+                body: JSON.stringify({ newPassword })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to reset password.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
     const bootstrapAdmin = useCallback(
         async (username: string, password: string) => {
             const response = await fetch(buildUrl('/api/admin/bootstrap'), {
@@ -353,6 +397,9 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         handleProfileSave,
         approveUser,
         rejectUser,
+        deleteUser,
+        updateUserCompany,
+        resetUserPassword,
         bootstrapAdmin
     };
 };

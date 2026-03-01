@@ -38,27 +38,33 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <strong>{userName}</strong>
             </button>
             <nav className="dashboard__nav">
-                <button
-                    className={activeNav === 'add' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
-                    onClick={() => onNavSelect('add')}
-                >
-                    <Plus size={16} />
-                    Add medication
-                </button>
-                <button
-                    className={activeNav === 'receive' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
-                    onClick={() => onNavSelect('receive')}
-                >
-                    <Truck size={16} />
-                    Mark received by distributor
-                </button>
-                <button
-                    className={activeNav === 'arrived' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
-                    onClick={() => onNavSelect('arrived')}
-                >
-                    <CheckCircle2 size={16} />
-                    Mark arrived at pharmacy
-                </button>
+                {!isAdmin && (
+                    <button
+                        className={activeNav === 'add' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => onNavSelect('add')}
+                    >
+                        <Plus size={16} />
+                        Add medication
+                    </button>
+                )}
+                {!isAdmin && (
+                    <button
+                        className={activeNav === 'receive' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => onNavSelect('receive')}
+                    >
+                        <Truck size={16} />
+                        Mark received by distributor
+                    </button>
+                )}
+                {!isAdmin && (
+                    <button
+                        className={activeNav === 'arrived' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => onNavSelect('arrived')}
+                    >
+                        <CheckCircle2 size={16} />
+                        Mark arrived at pharmacy
+                    </button>
+                )}
                 <button
                     className={activeNav === 'view' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                     onClick={() => onNavSelect('view')}

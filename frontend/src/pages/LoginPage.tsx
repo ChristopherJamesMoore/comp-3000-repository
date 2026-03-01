@@ -59,6 +59,9 @@ const LoginPage: React.FC<LoginPageProps> = ({
                     />
                 </div>
                 {authError && <div className="inline-error">{authError}</div>}
+                {authMode === 'login' && (
+                    <p className="auth-card__hint">Forgotten your password? Contact your administrator.</p>
+                )}
                 <div className="auth-card__actions">
                     <button type="submit" className="button button--primary auth-card__primary">
                         {authMode === 'signup' ? 'Create account' : 'Sign in'}

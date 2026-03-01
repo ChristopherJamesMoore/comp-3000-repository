@@ -54,6 +54,9 @@ const App: React.FC = () => {
         handleProfileSave,
         approveUser,
         rejectUser,
+        deleteUser,
+        updateUserCompany,
+        resetUserPassword,
         bootstrapAdmin
     } = useAuth({ requiresAuth, navigate, setToast });
     const onNavigate = useNavigateWithAuthMode(navigate, setAuthMode);
@@ -362,6 +365,9 @@ const App: React.FC = () => {
                     onReloadAdmin={loadAdminUsers}
                     onApproveUser={approveUser}
                     onRejectUser={rejectUser}
+                    onDeleteUser={deleteUser}
+                    onUpdateUserCompany={updateUserCompany}
+                    onResetUserPassword={resetUserPassword}
                 />
             )}
 

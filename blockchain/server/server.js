@@ -602,6 +602,71 @@ const createApp = (contract, db) => {
         }
     });
 
+    app.delete('/api/admin/users/:username', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'User management requires MONGODB_URI.' });
+            }
+            const targetUsername = req.params.username;
+            if (targetUsername === req.user.sub) {
+                return res.status(400).json({ error: 'Cannot delete your own account.' });
+            }
+            const result = await usersCollection.deleteOne({ username: targetUsername });
+            if (result.deletedCount === 0) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to delete user.' });
+        }
+    });
+
+    app.patch('/api/admin/users/:username/company', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'User management requires MONGODB_URI.' });
+            }
+            const targetUsername = req.params.username;
+            const { companyType, companyName, registrationNumber } = req.body;
+            const result = await usersCollection.findOneAndUpdate(
+                { username: targetUsername },
+                { $set: { companyType, companyName, registrationNumber } },
+                { returnDocument: 'after' }
+            );
+            if (!result) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            return res.json({ ok: true, user: result });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to update company info.' });
+        }
+    });
+
+    app.post('/api/admin/users/:username/reset-password', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'User management requires MONGODB_URI.' });
+            }
+            const targetUsername = req.params.username;
+            const { newPassword } = req.body;
+            if (!newPassword || newPassword.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+            }
+            const hashed = await bcrypt.hash(newPassword, 10);
+            const result = await usersCollection.findOneAndUpdate(
+                { username: targetUsername },
+                { $set: { passwordHash: hashed } },
+                { returnDocument: 'after' }
+            );
+            if (!result) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to reset password.' });
+        }
+    });
+
     app.use('/api/medications', authMiddleware);
     app.use('/api/medications', requireApproved(db));
 
