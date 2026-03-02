@@ -129,13 +129,16 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
                     <h2>See the core LedgRx workflow in action</h2>
                 </div>
                 <div className="home-demo__frame">
-                    <iframe
+                    <video
                         className="home-demo__video"
-                        src="https://www.youtube.com/embed/1TsenDbMEes"
-                        title="LedgRx product walkthrough"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                    />
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        preload="metadata"
+                    >
+                        <source src="/demo.mp4" type="video/mp4" />
+                    </video>
                 </div>
             </section>
 

@@ -460,9 +460,10 @@ body {
   width: 100%;
   display: block;
   border-radius: 16px;
-  border: none;
-  background: #000;
+  border: 1px solid #dfe7f4;
+  background: #edf3fb;
   aspect-ratio: 16 / 9;
+  object-fit: cover;
 }
 
 .home-hero__stats {
