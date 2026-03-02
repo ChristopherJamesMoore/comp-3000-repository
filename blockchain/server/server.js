@@ -382,8 +382,13 @@ const createApp = (contract, db) => {
                 user = await usersCollection.findOne({ username });
             }
             if (!user) {
-                const users = loadAuthUsers({ allowEmpty: true });
-                user = users.find((entry) => entry.username === username) || null;
+                try {
+                    const users = loadAuthUsers({ allowEmpty: true });
+                    user = users.find((entry) => entry.username === username) || null;
+                } catch {
+                    // AUTH_USERS / AUTH_USERS_FILE misconfiguration should not break
+                    // login for users stored in MongoDB.
+                }
             }
             if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
             const ok = await verifyPassword(user, password);
