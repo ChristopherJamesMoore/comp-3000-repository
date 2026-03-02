@@ -13,10 +13,10 @@ type UseAuthOptions = {
 export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) => {
     const [authToken, setAuthToken] = useState<string | null>(null);
     const [authError, setAuthError] = useState('');
-    const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+    const [loginForm, setLoginForm] = useState({ username: '', password: '', email: '' });
     const [authMode, setAuthMode] = useState<AuthMode>('login');
     const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [profileForm, setProfileForm] = useState({ companyType: '', companyName: '', registrationNumber: '' });
+    const [profileForm, setProfileForm] = useState({ companyType: '', companyName: '', registrationNumber: '', email: '' });
     const [profileError, setProfileError] = useState('');
     const [profileSaving, setProfileSaving] = useState(false);
     const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
@@ -64,7 +64,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
             setProfileForm({
                 companyType: data.companyType || '',
                 companyName: data.companyName || '',
-                registrationNumber: data.registrationNumber || ''
+                registrationNumber: data.registrationNumber || '',
+                email: data.email || ''
             });
         } catch (error) {
             setProfileError('Failed to load profile.');
@@ -114,11 +115,11 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         }
     }, [authToken, navigate, requiresAuth]);
 
-    const handleLoginFormChange = (field: 'username' | 'password', value: string) => {
+    const handleLoginFormChange = (field: 'username' | 'password' | 'email', value: string) => {
         setLoginForm((current) => ({ ...current, [field]: value }));
     };
 
-    const handleProfileFormChange = (field: 'companyType' | 'companyName' | 'registrationNumber', value: string) => {
+    const handleProfileFormChange = (field: 'companyType' | 'companyName' | 'registrationNumber' | 'email', value: string) => {
         setProfileForm((current) => ({ ...current, [field]: value }));
     };
 
@@ -153,13 +154,14 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                 }
                 localStorage.setItem('authToken', data.token);
                 setAuthToken(data.token);
-                setLoginForm({ username: '', password: '' });
+                setLoginForm({ username: '', password: '', email: '' });
                 if (data.user) {
                     setProfile(data.user);
                     setProfileForm({
                         companyType: data.user.companyType || '',
                         companyName: data.user.companyName || '',
-                        registrationNumber: data.user.registrationNumber || ''
+                        registrationNumber: data.user.registrationNumber || '',
+                        email: data.user.email || ''
                     });
                 }
                 navigate('/app');
@@ -193,7 +195,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         username: loginForm.username.trim(),
-                        password: loginForm.password
+                        password: loginForm.password,
+                        email: loginForm.email.trim()
                     })
                 });
                 if (!response.ok) {
@@ -208,13 +211,14 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                 }
                 localStorage.setItem('authToken', data.token);
                 setAuthToken(data.token);
-                setLoginForm({ username: '', password: '' });
+                setLoginForm({ username: '', password: '', email: '' });
                 if (data.user) {
                     setProfile(data.user);
                     setProfileForm({
                         companyType: data.user.companyType || '',
                         companyName: data.user.companyName || '',
-                        registrationNumber: data.user.registrationNumber || ''
+                        registrationNumber: data.user.registrationNumber || '',
+                        email: data.user.email || ''
                     });
                 }
                 setAuthMode('login');
@@ -234,7 +238,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         localStorage.removeItem('authToken');
         setAuthToken(null);
         setProfile(null);
-        setProfileForm({ companyType: '', companyName: '', registrationNumber: '' });
+        setProfileForm({ companyType: '', companyName: '', registrationNumber: '', email: '' });
         navigate('/');
     }, [authFetch, authToken, navigate]);
 
@@ -253,7 +257,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     body: JSON.stringify({
                         companyType: profileForm.companyType,
                         companyName: profileForm.companyName.trim(),
-                        registrationNumber: profileForm.registrationNumber.trim()
+                        registrationNumber: profileForm.registrationNumber.trim(),
+                        email: profileForm.email.trim()
                     })
                 });
                 if (!response.ok) {
@@ -320,7 +325,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     );
 
     const updateUserCompany = useCallback(
-        async (username: string, data: { companyType: string; companyName: string; registrationNumber: string }) => {
+        async (username: string, data: { companyType: string; companyName: string; registrationNumber: string; email: string }) => {
             const response = await authFetch(`/api/admin/users/${encodeURIComponent(username)}/company`, {
                 method: 'PATCH',
                 body: JSON.stringify(data)
@@ -364,7 +369,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
             setAuthToken(data.token);
             if (data.user) {
                 setProfile(data.user);
-                setProfileForm({ companyType: '', companyName: '', registrationNumber: '' });
+                setProfileForm({ companyType: '', companyName: '', registrationNumber: '', email: '' });
             }
             setHasAdmin(true);
             return data;

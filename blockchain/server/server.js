@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const nodemailer = require('nodemailer');
 const grpc = require('@grpc/grpc-js');
 const { connect, signers } = require('@hyperledger/fabric-gateway');
 const bcrypt = require('bcryptjs');
@@ -73,6 +74,23 @@ const parseChaincodeJson = (buffer) => {
         return JSON.parse(decoded);
     }
     return JSON.parse(cleaned);
+};
+
+const sendEmail = async ({ to, subject, html }) => {
+    const host = getEnv('SMTP_HOST');
+    if (!host || !to) return;
+    try {
+        const transport = nodemailer.createTransport({
+            host,
+            port: parseInt(getEnv('SMTP_PORT', '587'), 10),
+            secure: getEnv('SMTP_PORT', '587') === '465',
+            auth: { user: getEnv('SMTP_USER'), pass: getEnv('SMTP_PASS') }
+        });
+        const from = getEnv('SMTP_FROM', 'LedgRx <noreply@ledgrx.duckdns.org>');
+        await transport.sendMail({ from, to, subject, html });
+    } catch (err) {
+        console.error('Email send failed:', err.message);
+    }
 };
 
 const getAuthUsersFile = () => getEnv('AUTH_USERS_FILE', '');
@@ -362,7 +380,8 @@ const createApp = (contract, db) => {
                     companyName: user.companyName || '',
                     isAdmin: !!user.isAdmin || isAdminUser(username),
                     approvalStatus: getUserApprovalStatus(user),
-                    registrationNumber: user.registrationNumber || ''
+                    registrationNumber: user.registrationNumber || '',
+                    email: user.email || ''
                 });
             }
             return res.json({ username, isAdmin: isAdminUser(username), approvalStatus: 'approved' });
@@ -402,7 +421,8 @@ const createApp = (contract, db) => {
                     companyName: user.companyName || '',
                     isAdmin: !!user.isAdmin || isAdminUser(username),
                     approvalStatus: getUserApprovalStatus(user),
-                    registrationNumber: user.registrationNumber || ''
+                    registrationNumber: user.registrationNumber || '',
+                    email: user.email || ''
                 }
             });
         } catch (error) {
@@ -422,6 +442,7 @@ const createApp = (contract, db) => {
             if (password.length < 6) {
                 return res.status(400).json({ error: 'Password must be at least 6 characters.' });
             }
+            const { email: signupEmail } = req.body;
             if (usersCollection) {
                 const existing = await usersCollection.findOne({ username });
                 if (existing) return res.status(409).json({ error: 'Username already exists.' });
@@ -436,6 +457,7 @@ const createApp = (contract, db) => {
                     isAdmin: admin,
                     approvalStatus: admin ? 'approved' : 'pending',
                     registrationNumber: '',
+                    email: signupEmail ? String(signupEmail).trim().toLowerCase() : '',
                     approvedBy: null,
                     approvedAt: null
                 });
@@ -474,7 +496,7 @@ const createApp = (contract, db) => {
             if (!username) {
                 return res.status(401).json({ error: 'Invalid token.' });
             }
-            const { companyType, companyName, registrationNumber } = req.body;
+            const { companyType, companyName, registrationNumber, email: profileEmail } = req.body;
             if (!companyType || !companyName) {
                 return res.status(400).json({ error: 'Company type and name are required.' });
             }
@@ -492,9 +514,12 @@ const createApp = (contract, db) => {
                     return res.status(409).json({ error: 'Profile is locked once set. Contact an admin for changes.' });
                 }
                 const normalizedRegNum = String(registrationNumber || '').trim();
+                const normalizedEmail = profileEmail ? String(profileEmail).trim().toLowerCase() : undefined;
+                const setFields = { companyType: normalizedType, companyName: normalizedName, registrationNumber: normalizedRegNum };
+                if (normalizedEmail !== undefined) setFields.email = normalizedEmail;
                 const result = await usersCollection.findOneAndUpdate(
                     { username },
-                    { $set: { companyType: normalizedType, companyName: normalizedName, registrationNumber: normalizedRegNum } },
+                    { $set: setFields },
                     { returnDocument: 'after' }
                 );
                 if (!result) {
@@ -506,16 +531,19 @@ const createApp = (contract, db) => {
                     companyName: result.companyName || '',
                     isAdmin: !!result.isAdmin || isAdminUser(username),
                     approvalStatus: getUserApprovalStatus(result),
-                    registrationNumber: result.registrationNumber || ''
+                    registrationNumber: result.registrationNumber || '',
+                    email: result.email || ''
                 });
             }
             const profileAdmin = isAdminUser(username);
             const normalizedRegNum = String(registrationNumber || '').trim();
+            const normalizedEmailInsert = profileEmail ? String(profileEmail).trim().toLowerCase() : '';
             await usersCollection.insertOne({
                 username,
                 companyType: normalizedType,
                 companyName: normalizedName,
                 registrationNumber: normalizedRegNum,
+                email: normalizedEmailInsert,
                 createdAt: new Date(),
                 isAdmin: profileAdmin,
                 approvalStatus: profileAdmin ? 'approved' : 'pending',
@@ -528,7 +556,8 @@ const createApp = (contract, db) => {
                 companyName: normalizedName,
                 isAdmin: profileAdmin,
                 approvalStatus: profileAdmin ? 'approved' : 'pending',
-                registrationNumber: normalizedRegNum
+                registrationNumber: normalizedRegNum,
+                email: normalizedEmailInsert
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to update profile.' });
@@ -559,7 +588,7 @@ const createApp = (contract, db) => {
                 return res.status(501).json({ error: 'User listing requires MONGODB_URI.' });
             }
             const users = await usersCollection
-                .find({}, { projection: { _id: 0, username: 1, companyType: 1, companyName: 1, createdAt: 1, approvalStatus: 1, registrationNumber: 1, isAdmin: 1, approvedBy: 1, approvedAt: 1 } })
+                .find({}, { projection: { _id: 0, username: 1, companyType: 1, companyName: 1, createdAt: 1, approvalStatus: 1, registrationNumber: 1, isAdmin: 1, approvedBy: 1, approvedAt: 1, email: 1 } })
                 .toArray();
             return res.json({ users });
         } catch (error) {
@@ -580,6 +609,21 @@ const createApp = (contract, db) => {
             );
             if (!result) {
                 return res.status(404).json({ error: 'User not found.' });
+            }
+            if (result.email) {
+                const appUrl = getEnv('APP_URL', 'https://ledgrx.duckdns.org');
+                await sendEmail({
+                    to: result.email,
+                    subject: 'Your LedgRx account has been approved',
+                    html: `
+                        <p>Hello ${result.companyName || result.username},</p>
+                        <p>Your LedgRx account has been approved. You can now sign in and begin tracking medication provenance across your supply chain.</p>
+                        <p><strong>Username:</strong> ${result.username}</p>
+                        <p><a href="${appUrl}">Sign in to LedgRx</a></p>
+                        <p>If you have any questions, please contact your administrator.</p>
+                        <p>The LedgRx Team</p>
+                    `
+                });
             }
             return res.json({ ok: true, user: { username: result.username, approvalStatus: result.approvalStatus } });
         } catch (error) {
@@ -632,10 +676,12 @@ const createApp = (contract, db) => {
                 return res.status(501).json({ error: 'User management requires MONGODB_URI.' });
             }
             const targetUsername = req.params.username;
-            const { companyType, companyName, registrationNumber } = req.body;
+            const { companyType, companyName, registrationNumber, email: patchEmail } = req.body;
+            const patchFields = { companyType, companyName, registrationNumber };
+            if (patchEmail !== undefined) patchFields.email = patchEmail ? String(patchEmail).trim().toLowerCase() : '';
             const result = await usersCollection.findOneAndUpdate(
                 { username: targetUsername },
-                { $set: { companyType, companyName, registrationNumber } },
+                { $set: patchFields },
                 { returnDocument: 'after' }
             );
             if (!result) {

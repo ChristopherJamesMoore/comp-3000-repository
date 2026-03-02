@@ -16,7 +16,7 @@ type AdminPageProps = {
     onApproveUser: (username: string) => Promise<unknown>;
     onRejectUser: (username: string) => Promise<unknown>;
     onDeleteUser: (username: string) => Promise<unknown>;
-    onUpdateUserCompany: (username: string, data: { companyType: string; companyName: string; registrationNumber: string }) => Promise<unknown>;
+    onUpdateUserCompany: (username: string, data: { companyType: string; companyName: string; registrationNumber: string; email: string }) => Promise<unknown>;
     onResetUserPassword: (username: string, newPassword: string) => Promise<unknown>;
 };
 
@@ -37,7 +37,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
     const [filter, setFilter] = useState<AdminFilter>('all');
     const [expandedUser, setExpandedUser] = useState<string | null>(null);
     const [expandMode, setExpandMode] = useState<'edit' | 'password' | null>(null);
-    const [editForm, setEditForm] = useState({ companyType: '', companyName: '', registrationNumber: '' });
+    const [editForm, setEditForm] = useState({ companyType: '', companyName: '', registrationNumber: '', email: '' });
     const [passwordInput, setPasswordInput] = useState('');
     const [actionError, setActionError] = useState('');
 
@@ -54,7 +54,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
         setEditForm({
             companyType: user.companyType || '',
             companyName: user.companyName || '',
-            registrationNumber: user.registrationNumber || ''
+            registrationNumber: user.registrationNumber || '',
+            email: user.email || ''
         });
         setActionError('');
     };
@@ -298,6 +299,15 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                                     type="text"
                                                     value={editForm.registrationNumber}
                                                     onChange={(e) => setEditForm((f) => ({ ...f, registrationNumber: e.target.value }))}
+                                                />
+                                            </div>
+                                            <div className="field">
+                                                <label>Work email</label>
+                                                <input
+                                                    type="email"
+                                                    value={editForm.email}
+                                                    onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                                                    placeholder="contact@organisation.com"
                                                 />
                                             </div>
                                             <div className="admin-table__expanded-actions">

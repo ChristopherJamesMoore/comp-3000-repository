@@ -4,9 +4,9 @@ import { AuthMode } from '../types';
 
 type LoginPageProps = {
     authMode: AuthMode;
-    loginForm: { username: string; password: string };
+    loginForm: { username: string; password: string; email: string };
     authError: string;
-    onLoginFormChange: (field: 'username' | 'password', value: string) => void;
+    onLoginFormChange: (field: 'username' | 'password' | 'email', value: string) => void;
     onToggleMode: () => void;
     onSubmitLogin: (e: React.FormEvent) => void;
     onSubmitSignup: (e: React.FormEvent) => void;
@@ -36,8 +36,8 @@ const LoginPage: React.FC<LoginPageProps> = ({
             <h2>{authMode === 'signup' ? 'Build trust in every handoff.' : 'Welcome back.'}</h2>
             <p>
                 {authMode === 'signup'
-                    ? 'Create your LedgRx account to start recording medication lineage.'
-                    : 'Sign in to keep managing medication records.'}
+                    ? 'Register your organisation to begin tracking medication provenance on the LedgRx network.'
+                    : 'Sign in to your organisation\'s LedgRx account.'}
             </p>
             <form onSubmit={authMode === 'signup' ? onSubmitSignup : onSubmitLogin}>
                 <div className="field">
@@ -58,6 +58,17 @@ const LoginPage: React.FC<LoginPageProps> = ({
                         required
                     />
                 </div>
+                {authMode === 'signup' && (
+                    <div className="field">
+                        <label>Work email</label>
+                        <input
+                            type="email"
+                            value={loginForm.email}
+                            onChange={(e) => onLoginFormChange('email', e.target.value)}
+                            placeholder="you@organisation.com"
+                        />
+                    </div>
+                )}
                 {authError && <div className="inline-error">{authError}</div>}
                 {authMode === 'login' && (
                     <p className="auth-card__hint">Forgotten your password? Contact your administrator.</p>

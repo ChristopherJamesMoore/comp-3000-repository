@@ -4,10 +4,10 @@ import { UserProfile } from '../types';
 
 type AccountPageProps = {
     profile: UserProfile | null;
-    profileForm: { companyType: string; companyName: string; registrationNumber: string };
+    profileForm: { companyType: string; companyName: string; registrationNumber: string; email: string };
     profileError: string;
     profileSaving: boolean;
-    onProfileFormChange: (field: 'companyType' | 'companyName' | 'registrationNumber', value: string) => void;
+    onProfileFormChange: (field: 'companyType' | 'companyName' | 'registrationNumber' | 'email', value: string) => void;
     onProfileSave: (e: React.FormEvent) => void;
     onBack: () => void;
     onLogout: () => void;
@@ -71,6 +71,15 @@ const AccountPage: React.FC<AccountPageProps> = ({
                             onChange={(e) => onProfileFormChange('companyName', e.target.value)}
                             placeholder="Company name"
                             disabled={profileLocked}
+                        />
+                    </div>
+                    <div className="field">
+                        <label>Work email</label>
+                        <input
+                            type="email"
+                            value={profileForm.email}
+                            onChange={(e) => onProfileFormChange('email', e.target.value)}
+                            placeholder="you@organisation.com"
                         />
                     </div>
                     {profileError && <div className="inline-error">{profileError}</div>}

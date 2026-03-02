@@ -208,7 +208,7 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
             <section className="home-cta fade-section">
                 <div className="home-cta__inner">
                     <h2>Ready to secure your supply chain?</h2>
-                    <p>Sign in to access your dashboard and start recording medication lineage.</p>
+                    <p>Log in to manage your organisation's medication records and supply chain data.</p>
                     <button className="button button--primary" onClick={() => onNavigate('/login', 'login')}>
                         Sign in
                     </button>

@@ -33,6 +33,7 @@ export type UserProfile = {
     isAdmin?: boolean;
     approvalStatus?: 'pending' | 'approved' | 'rejected';
     registrationNumber?: string;
+    email?: string;
     approvedBy?: string;
     approvedAt?: string;
 };
