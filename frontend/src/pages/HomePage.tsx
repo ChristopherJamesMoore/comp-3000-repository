@@ -126,7 +126,6 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
             <section className="home-demo fade-section">
                 <div className="home-demo__top">
                     <p className="home-demo__eyebrow">Product walkthrough</p>
-                    <h2>See the core LedgRx workflow in action</h2>
                 </div>
                 <div className="home-demo__frame">
                     <video
