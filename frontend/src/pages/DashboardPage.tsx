@@ -5,8 +5,8 @@ import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
 import QrScanner from '../components/QrScanner';
 
 const STAGES = [
-    { key: 'manufactured', label: 'Production' },
-    { key: 'received',     label: 'Distribution' },
+    { key: 'manufactured', label: 'Prod' },
+    { key: 'received',     label: 'Dist' },
     { key: 'arrived',      label: 'Pharmacy' },
 ] as const;
 

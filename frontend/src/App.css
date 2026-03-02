@@ -2226,3 +2226,9 @@ body {
   color: var(--ink);
   font-weight: 500;
 }
+
+/* pill--approved: grey (higher specificity to win over .pill base) */
+.pill.pill--approved {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--ink);
+}
