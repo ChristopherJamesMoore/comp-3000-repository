@@ -1,5 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { RefreshCw, Search, QrCode, X } from 'lucide-react';
+import { Medication, AuditEntry, BatchResult } from '../types';
+import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
+import QrScanner from '../components/QrScanner';
 
 const STAGES = [
     { key: 'manufactured', label: 'Production' },
@@ -22,9 +25,6 @@ const StageTrack: React.FC<{ status?: string }> = ({ status = 'manufactured' }) 
         </span>
     );
 };
-import { Medication, AuditEntry, BatchResult } from '../types';
-import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
-import QrScanner from '../components/QrScanner';
 
 type DashboardPageProps = {
     userName: string;
