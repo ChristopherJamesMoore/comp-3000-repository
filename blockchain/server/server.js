@@ -564,6 +564,69 @@ const createApp = (contract, db) => {
         }
     });
 
+    app.post('/api/auth/email-change-request', authMiddleware, async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Email changes require MONGODB_URI.' });
+            }
+            const username = req.user?.sub;
+            if (!username) return res.status(401).json({ error: 'Invalid token.' });
+            const { newEmail } = req.body;
+            if (!newEmail || !String(newEmail).includes('@')) {
+                return res.status(400).json({ error: 'A valid email address is required.' });
+            }
+            const normalizedEmail = String(newEmail).trim().toLowerCase();
+            const token = crypto.randomBytes(32).toString('hex');
+            const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            await usersCollection.updateOne(
+                { username },
+                { $set: { pendingEmail: normalizedEmail, emailChangeToken: token, emailChangeExpiry: expiry } }
+            );
+            const appUrl = getEnv('APP_URL', 'https://ledgrx.duckdns.org');
+            await sendEmail({
+                to: normalizedEmail,
+                subject: 'Confirm your new LedgRx email address',
+                html: `
+                    <p>You requested to update the email address on your LedgRx account.</p>
+                    <p>Click the link below to confirm. This link expires in 24 hours.</p>
+                    <p><a href="${appUrl}?emailToken=${token}">Confirm email address</a></p>
+                    <p>If you did not request this change, you can safely ignore this email.</p>
+                    <p>The LedgRx Team</p>
+                `
+            });
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to send confirmation email.' });
+        }
+    });
+
+    app.get('/api/auth/email-change-confirm', async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Email changes require MONGODB_URI.' });
+            }
+            const { token } = req.query;
+            if (!token) return res.status(400).json({ error: 'Token is required.' });
+            const user = await usersCollection.findOne({
+                emailChangeToken: token,
+                emailChangeExpiry: { $gt: new Date() }
+            });
+            if (!user) {
+                return res.status(400).json({ error: 'Invalid or expired confirmation link.' });
+            }
+            await usersCollection.updateOne(
+                { _id: user._id },
+                {
+                    $set: { email: user.pendingEmail },
+                    $unset: { pendingEmail: '', emailChangeToken: '', emailChangeExpiry: '' }
+                }
+            );
+            return res.json({ ok: true, email: user.pendingEmail });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to confirm email change.' });
+        }
+    });
+
     app.post('/api/auth/logout', authMiddleware, async (req, res) => {
         try {
             if (!blacklistCollection) {

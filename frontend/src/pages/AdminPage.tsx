@@ -216,7 +216,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
                             return (
                                 <React.Fragment key={user.username}>
                                     <div className="admin-table__row admin-table__row--full">
-                                        <span>{user.username}</span>
+                                        <span>
+                                            <span className="admin-table__primary">{user.username}</span>
+                                            {user.email && <span className="admin-table__secondary">{user.email}</span>}
+                                        </span>
                                         <span>{user.companyName || '—'}</span>
                                         <span>{user.registrationNumber || '—'}</span>
                                         <span>{user.companyType || '—'}</span>

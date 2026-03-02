@@ -1033,8 +1033,8 @@ body {
 }
 
 .stage-track__step--done {
-  color: var(--success);
-  background: rgba(30, 142, 62, 0.1);
+  color: var(--accent);
+  background: rgba(26, 115, 232, 0.1);
 }
 
 .stage-track__step--active {
@@ -1103,9 +1103,21 @@ body {
   gap: 6px;
 }
 
+.admin-table__primary {
+  display: block;
+}
+
+.admin-table__secondary {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
 .pill--approved {
-  background: rgba(30, 142, 62, 0.15);
-  color: var(--success);
+  background: rgba(26, 115, 232, 0.12);
+  color: var(--accent);
 }
 
 .pill--pending {
@@ -1470,8 +1482,8 @@ body {
 }
 
 .button--ghost {
-  background: rgba(0, 167, 167, 0.1);
-  color: var(--accent-2);
+  background: rgba(26, 115, 232, 0.07);
+  color: var(--accent);
 }
 
 .button--mini {
@@ -1603,7 +1615,7 @@ body {
   align-items: center;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(0, 167, 167, 0.1);
+  background: rgba(26, 115, 232, 0.07);
   color: var(--accent);
   font-weight: 600;
 }
@@ -1612,8 +1624,8 @@ body {
   display: inline-flex;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(0, 167, 167, 0.14);
-  color: var(--accent-2);
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--accent);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -1668,7 +1680,7 @@ body {
   margin-top: 16px;
   display: grid;
   gap: 10px;
-  background: rgba(0, 167, 167, 0.1);
+  background: rgba(26, 115, 232, 0.07);
   padding: 14px;
   border-radius: 14px;
 }
@@ -2043,7 +2055,7 @@ body {
   gap: 6px;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(0, 167, 167, 0.1);
+  background: rgba(26, 115, 232, 0.07);
   color: var(--ink);
   font-weight: 600;
   font-size: 0.9rem;
@@ -2123,4 +2135,37 @@ body {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.16);
+}
+
+/* --- Account email section --- */
+.account-email-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--stroke);
+}
+
+.account-email-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.account-email-display__value {
+  flex: 1;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.account-email-change {
+  margin-top: 12px;
+}
+
+.account-email-change__sent {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.account-email-change__sent strong {
+  color: var(--text);
 }

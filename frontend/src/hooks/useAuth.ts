@@ -16,7 +16,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     const [loginForm, setLoginForm] = useState({ username: '', password: '', email: '' });
     const [authMode, setAuthMode] = useState<AuthMode>('login');
     const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [profileForm, setProfileForm] = useState({ companyType: '', companyName: '', registrationNumber: '', email: '' });
+    const [profileForm, setProfileForm] = useState({ companyType: '', companyName: '', registrationNumber: '' });
     const [profileError, setProfileError] = useState('');
     const [profileSaving, setProfileSaving] = useState(false);
     const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
@@ -64,8 +64,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
             setProfileForm({
                 companyType: data.companyType || '',
                 companyName: data.companyName || '',
-                registrationNumber: data.registrationNumber || '',
-                email: data.email || ''
+                registrationNumber: data.registrationNumber || ''
             });
         } catch (error) {
             setProfileError('Failed to load profile.');
@@ -115,11 +114,33 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         }
     }, [authToken, navigate, requiresAuth]);
 
+    // Detect ?emailToken= in URL on mount (from email confirmation link)
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('emailToken');
+        if (!token) return;
+        window.history.replaceState(null, '', window.location.pathname);
+        fetch(buildUrl(`/api/auth/email-change-confirm?token=${encodeURIComponent(token)}`))
+            .then((r) => r.json())
+            .then((data) => {
+                if (data.ok) {
+                    if (setToast) setToast({ type: 'success', message: 'Email address updated successfully.' });
+                    setProfile((prev) => (prev ? { ...prev, email: data.email } : prev));
+                } else {
+                    if (setToast) setToast({ type: 'error', message: data.error || 'Email confirmation failed.' });
+                }
+            })
+            .catch(() => {
+                if (setToast) setToast({ type: 'error', message: 'Email confirmation failed.' });
+            });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const handleLoginFormChange = (field: 'username' | 'password' | 'email', value: string) => {
         setLoginForm((current) => ({ ...current, [field]: value }));
     };
 
-    const handleProfileFormChange = (field: 'companyType' | 'companyName' | 'registrationNumber' | 'email', value: string) => {
+    const handleProfileFormChange = (field: 'companyType' | 'companyName' | 'registrationNumber', value: string) => {
         setProfileForm((current) => ({ ...current, [field]: value }));
     };
 
@@ -160,8 +181,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     setProfileForm({
                         companyType: data.user.companyType || '',
                         companyName: data.user.companyName || '',
-                        registrationNumber: data.user.registrationNumber || '',
-                        email: data.user.email || ''
+                        registrationNumber: data.user.registrationNumber || ''
                     });
                 }
                 navigate('/app');
@@ -217,8 +237,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     setProfileForm({
                         companyType: data.user.companyType || '',
                         companyName: data.user.companyName || '',
-                        registrationNumber: data.user.registrationNumber || '',
-                        email: data.user.email || ''
+                        registrationNumber: data.user.registrationNumber || ''
                     });
                 }
                 setAuthMode('login');
@@ -238,7 +257,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         localStorage.removeItem('authToken');
         setAuthToken(null);
         setProfile(null);
-        setProfileForm({ companyType: '', companyName: '', registrationNumber: '', email: '' });
+        setProfileForm({ companyType: '', companyName: '', registrationNumber: '' });
         navigate('/');
     }, [authFetch, authToken, navigate]);
 
@@ -257,8 +276,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     body: JSON.stringify({
                         companyType: profileForm.companyType,
                         companyName: profileForm.companyName.trim(),
-                        registrationNumber: profileForm.registrationNumber.trim(),
-                        email: profileForm.email.trim()
+                        registrationNumber: profileForm.registrationNumber.trim()
                     })
                 });
                 if (!response.ok) {
@@ -354,6 +372,21 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
+    const requestEmailChange = useCallback(
+        async (newEmail: string) => {
+            const response = await authFetch('/api/auth/email-change-request', {
+                method: 'POST',
+                body: JSON.stringify({ newEmail })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to send confirmation email.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
     const bootstrapAdmin = useCallback(
         async (username: string, password: string) => {
             const response = await fetch(buildUrl('/api/admin/bootstrap'), {
@@ -369,7 +402,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
             setAuthToken(data.token);
             if (data.user) {
                 setProfile(data.user);
-                setProfileForm({ companyType: '', companyName: '', registrationNumber: '', email: '' });
+                setProfileForm({ companyType: '', companyName: '', registrationNumber: '' });
             }
             setHasAdmin(true);
             return data;
@@ -405,6 +438,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         deleteUser,
         updateUserCompany,
         resetUserPassword,
+        requestEmailChange,
         bootstrapAdmin
     };
 };

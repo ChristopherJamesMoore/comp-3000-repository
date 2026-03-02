@@ -57,6 +57,7 @@ const App: React.FC = () => {
         deleteUser,
         updateUserCompany,
         resetUserPassword,
+        requestEmailChange,
         bootstrapAdmin
     } = useAuth({ requiresAuth, navigate, setToast });
     const onNavigate = useNavigateWithAuthMode(navigate, setAuthMode);
@@ -379,6 +380,7 @@ const App: React.FC = () => {
                     profileSaving={profileSaving}
                     onProfileFormChange={handleProfileFormChange}
                     onProfileSave={handleProfileSave}
+                    onRequestEmailChange={requestEmailChange}
                     onBack={() => navigate('/app')}
                     onLogout={handleLogout}
                     onAdminClick={() => navigate('/app/admin')}
