@@ -1116,8 +1116,8 @@ body {
 }
 
 .pill--approved {
-  background: rgba(26, 115, 232, 0.12);
-  color: var(--accent);
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--ink);
 }
 
 .pill--pending {
@@ -1584,6 +1584,8 @@ body {
   padding: 18px;
   display: grid;
   gap: 14px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .record-card__header {
@@ -1593,8 +1595,16 @@ body {
   align-items: center;
 }
 
+.record-card__header > div {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .record-card__header h3 {
   margin: 6px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .record-card__meta {
@@ -1607,6 +1617,20 @@ body {
   justify-content: space-between;
   gap: 12px;
   color: var(--muted);
+  min-width: 0;
+}
+
+.record-card__meta span {
+  flex-shrink: 0;
+}
+
+.record-card__meta strong {
+  flex: 1;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .record-card__hash {
