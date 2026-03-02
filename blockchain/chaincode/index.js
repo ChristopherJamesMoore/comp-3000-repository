@@ -7,7 +7,7 @@ class PharmaContract extends Contract {
         console.log('Ledger initialized');
     }
 
-    async addMedication(ctx, serialNumber, medicationName, gtin, batchNumber, expiryDate, productionCompany, distributionCompany, pharmacyCompany, qrHash) {
+    async addMedication(ctx, serialNumber, medicationName, gtin, batchNumber, expiryDate, productionCompany, distributionCompany, qrHash) {
         const txTime = ctx.stub.getTxTimestamp();
         const seconds = (txTime.seconds && typeof txTime.seconds.toNumber === 'function')
             ? txTime.seconds.toNumber()
@@ -22,8 +22,6 @@ class PharmaContract extends Contract {
             batchNumber,
             expiryDate,
             productionCompany,
-            distributionCompany,
-            pharmacyCompany,
             qrHash,
             createdAt
         };

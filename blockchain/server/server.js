@@ -988,7 +988,6 @@ const createApp = (contract, db) => {
                 expiryDate,
                 productionCompany,
                 distributionCompany,
-                pharmacyCompany,
                 qrHash
             );
             const statusCollection = db.collection('medication_status');
@@ -1000,6 +999,8 @@ const createApp = (contract, db) => {
                     $set: {
                         serialNumber,
                         status: 'manufactured',
+                        pharmacyCompany,
+                        distributionCompany,
                         updatedAt: now,
                         updatedBy: user.username,
                         updatedByCompanyType: user.companyType || '',
@@ -1014,6 +1015,7 @@ const createApp = (contract, db) => {
                 qrHash
             });
         } catch (error) {
+            console.error('[addMedication error]', error);
             res.status(500).json({ error: error.message || 'Internal server error' });
         }
     });
