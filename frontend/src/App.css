@@ -1131,8 +1131,8 @@ body {
 }
 
 .admin-table__row--head {
-  background: rgba(26, 115, 232, 0.08);
-  color: var(--accent);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--muted);
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2168,4 +2168,37 @@ body {
 
 .account-email-change__sent strong {
   color: var(--text);
+}
+
+/* --- Settings pages: grey buttons (admin + account) --- */
+.admin-dashboard .button--primary,
+.account-card .button--primary {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.admin-dashboard .button--primary:hover,
+.account-card .button--primary:hover {
+  background: rgba(0, 0, 0, 0.12);
+  box-shadow: none;
+}
+
+.admin-dashboard .button--ghost,
+.account-card .button--ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.admin-dashboard .button--ghost:hover,
+.account-card .button--ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Account page notice: grey instead of red */
+.account-card .inline-error {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+  font-weight: 500;
 }
