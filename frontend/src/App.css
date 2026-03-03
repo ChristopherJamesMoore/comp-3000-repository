@@ -1,19 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Space+Grotesk:wght@400;500;600&display=swap');
 
 :root {
-  --bg: #f6f8fb;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-2: #f6f8fb;
-  --ink: #1f2937;
-  --muted: #5f6b7a;
-  --accent: #1a73e8;
-  --accent-2: #00a7a7;
-  --deep: #0b3d91;
+  --surface-2: #f8fafc;
+  --ink: #334155;
+  --muted: #64748b;
+  --accent: #3b82f6;
+  --accent-2: #10b981;
+  --deep: #1e3a8a;
   --stroke: #e5eaf2;
-  --success: #1e8e3e;
-  --warning: #f9ab00;
+  --success: #10b981;
+  --warning: #f59e0b;
   --error: #d93025;
-  --shadow: 0 10px 24px rgba(26, 39, 67, 0.06);
+  --shadow: 0 10px 24px rgba(30, 58, 138, 0.08);
 }
 
 * {
@@ -631,14 +631,14 @@ body {
 
 .home-chain__pill {
   position: absolute;
-  width: 6px;
-  height: 14px;
+  width: 7px;
+  height: 16px;
   border-radius: 999px;
   display: flex;
   flex-direction: column;
   opacity: 1;
   box-shadow: none;
-  border: 1px solid #7f94b2;
+  border: 1px solid #8fa9da;
   overflow: hidden;
 }
 
@@ -648,39 +648,39 @@ body {
 }
 
 .home-chain__pill-half--top {
-  background: #ffffff;
+  background: #3b82f6;
 }
 
 .home-chain__pill-half--bottom {
-  background: #ffffff;
-  border-top: 1px solid #afbed3;
+  background: #10b981;
+  border-top: 1px solid #86efac;
 }
 
-/* .home-chain__pill--duo-a {
-  border-color: #8caee3;
+.home-chain__pill--duo-a {
+  border-color: #8fa9da;
 }
 
 .home-chain__pill--duo-a .home-chain__pill-half--top {
-  background: #1a73e8;
+  background: #3b82f6;
 }
 
 .home-chain__pill--duo-a .home-chain__pill-half--bottom {
-  background: #00a7a7;
-  border-top: 1px solid #92d9d9;
+  background: #10b981;
+  border-top: 1px solid #86efac;
 }
 
 .home-chain__pill--duo-b {
-  border-color: #89a7dd;
+  border-color: #8ea0d6;
 }
 
 .home-chain__pill--duo-b .home-chain__pill-half--top {
-  background: #0b3d91;
+  background: #1e3a8a;
 }
 
 .home-chain__pill--duo-b .home-chain__pill-half--bottom {
-  background: #1a73e8;
-  border-top: 1px solid #8caee3;
-} */
+  background: #3b82f6;
+  border-top: 1px solid #8fa9da;
+}
 
 .home-chain__model {
   transform-style: preserve-3d;
@@ -816,9 +816,9 @@ body {
 .auth-card {
   width: min(480px, 100%);
   border: 1px solid var(--stroke);
-  border-radius: 5px;
+  border-radius: 16px;
   padding: 32px;
-  background: #ffffff;
+  background: var(--surface);
   box-shadow: var(--shadow);
 }
 
@@ -967,14 +967,16 @@ body {
   border: 1px solid var(--stroke);
   border-radius: 12px;
   padding: 14px;
-  background: #ffffff;
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .dashboard__panel {
   border: 1px solid var(--stroke);
   border-radius: 16px;
   padding: 24px;
-  background: #ffffff;
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .dashboard__grid {
@@ -1457,6 +1459,7 @@ body {
 .button {
   border: none;
   padding: 10px 18px;
+  border-radius: 10px;
   font-weight: 600;
   font-family: inherit;
   display: inline-flex;
@@ -1484,6 +1487,7 @@ body {
 .button--ghost {
   background: rgba(26, 115, 232, 0.07);
   color: var(--accent);
+  border: 1px solid var(--stroke);
 }
 
 .button--mini {
@@ -1498,7 +1502,7 @@ body {
 }
 
 .card--preview {
-  background: linear-gradient(145deg, #ffffff, #fef5e4);
+  background: linear-gradient(145deg, #ffffff, #eef4ff);
 }
 
 .preview__header {
@@ -2177,7 +2181,7 @@ body {
 .account-email-display__value {
   flex: 1;
   font-size: 0.95rem;
-  color: var(--text);
+  color: var(--ink);
 }
 
 .account-email-change {
@@ -2191,44 +2195,15 @@ body {
 }
 
 .account-email-change__sent strong {
-  color: var(--text);
-}
-
-/* --- Settings pages: grey buttons (admin + account) --- */
-.admin-dashboard .button--primary,
-.account-card .button--primary {
-  background: rgba(0, 0, 0, 0.07);
   color: var(--ink);
-  box-shadow: none;
 }
 
-.admin-dashboard .button--primary:hover,
-.account-card .button--primary:hover {
-  background: rgba(0, 0, 0, 0.12);
-  box-shadow: none;
+/* Admin panel exception: keep controls less rounded */
+.admin-dashboard .button,
+.admin-dashboard .admin-filter {
+  border-radius: 4px;
 }
 
-.admin-dashboard .button--ghost,
-.account-card .button--ghost {
-  background: transparent;
-  color: var(--ink);
-  border: 1px solid rgba(0, 0, 0, 0.15);
-}
-
-.admin-dashboard .button--ghost:hover,
-.account-card .button--ghost:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-/* Account page notice: grey instead of red */
-.account-card .inline-error {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--ink);
-  font-weight: 500;
-}
-
-/* pill--approved: grey (higher specificity to win over .pill base) */
-.pill.pill--approved {
-  background: rgba(0, 0, 0, 0.07);
-  color: var(--ink);
+.admin-dashboard .button--mini {
+  border-radius: 3px;
 }
