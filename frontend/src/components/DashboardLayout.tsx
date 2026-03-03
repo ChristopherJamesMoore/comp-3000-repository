@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Truck, CheckCircle2, List, Shield, ChevronLeft, ChevronRight, UserCircle2 } from 'lucide-react';
 
 export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view' | 'admin';
@@ -30,7 +30,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     canArrived = true,
     isAdmin = false
 }) => {
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const sidebarStorageKey = 'ledgrx.dashboard.sidebarCollapsed';
+    const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+        const saved = window.localStorage.getItem(sidebarStorageKey);
+        return saved === 'true';
+    });
+
+    useEffect(() => {
+        window.localStorage.setItem(sidebarStorageKey, String(sidebarCollapsed));
+    }, [sidebarCollapsed]);
 
     return (
     <div className={`dashboard${sidebarCollapsed ? ' dashboard--collapsed' : ''}`}>
