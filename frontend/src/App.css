@@ -1029,7 +1029,7 @@ body {
 .dashboard__link--active {
   background: #e8f0fe;
   color: var(--accent);
-  border-left: 3px solid var(--warning);
+  border-left: 3px solid var(--accent);
 }
 
 .dashboard--collapsed {
@@ -2365,4 +2365,186 @@ body {
 
 .admin-dashboard .button--mini {
   border-radius: 3px;
+}
+
+/* ============================================================
+   ANIMATION KEYFRAMES
+   ============================================================ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+@keyframes contentIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ============================================================
+   LAYOUT — fix double-border/padding when card--form
+   sits directly inside dashboard__panel
+   ============================================================ */
+
+.dashboard__panel > .card--form {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Reduce the gap between topbar heading and the admin-dashboard
+   content — 24px (flex gap) + 24px (panel padding) = 48px is too much */
+.dashboard__topbar + .admin-dashboard {
+  padding-top: 8px;
+}
+
+/* ============================================================
+   NAVIGATION — hover on inactive links
+   ============================================================ */
+
+/* Subtle hover on inactive links */
+.dashboard__link:not(.dashboard__link--active):hover {
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+/* ============================================================
+   HOVER STATES
+   ============================================================ */
+
+/* Sidebar account button */
+.dashboard__account {
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.18s ease;
+}
+
+.dashboard__account:hover {
+  background: #eef4ff;
+  border-color: rgba(59, 130, 246, 0.28);
+  transform: translateY(-1px);
+}
+
+/* Admin / org table rows */
+.admin-table__row:not(.admin-table__row--head) {
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.admin-table__row:not(.admin-table__row--head):hover {
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(26, 39, 67, 0.07);
+  transform: translateY(-1px);
+}
+
+/* Medication record cards */
+.record-card {
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.record-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(26, 39, 67, 0.09);
+}
+
+/* Ghost button — add explicit background shift on hover */
+.button--ghost:hover {
+  background: rgba(26, 115, 232, 0.13);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+/* ============================================================
+   ENTRY ANIMATIONS
+   ============================================================ */
+
+/* Auth / signup cards slide up on mount */
+.auth-card {
+  animation: slideUp 0.4s ease;
+}
+
+/* Auth page itself fades in */
+.auth-page {
+  animation: fadeIn 0.35s ease;
+}
+
+/* Modal backdrop fades in */
+.modal {
+  animation: fadeIn 0.22s ease;
+}
+
+/* Modal card slides up into place */
+.modal__card {
+  animation: modalIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Inline error messages animate in */
+.inline-error {
+  animation: slideUp 0.28s ease;
+}
+
+/* Dashboard content wrapper — fade only (no translate, to avoid
+   compounding offset with animating children) */
+.dashboard__content {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Heading re-animates quickly on tab switch (unmount → remount) */
+.dashboard__topbar {
+  animation: contentIn 0.22s ease;
+}
+
+/* Admin / org dashboard inner section —
+   staggered slightly behind the topbar for a natural cascade */
+.admin-dashboard {
+  animation: contentIn 0.34s ease;
+}
+
+/* Dashboard panel (AddMedication, account pages) */
+.dashboard__panel {
+  animation: contentIn 0.34s ease;
+}
+
+/* ============================================================
+   MISSING UTILITY CLASSES
+   ============================================================ */
+
+/* Used in AddMedicationPage — auto-fill info under a field label */
+.field__info {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* Inline code snippets (bulk import column hints) */
+code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.82em;
+  background: rgba(26, 115, 232, 0.08);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   INPUT BACKGROUND — explicit surface colour
+   ============================================================ */
+
+.field input,
+.batch-input-row input,
+.lookup__row input,
+.field select {
+  background: var(--surface);
+}
+
+/* ============================================================
+   ADMIN TABLE — expanded panel smooth reveal
+   ============================================================ */
+
+.admin-table__expanded {
+  animation: contentIn 0.24s ease;
 }
