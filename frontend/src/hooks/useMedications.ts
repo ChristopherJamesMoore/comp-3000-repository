@@ -337,6 +337,15 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
         }
     }, [arrivedBatch, authFetch, fetchMedications, setToast]);
 
+    const bulkAddMedications = useCallback(
+        async (medications: object[]) => {
+            const res = await authFetch('/api/medications/bulk', { method: 'POST', body: JSON.stringify({ medications }) });
+            if (!res.ok) throw new Error((await res.json()).error || 'Bulk import failed');
+            return res.json();
+        },
+        [authFetch]
+    );
+
     // QR hash resolution
     const resolveQrHash = useCallback(async (hash: string): Promise<string | null> => {
         try {
@@ -419,6 +428,7 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
         removeFromArrivedBatch,
         clearArrivedBatch,
         handleBatchArrived,
+        bulkAddMedications,
         resolveQrHash
     };
 };

@@ -68,7 +68,8 @@ const App: React.FC = () => {
         loadOrgWorkers,
         addOrgWorker,
         removeOrgWorker,
-        updateOrgWorkerJobTitle
+        updateOrgWorkerJobTitle,
+        bulkAddWorkers
     } = useAuth({ requiresAuth, navigate, setToast });
     const onNavigate = useNavigateWithAuthMode(navigate, setAuthMode);
     const { activeTab, handleNavSelect } = useDashboardNav(navigate);
@@ -119,6 +120,7 @@ const App: React.FC = () => {
         removeFromArrivedBatch,
         clearArrivedBatch,
         handleBatchArrived,
+        bulkAddMedications,
         resolveQrHash
     } = useMedications({ authFetch, route, activeTab, setToast });
     const { showQRModal, selectedQRHash, copied, handleShowQR, handleCopyHash, closeQrModal } = useQrModal(setToast);
@@ -346,6 +348,7 @@ const App: React.FC = () => {
                     onAddWorker={addOrgWorker}
                     onRemoveWorker={removeOrgWorker}
                     onUpdateJobTitle={updateOrgWorkerJobTitle}
+                    onBulkAddWorkers={bulkAddWorkers}
                     onLogout={handleLogout}
                     onAccountClick={() => navigate('/account')}
                 />
@@ -421,6 +424,7 @@ const App: React.FC = () => {
                     canAdd={canAdd}
                     isAdmin={!!profile?.isAdmin}
                     companyName={profile?.companyName || ''}
+                    onBulkAddMedications={bulkAddMedications}
                 />
             )}
 
@@ -453,7 +457,7 @@ const App: React.FC = () => {
                     onProfileFormChange={handleProfileFormChange}
                     onProfileSave={handleProfileSave}
                     onRequestEmailChange={requestEmailChange}
-                    onBack={() => navigate('/app')}
+                    onBack={() => navigate(profileType === 'org' || profileType === 'worker' ? '/org' : '/app')}
                     onLogout={handleLogout}
                     onAdminClick={() => navigate('/app/admin')}
                 />

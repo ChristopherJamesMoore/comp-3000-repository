@@ -1,6 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import * as xlsx from 'xlsx';
 import { ChevronLeft, ChevronRight, List, Users, UserCircle2, RefreshCw, Trash2 } from 'lucide-react';
 import { OrgWorker, UserProfile } from '../types';
+
+type BulkWorkerRow = { username: string; password: string; jobTitle: string; _valid: boolean; _error: string };
+type BulkWorkerResult = { succeeded: { username: string }[]; failed: { username: string; error: string }[] };
 
 type OrgDashboardPageProps = {
     profile: UserProfile;
@@ -11,6 +15,7 @@ type OrgDashboardPageProps = {
     onAddWorker: (username: string, password: string, jobTitle: string) => Promise<unknown>;
     onRemoveWorker: (username: string) => Promise<unknown>;
     onUpdateJobTitle: (username: string, jobTitle: string) => Promise<unknown>;
+    onBulkAddWorkers: (workers: { username: string; password: string; jobTitle: string }[]) => Promise<BulkWorkerResult>;
     onLogout: () => void;
     onAccountClick: () => void;
     // Records view - pass medications as JSX or a simple list
@@ -28,6 +33,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     onAddWorker,
     onRemoveWorker,
     onUpdateJobTitle,
+    onBulkAddWorkers,
     onLogout,
     onAccountClick,
     recordsContent
@@ -53,6 +59,13 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     const [editingUsername, setEditingUsername] = useState<string | null>(null);
     const [editJobTitle, setEditJobTitle] = useState('');
     const [editError, setEditError] = useState('');
+
+    // Bulk import
+    const bulkFileRef = useRef<HTMLInputElement>(null);
+    const [bulkRows, setBulkRows] = useState<BulkWorkerRow[]>([]);
+    const [bulkResult, setBulkResult] = useState<BulkWorkerResult | null>(null);
+    const [bulkSubmitting, setBulkSubmitting] = useState(false);
+    const [bulkParseError, setBulkParseError] = useState('');
 
     useEffect(() => {
         if (activeTab === 'workers') {
@@ -104,6 +117,54 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
         }
     };
 
+    const handleBulkFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setBulkParseError('');
+        setBulkResult(null);
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = ev.target?.result;
+                const wb = xlsx.read(data, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rows: Record<string, unknown>[] = xlsx.utils.sheet_to_json(ws, { defval: '' });
+                const mapped: BulkWorkerRow[] = rows.map((row) => {
+                    const username = String(row['username'] || row['Username'] || '').trim();
+                    const password = String(row['password'] || row['Password'] || '').trim();
+                    const jobTitle = String(row['jobTitle'] || row['Job Title'] || row['job_title'] || '').trim();
+                    let _error = '';
+                    if (!username || username.length < 3) _error = 'Username must be at least 3 characters.';
+                    else if (!password || password.length < 6) _error = 'Password must be at least 6 characters.';
+                    return { username, password, jobTitle, _valid: !_error, _error };
+                });
+                setBulkRows(mapped);
+            } catch {
+                setBulkParseError('Could not parse file. Upload a valid .xlsx or .csv file.');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        e.target.value = '';
+    };
+
+    const handleBulkSubmit = async () => {
+        setBulkSubmitting(true);
+        setBulkResult(null);
+        try {
+            const validRows = bulkRows.filter((r) => r._valid);
+            const result = await onBulkAddWorkers(validRows.map(({ username, password, jobTitle }) => ({ username, password, jobTitle })));
+            setBulkResult(result);
+            if (result.failed.length === 0) {
+                setBulkRows([]);
+            }
+            onLoadWorkers();
+        } catch (err: unknown) {
+            setBulkParseError(err instanceof Error ? err.message : 'Import failed.');
+        } finally {
+            setBulkSubmitting(false);
+        }
+    };
+
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return '—';
         try { return new Date(dateStr).toLocaleDateString(); } catch { return '—'; }
@@ -122,7 +183,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                         onClick={() => setSidebarCollapsed((prev) => !prev)}
                         aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     >
-                        {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                        {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
                     </button>
                 </div>
                 <button className="dashboard__account" onClick={onAccountClick} title={profile.username}>
@@ -150,9 +211,6 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                         <span className="dashboard__link-label">View records</span>
                     </button>
                 </nav>
-                <div style={{ marginTop: 'auto', padding: '12px 16px' }}>
-                    <button className="button button--ghost button--mini" onClick={onLogout}>Sign out</button>
-                </div>
             </aside>
 
             <div className="dashboard__content">
@@ -172,11 +230,90 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                 >
                                     {showAddForm ? 'Cancel' : '+ Add worker'}
                                 </button>
+                                <button
+                                    className="button button--ghost button--mini"
+                                    onClick={() => bulkFileRef.current?.click()}
+                                    style={{ marginLeft: '8px' }}
+                                >
+                                    Import Excel
+                                </button>
+                                <input
+                                    ref={bulkFileRef}
+                                    type="file"
+                                    accept=".xlsx,.xls,.csv"
+                                    style={{ display: 'none' }}
+                                    onChange={handleBulkFile}
+                                />
                                 <button className="button button--ghost button--mini" onClick={onLoadWorkers} style={{ marginLeft: 'auto' }}>
                                     <RefreshCw size={14} />
                                     Refresh
                                 </button>
                             </div>
+
+                            {bulkParseError && <div className="inline-error" style={{ marginBottom: '8px' }}>{bulkParseError}</div>}
+
+                            {bulkRows.length > 0 && (
+                                <div className="admin-table__expanded" style={{ marginBottom: '12px' }}>
+                                    <p style={{ marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                                        Expected columns: <code>username | password | jobTitle</code>
+                                    </p>
+                                    <div className="admin-table">
+                                        <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+                                            <span>Username</span>
+                                            <span>Password</span>
+                                            <span>Job title</span>
+                                            <span>Status</span>
+                                        </div>
+                                        {bulkRows.map((row, i) => (
+                                            <div key={i} className="admin-table__row" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+                                                <span className="admin-table__primary">{row.username || <em style={{ color: 'var(--muted)' }}>empty</em>}</span>
+                                                <span>{'••••••'}</span>
+                                                <span>{row.jobTitle || '—'}</span>
+                                                <span style={{ color: row._valid ? 'var(--success, #22c55e)' : 'var(--error, #ef4444)', fontSize: '12px' }}>
+                                                    {row._valid ? '✓ valid' : row._error}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="admin-table__expanded-actions" style={{ marginTop: '8px' }}>
+                                        <button
+                                            className="button button--primary button--mini"
+                                            onClick={handleBulkSubmit}
+                                            disabled={bulkSubmitting || bulkRows.filter((r) => r._valid).length === 0}
+                                        >
+                                            {bulkSubmitting ? 'Importing…' : `Import ${bulkRows.filter((r) => r._valid).length} workers`}
+                                        </button>
+                                        <button
+                                            className="button button--ghost button--mini"
+                                            onClick={() => { setBulkRows([]); setBulkResult(null); setBulkParseError(''); }}
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {bulkResult && (
+                                <div className="admin-table__expanded" style={{ marginBottom: '12px' }}>
+                                    <p style={{ fontWeight: 600, marginBottom: '6px' }}>
+                                        Import results: {bulkResult.succeeded.length} succeeded, {bulkResult.failed.length} failed
+                                    </p>
+                                    {bulkResult.failed.length > 0 && (
+                                        <div className="admin-table">
+                                            <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 2fr' }}>
+                                                <span>Username</span>
+                                                <span>Error</span>
+                                            </div>
+                                            {bulkResult.failed.map((f, i) => (
+                                                <div key={i} className="admin-table__row" style={{ gridTemplateColumns: '1fr 2fr' }}>
+                                                    <span>{f.username}</span>
+                                                    <span style={{ color: 'var(--error, #ef4444)', fontSize: '12px' }}>{f.error}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {showAddForm && (
                                 <form className="admin-table__expanded" onSubmit={handleAddWorker} style={{ marginBottom: '12px' }}>

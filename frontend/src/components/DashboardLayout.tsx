@@ -57,7 +57,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 >
-                    {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                    {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
                 </button>
             </div>
             <button className="dashboard__account" onClick={onAccountClick} title={userName}>

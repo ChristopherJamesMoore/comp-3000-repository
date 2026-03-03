@@ -1044,6 +1044,61 @@ const createApp = (contract, db) => {
         }
     });
 
+    app.post('/api/org/workers/bulk', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { workers } = req.body;
+            if (!Array.isArray(workers) || workers.length === 0) {
+                return res.status(400).json({ error: 'workers must be a non-empty array.' });
+            }
+            if (workers.length > 200) {
+                return res.status(400).json({ error: 'Maximum 200 workers per import.' });
+            }
+            const workersCollection = db.collection('workers');
+            const orgsCollection = db.collection('organisations');
+            const org = await orgsCollection.findOne({ orgId: req.user.orgId });
+            if (!org) return res.status(404).json({ error: 'Organisation not found.' });
+            const succeeded = [];
+            const failed = [];
+            for (const row of workers) {
+                const { username, password, jobTitle } = row;
+                if (!username || username.length < 3) {
+                    failed.push({ username: username || '', error: 'Username must be at least 3 characters.' });
+                    continue;
+                }
+                if (!password || password.length < 6) {
+                    failed.push({ username, error: 'Password must be at least 6 characters.' });
+                    continue;
+                }
+                try {
+                    const workerConflict = await workersCollection.findOne({ username });
+                    if (workerConflict) { failed.push({ username, error: 'Username already taken.' }); continue; }
+                    const orgConflict = await orgsCollection.findOne({ adminUsername: username });
+                    if (orgConflict) { failed.push({ username, error: 'Username already taken.' }); continue; }
+                    const passwordHash = await bcrypt.hash(password, 10);
+                    const workerId = crypto.randomUUID();
+                    await workersCollection.insertOne({
+                        workerId,
+                        username,
+                        passwordHash,
+                        orgId: org.orgId,
+                        companyName: org.companyName,
+                        companyType: org.companyType,
+                        jobTitle: String(jobTitle || '').trim(),
+                        createdAt: new Date(),
+                        createdBy: req.user.sub
+                    });
+                    succeeded.push({ username });
+                } catch (rowErr) {
+                    failed.push({ username, error: rowErr.message || 'Failed to create worker.' });
+                }
+            }
+            return res.json({ succeeded, failed });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Bulk import failed.' });
+        }
+    });
+
     app.delete('/api/org/workers/:username', authMiddleware, requireOrgAdmin, async (req, res) => {
         try {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
@@ -1475,6 +1530,63 @@ const createApp = (contract, db) => {
         } catch (error) {
             console.error('[addMedication error]', error);
             res.status(500).json({ error: error.message || 'Internal server error' });
+        }
+    });
+
+    app.post('/api/medications/bulk', async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            if (req.user?.type === 'org') {
+                return res.status(403).json({ error: 'Organisation admins cannot perform medication operations.' });
+            }
+            const user = await loadUserForRequest(db, req);
+            if (!user) return res.status(401).json({ error: 'Invalid user.' });
+            const role = getCompanyRole(user);
+            if (role !== 'production') {
+                return res.status(403).json({ error: 'Only production companies can add medications.' });
+            }
+            const { medications } = req.body;
+            if (!Array.isArray(medications) || medications.length === 0) {
+                return res.status(400).json({ error: 'medications must be a non-empty array.' });
+            }
+            if (medications.length > 100) {
+                return res.status(400).json({ error: 'Maximum 100 medications per import.' });
+            }
+            const productionCompany = user.companyName;
+            const statusCollection = db.collection('medication_status');
+            const auditCollection = db.collection('medication_audits');
+            const results = await Promise.allSettled(medications.map(async (row) => {
+                const { serialNumber, medicationName, gtin, batchNumber, expiryDate, distributionCompany, pharmacyCompany } = row;
+                if (!serialNumber || !medicationName || !gtin || !batchNumber || !expiryDate || !distributionCompany || !pharmacyCompany) {
+                    throw new Error('Missing required fields.');
+                }
+                const qrHashSource = `${batchNumber}${expiryDate}${serialNumber}`;
+                const qrHash = crypto.createHash('sha256').update(qrHashSource).digest('hex');
+                await contract.submitTransaction('addMedication', serialNumber, medicationName, gtin, batchNumber, expiryDate, productionCompany, distributionCompany, qrHash);
+                const now = new Date();
+                await statusCollection.updateOne(
+                    { serialNumber },
+                    { $set: { serialNumber, status: 'manufactured', pharmacyCompany, distributionCompany, updatedAt: now, updatedBy: user.username, updatedByCompanyType: user.companyType || '', updatedByCompanyName: user.companyName || '' } },
+                    { upsert: true }
+                );
+                await auditCollection.insertOne(buildAuditEntry(serialNumber, 'manufactured', user));
+                return { serialNumber, qrHash };
+            }));
+            const succeeded = [];
+            const failed = [];
+            results.forEach((result, i) => {
+                const serialNumber = medications[i]?.serialNumber || '';
+                if (result.status === 'fulfilled') {
+                    succeeded.push(result.value);
+                } else {
+                    failed.push({ serialNumber, error: result.reason?.message || 'Failed.' });
+                }
+            });
+            return res.json({ succeeded, failed });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Bulk import failed.' });
         }
     });
 

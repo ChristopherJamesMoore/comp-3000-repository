@@ -668,6 +668,15 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
+    const bulkAddWorkers = useCallback(
+        async (workers: { username: string; password: string; jobTitle: string }[]) => {
+            const res = await authFetch('/api/org/workers/bulk', { method: 'POST', body: JSON.stringify({ workers }) });
+            if (!res.ok) throw new Error((await res.json()).error || 'Bulk import failed');
+            return res.json();
+        },
+        [authFetch]
+    );
+
     // ── Platform admin — org management ────────────────────────────────────
 
     const approveOrg = useCallback(
@@ -852,6 +861,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         loadOrgWorkers,
         addOrgWorker,
         removeOrgWorker,
-        updateOrgWorkerJobTitle
+        updateOrgWorkerJobTitle,
+        bulkAddWorkers
     };
 };
