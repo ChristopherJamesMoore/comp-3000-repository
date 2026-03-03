@@ -49,7 +49,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="dashboard__sidebar-top">
                 <div className="dashboard__brand">
                     <span className="dashboard__brand-text">LedgRx</span>
-                    <span className="dashboard__brand-mark" />
                 </div>
                 <button
                     type="button"

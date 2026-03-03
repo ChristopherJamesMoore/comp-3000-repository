@@ -168,11 +168,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
     const filtered = filter === 'all' ? adminOrgs : adminOrgs.filter((o) => o.approvalStatus === filter);
 
-    const formatDate = (dateStr?: string) => {
-        if (!dateStr) return '—';
-        try { return new Date(dateStr).toLocaleDateString(); } catch { return '—'; }
-    };
-
     return (
         <DashboardLayout
             userName={userName}

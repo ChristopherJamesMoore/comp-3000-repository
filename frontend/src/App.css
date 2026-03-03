@@ -924,14 +924,6 @@ body {
   transition: opacity 0.24s ease, transform 0.24s ease, max-width 0.24s ease;
 }
 
-.dashboard__brand-mark {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--warning);
-  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
-}
-
 .dashboard__collapse {
   border: 1px solid var(--stroke);
   background: var(--surface);
