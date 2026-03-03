@@ -457,7 +457,7 @@ const App: React.FC = () => {
                     onProfileFormChange={handleProfileFormChange}
                     onProfileSave={handleProfileSave}
                     onRequestEmailChange={requestEmailChange}
-                    onBack={() => navigate(profileType === 'org' || profileType === 'worker' ? '/org' : '/app')}
+                    onBack={() => navigate(profileType === 'org' ? '/org' : '/app')}
                     onLogout={handleLogout}
                     onAdminClick={() => navigate('/app/admin')}
                 />
