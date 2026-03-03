@@ -228,11 +228,28 @@ const requireAdmin = (db) => async (req, res, next) => {
 
 const requireApproved = (db) => async (req, res, next) => {
     const username = req.user?.sub;
+    const tokenType = req.user?.type;
     if (!username) {
         return res.status(401).json({ error: 'Invalid token.' });
     }
-    if (isAdminUser(username)) return next();
+    if (tokenType === 'platform' || isAdminUser(username)) return next();
     if (db) {
+        if (tokenType === 'worker') {
+            const worker = await db.collection('workers').findOne({ username });
+            if (!worker) return res.status(401).json({ error: 'Worker not found.' });
+            const org = await db.collection('organisations').findOne({ orgId: worker.orgId });
+            if (!org || org.approvalStatus !== 'approved') {
+                return res.status(403).json({ error: 'Your organisation is pending approval.' });
+            }
+            return next();
+        }
+        if (tokenType === 'org') {
+            const org = await db.collection('organisations').findOne({ adminUsername: username });
+            if (!org || org.approvalStatus !== 'approved') {
+                return res.status(403).json({ error: 'Your organisation is pending approval.' });
+            }
+            return next();
+        }
         const users = db.collection('users');
         const user = await users.findOne({ username });
         if (user?.isAdmin) return next();
@@ -244,10 +261,36 @@ const requireApproved = (db) => async (req, res, next) => {
     return next();
 };
 
+const requireOrgAdmin = (req, res, next) => {
+    if (req.user?.type !== 'org') {
+        return res.status(403).json({ error: 'Organisation admin access required.' });
+    }
+    return next();
+};
+
 const loadUserForRequest = async (db, req) => {
     if (!db) return null;
+    const tokenType = req.user?.type;
     const username = req.user?.sub;
     if (!username) return null;
+
+    if (tokenType === 'worker') {
+        return db.collection('workers').findOne({ username });
+    }
+
+    if (tokenType === 'org') {
+        const org = await db.collection('organisations').findOne({ adminUsername: username });
+        if (!org) return null;
+        return {
+            username: org.adminUsername,
+            companyType: org.companyType,
+            companyName: org.companyName,
+            isAdmin: false,
+            approvalStatus: org.approvalStatus,
+            orgId: org.orgId
+        };
+    }
+
     const users = db.collection('users');
     const existing = await users.findOne({ username });
     if (existing) return existing;
@@ -781,6 +824,412 @@ const createApp = (contract, db) => {
         }
     });
 
+    // ── Organisation Signup ──────────────────────────────────────────────────
+
+    app.post('/api/org/signup', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Signup requires MONGODB_URI.' });
+            const { adminFirstName, adminLastName, adminUsername, adminEmail, password,
+                    companyName, companyType, registrationNumber } = req.body;
+            if (!adminFirstName || !adminLastName || !adminUsername || !password || !companyName || !companyType) {
+                return res.status(400).json({ error: 'Missing required fields.' });
+            }
+            if (adminUsername.length < 3) {
+                return res.status(400).json({ error: 'Username must be at least 3 characters.' });
+            }
+            if (password.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+            }
+            const normalizedType = String(companyType).trim().toLowerCase();
+            if (!['production', 'distribution', 'pharmacy', 'clinic'].includes(normalizedType)) {
+                return res.status(400).json({ error: 'Company type must be production, distribution, pharmacy, or clinic.' });
+            }
+            const orgsCollection = db.collection('organisations');
+            const workersCollection = db.collection('workers');
+            const existing = await orgsCollection.findOne({ adminUsername });
+            if (existing) return res.status(409).json({ error: 'Username already taken.' });
+            const workerConflict = await workersCollection.findOne({ username: adminUsername });
+            if (workerConflict) return res.status(409).json({ error: 'Username already taken.' });
+            const passwordHash = await bcrypt.hash(password, 10);
+            const orgId = crypto.randomUUID();
+            await orgsCollection.insertOne({
+                orgId,
+                companyName: String(companyName).trim(),
+                companyType: normalizedType,
+                registrationNumber: String(registrationNumber || '').trim(),
+                adminFirstName: String(adminFirstName).trim(),
+                adminLastName: String(adminLastName).trim(),
+                adminUsername,
+                adminEmail: adminEmail ? String(adminEmail).trim().toLowerCase() : '',
+                passwordHash,
+                approvalStatus: 'pending',
+                createdAt: new Date(),
+                approvedAt: null
+            });
+            const token = createToken({ sub: adminUsername, type: 'org', orgId, jti: crypto.randomUUID() });
+            return res.status(201).json({
+                token,
+                org: { orgId, adminUsername, companyName: String(companyName).trim(), companyType: normalizedType, approvalStatus: 'pending' }
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Signup failed.' });
+        }
+    });
+
+    // ── Organisation Login ───────────────────────────────────────────────────
+
+    app.post('/api/org/login', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Login requires MONGODB_URI.' });
+            const { username, password } = req.body;
+            if (!username || !password) {
+                return res.status(400).json({ error: 'Username and password are required.' });
+            }
+            const org = await db.collection('organisations').findOne({ adminUsername: username });
+            if (!org) return res.status(401).json({ error: 'Invalid credentials.' });
+            const ok = await bcrypt.compare(password, org.passwordHash);
+            if (!ok) return res.status(401).json({ error: 'Invalid credentials.' });
+            const token = createToken({ sub: username, type: 'org', orgId: org.orgId, jti: crypto.randomUUID() });
+            return res.json({
+                token,
+                org: {
+                    orgId: org.orgId,
+                    adminUsername: org.adminUsername,
+                    companyName: org.companyName,
+                    companyType: org.companyType,
+                    approvalStatus: org.approvalStatus,
+                    adminEmail: org.adminEmail,
+                    adminFirstName: org.adminFirstName,
+                    adminLastName: org.adminLastName,
+                    registrationNumber: org.registrationNumber
+                }
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Login failed.' });
+        }
+    });
+
+    // ── Organisation Profile ─────────────────────────────────────────────────
+
+    app.get('/api/org/me', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const org = await db.collection('organisations').findOne({ adminUsername: req.user.sub });
+            if (!org) return res.status(404).json({ error: 'Organisation not found.' });
+            return res.json({
+                orgId: org.orgId,
+                adminUsername: org.adminUsername,
+                companyName: org.companyName,
+                companyType: org.companyType,
+                approvalStatus: org.approvalStatus,
+                adminEmail: org.adminEmail,
+                adminFirstName: org.adminFirstName,
+                adminLastName: org.adminLastName,
+                registrationNumber: org.registrationNumber
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to load profile.' });
+        }
+    });
+
+    // ── Worker Login ─────────────────────────────────────────────────────────
+
+    app.post('/api/worker/login', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Login requires MONGODB_URI.' });
+            const { username, password } = req.body;
+            if (!username || !password) {
+                return res.status(400).json({ error: 'Username and password are required.' });
+            }
+            const worker = await db.collection('workers').findOne({ username });
+            if (!worker) return res.status(401).json({ error: 'Invalid credentials.' });
+            const ok = await bcrypt.compare(password, worker.passwordHash);
+            if (!ok) return res.status(401).json({ error: 'Invalid credentials.' });
+            const org = await db.collection('organisations').findOne({ orgId: worker.orgId });
+            if (!org || org.approvalStatus !== 'approved') {
+                return res.status(403).json({ error: 'Your organisation is pending approval.' });
+            }
+            const token = createToken({ sub: username, type: 'worker', orgId: worker.orgId, jti: crypto.randomUUID() });
+            return res.json({
+                token,
+                worker: {
+                    username: worker.username,
+                    orgId: worker.orgId,
+                    companyName: worker.companyName,
+                    companyType: worker.companyType,
+                    jobTitle: worker.jobTitle,
+                    approvalStatus: 'approved'
+                }
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Login failed.' });
+        }
+    });
+
+    // ── Worker Profile ───────────────────────────────────────────────────────
+
+    app.get('/api/worker/me', authMiddleware, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            if (req.user?.type !== 'worker') {
+                return res.status(403).json({ error: 'Worker access required.' });
+            }
+            const worker = await db.collection('workers').findOne({ username: req.user.sub });
+            if (!worker) return res.status(404).json({ error: 'Worker not found.' });
+            return res.json({
+                username: worker.username,
+                orgId: worker.orgId,
+                companyName: worker.companyName,
+                companyType: worker.companyType,
+                jobTitle: worker.jobTitle
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to load profile.' });
+        }
+    });
+
+    // ── Org Admin — Worker Management ────────────────────────────────────────
+
+    app.get('/api/org/workers', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const workers = await db.collection('workers')
+                .find({ orgId: req.user.orgId }, { projection: { _id: 0, passwordHash: 0 } })
+                .toArray();
+            return res.json({ workers });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to load workers.' });
+        }
+    });
+
+    app.post('/api/org/workers', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { username, password, jobTitle } = req.body;
+            if (!username || !password) {
+                return res.status(400).json({ error: 'Username and password are required.' });
+            }
+            if (username.length < 3) {
+                return res.status(400).json({ error: 'Username must be at least 3 characters.' });
+            }
+            if (password.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+            }
+            const workersCollection = db.collection('workers');
+            const orgsCollection = db.collection('organisations');
+            const workerConflict = await workersCollection.findOne({ username });
+            if (workerConflict) return res.status(409).json({ error: 'Username already taken.' });
+            const orgConflict = await orgsCollection.findOne({ adminUsername: username });
+            if (orgConflict) return res.status(409).json({ error: 'Username already taken.' });
+            const org = await orgsCollection.findOne({ orgId: req.user.orgId });
+            if (!org) return res.status(404).json({ error: 'Organisation not found.' });
+            const passwordHash = await bcrypt.hash(password, 10);
+            const workerId = crypto.randomUUID();
+            await workersCollection.insertOne({
+                workerId,
+                username,
+                passwordHash,
+                orgId: org.orgId,
+                companyName: org.companyName,
+                companyType: org.companyType,
+                jobTitle: String(jobTitle || '').trim(),
+                createdAt: new Date(),
+                createdBy: req.user.sub
+            });
+            return res.status(201).json({
+                worker: { workerId, username, orgId: org.orgId, companyName: org.companyName, companyType: org.companyType, jobTitle: jobTitle || '' }
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to add worker.' });
+        }
+    });
+
+    app.delete('/api/org/workers/:username', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const result = await db.collection('workers').deleteOne({ username: req.params.username, orgId: req.user.orgId });
+            if (result.deletedCount === 0) return res.status(404).json({ error: 'Worker not found.' });
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to remove worker.' });
+        }
+    });
+
+    app.patch('/api/org/workers/:username', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const result = await db.collection('workers').findOneAndUpdate(
+                { username: req.params.username, orgId: req.user.orgId },
+                { $set: { jobTitle: String(req.body.jobTitle || '').trim() } },
+                { returnDocument: 'after' }
+            );
+            if (!result) return res.status(404).json({ error: 'Worker not found.' });
+            return res.json({ ok: true, worker: { username: result.username, jobTitle: result.jobTitle } });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to update worker.' });
+        }
+    });
+
+    // ── Platform Admin — Organisation Management ─────────────────────────────
+
+    app.get('/api/admin/orgs', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const orgs = await db.collection('organisations')
+                .find({}, { projection: { _id: 0, passwordHash: 0 } })
+                .toArray();
+            const counts = await db.collection('workers').aggregate([
+                { $group: { _id: '$orgId', count: { $sum: 1 } } }
+            ]).toArray();
+            const countMap = new Map(counts.map((c) => [c._id, c.count]));
+            return res.json({ orgs: orgs.map((org) => ({ ...org, workerCount: countMap.get(org.orgId) || 0 })) });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to load organisations.' });
+        }
+    });
+
+    app.get('/api/admin/orgs/:orgId/workers', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const workers = await db.collection('workers')
+                .find({ orgId: req.params.orgId }, { projection: { _id: 0, passwordHash: 0 } })
+                .toArray();
+            return res.json({ workers });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to load workers.' });
+        }
+    });
+
+    app.post('/api/admin/orgs/:orgId/approve', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const result = await db.collection('organisations').findOneAndUpdate(
+                { orgId: req.params.orgId },
+                { $set: { approvalStatus: 'approved', approvedAt: new Date(), approvedBy: req.user.sub } },
+                { returnDocument: 'after' }
+            );
+            if (!result) return res.status(404).json({ error: 'Organisation not found.' });
+            if (result.adminEmail) {
+                const appUrl = getEnv('APP_URL', 'https://ledgrx.duckdns.org');
+                await sendEmail({
+                    to: result.adminEmail,
+                    subject: 'Your LedgRx organisation has been approved',
+                    html: `
+                        <p>Hello ${result.adminFirstName || result.adminUsername},</p>
+                        <p>Your LedgRx organisation <strong>${result.companyName}</strong> has been approved.</p>
+                        <p>You can now log in and begin managing your workers and medication records.</p>
+                        <p><a href="${appUrl}">Sign in to LedgRx</a></p>
+                        <p>The LedgRx Team</p>
+                    `
+                });
+            }
+            return res.json({ ok: true, org: { orgId: result.orgId, approvalStatus: result.approvalStatus } });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to approve organisation.' });
+        }
+    });
+
+    app.post('/api/admin/orgs/:orgId/reject', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const result = await db.collection('organisations').findOneAndUpdate(
+                { orgId: req.params.orgId },
+                { $set: { approvalStatus: 'rejected', approvedBy: req.user.sub, approvedAt: new Date() } },
+                { returnDocument: 'after' }
+            );
+            if (!result) return res.status(404).json({ error: 'Organisation not found.' });
+            return res.json({ ok: true, org: { orgId: result.orgId, approvalStatus: result.approvalStatus } });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to reject organisation.' });
+        }
+    });
+
+    app.delete('/api/admin/orgs/:orgId', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const orgResult = await db.collection('organisations').deleteOne({ orgId: req.params.orgId });
+            if (orgResult.deletedCount === 0) return res.status(404).json({ error: 'Organisation not found.' });
+            await db.collection('workers').deleteMany({ orgId: req.params.orgId });
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to delete organisation.' });
+        }
+    });
+
+    app.patch('/api/admin/orgs/:orgId', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { companyName, companyType, registrationNumber, adminEmail } = req.body;
+            const setFields = {};
+            if (companyName !== undefined) setFields.companyName = String(companyName).trim();
+            if (companyType !== undefined) setFields.companyType = String(companyType).trim().toLowerCase();
+            if (registrationNumber !== undefined) setFields.registrationNumber = String(registrationNumber).trim();
+            if (adminEmail !== undefined) setFields.adminEmail = String(adminEmail).trim().toLowerCase();
+            const result = await db.collection('organisations').findOneAndUpdate(
+                { orgId: req.params.orgId },
+                { $set: setFields },
+                { returnDocument: 'after' }
+            );
+            if (!result) return res.status(404).json({ error: 'Organisation not found.' });
+            return res.json({ ok: true, org: result });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to update organisation.' });
+        }
+    });
+
+    app.post('/api/admin/orgs/:orgId/reset-password', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { newPassword } = req.body;
+            if (!newPassword || newPassword.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+            }
+            const hashed = await bcrypt.hash(newPassword, 10);
+            const result = await db.collection('organisations').findOneAndUpdate(
+                { orgId: req.params.orgId },
+                { $set: { passwordHash: hashed } },
+                { returnDocument: 'after' }
+            );
+            if (!result) return res.status(404).json({ error: 'Organisation not found.' });
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to reset password.' });
+        }
+    });
+
+    app.delete('/api/admin/orgs/:orgId/workers/:username', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { orgId, username } = req.params;
+            const result = await db.collection('workers').deleteOne({ username, orgId });
+            if (result.deletedCount === 0) return res.status(404).json({ error: 'Worker not found.' });
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to delete worker.' });
+        }
+    });
+
+    app.post('/api/admin/orgs/:orgId/workers/:username/reset-password', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { orgId, username } = req.params;
+            const { newPassword } = req.body;
+            if (!newPassword || newPassword.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+            }
+            const hashed = await bcrypt.hash(newPassword, 10);
+            const result = await db.collection('workers').findOneAndUpdate(
+                { username, orgId },
+                { $set: { passwordHash: hashed } },
+                { returnDocument: 'after' }
+            );
+            if (!result) return res.status(404).json({ error: 'Worker not found.' });
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to reset password.' });
+        }
+    });
+
     app.use('/api/medications', authMiddleware);
     app.use('/api/medications', requireApproved(db));
 
@@ -788,6 +1237,9 @@ const createApp = (contract, db) => {
         try {
             if (!usersCollection) {
                 return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            if (req.user?.type === 'org') {
+                return res.status(403).json({ error: 'Organisation admins cannot perform medication operations.' });
             }
             const user = await loadUserForRequest(db, req);
             if (!user) {
@@ -852,6 +1304,9 @@ const createApp = (contract, db) => {
         try {
             if (!usersCollection) {
                 return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            if (req.user?.type === 'org') {
+                return res.status(403).json({ error: 'Organisation admins cannot perform medication operations.' });
             }
             const user = await loadUserForRequest(db, req);
             if (!user) {
@@ -944,6 +1399,9 @@ const createApp = (contract, db) => {
             if (!usersCollection) {
                 return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
             }
+            if (req.user?.type === 'org') {
+                return res.status(403).json({ error: 'Organisation admins cannot perform medication operations.' });
+            }
             const user = await loadUserForRequest(db, req);
             if (!user) {
                 return res.status(401).json({ error: 'Invalid user.' });
@@ -1025,6 +1483,9 @@ const createApp = (contract, db) => {
             if (!usersCollection) {
                 return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
             }
+            if (req.user?.type === 'org') {
+                return res.status(403).json({ error: 'Organisation admins cannot perform medication operations.' });
+            }
             const user = await loadUserForRequest(db, req);
             if (!user) {
                 return res.status(401).json({ error: 'Invalid user.' });
@@ -1070,6 +1531,9 @@ const createApp = (contract, db) => {
         try {
             if (!usersCollection) {
                 return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            if (req.user?.type === 'org') {
+                return res.status(403).json({ error: 'Organisation admins cannot perform medication operations.' });
             }
             const user = await loadUserForRequest(db, req);
             if (!user) {

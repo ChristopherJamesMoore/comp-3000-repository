@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { API_BASE, buildUrl } from '../utils/api';
-import { AuthMode, Toast, UserProfile } from '../types';
+import { AuthMode, OrgProfile, OrgWorker, Toast, UserProfile } from '../types';
 
 export type AuthFetch = (path: string, options?: RequestInit) => Promise<Response>;
 
@@ -23,6 +23,12 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     const [adminError, setAdminError] = useState('');
     const [adminLoading, setAdminLoading] = useState(false);
     const [hasAdmin, setHasAdmin] = useState(true);
+    const [adminOrgs, setAdminOrgs] = useState<OrgProfile[]>([]);
+    const [adminOrgsLoading, setAdminOrgsLoading] = useState(false);
+    const [adminOrgsError, setAdminOrgsError] = useState('');
+    const [orgWorkers, setOrgWorkers] = useState<OrgWorker[]>([]);
+    const [orgWorkersLoading, setOrgWorkersLoading] = useState(false);
+    const [orgWorkersError, setOrgWorkersError] = useState('');
 
     useEffect(() => {
         const stored = localStorage.getItem('authToken');
@@ -51,7 +57,67 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
 
     const loadProfile = useCallback(async () => {
         if (!authToken) return;
+        const tokenType = localStorage.getItem('authTokenType') || 'platform';
         try {
+            if (tokenType === 'org') {
+                const response = await authFetch('/api/org/me');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    setProfileError(errorData.error || 'Failed to load profile.');
+                    return;
+                }
+                const org = await response.json();
+                const mappedProfile: UserProfile = {
+                    username: org.adminUsername,
+                    companyType: org.companyType,
+                    companyName: org.companyName,
+                    approvalStatus: org.approvalStatus,
+                    registrationNumber: org.registrationNumber,
+                    email: org.adminEmail,
+                    adminEmail: org.adminEmail,
+                    adminFirstName: org.adminFirstName,
+                    adminLastName: org.adminLastName,
+                    isAdmin: false,
+                    type: 'org',
+                    orgId: org.orgId
+                };
+                setProfile(mappedProfile);
+                setProfileError('');
+                setProfileForm({
+                    companyType: org.companyType || '',
+                    companyName: org.companyName || '',
+                    registrationNumber: org.registrationNumber || ''
+                });
+                return;
+            }
+            if (tokenType === 'worker') {
+                const response = await authFetch('/api/worker/me');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    setProfileError(errorData.error || 'Failed to load profile.');
+                    return;
+                }
+                const worker = await response.json();
+                const mappedProfile: UserProfile = {
+                    username: worker.username,
+                    companyType: worker.companyType,
+                    companyName: worker.companyName,
+                    approvalStatus: 'approved',
+                    isAdmin: false,
+                    type: 'worker',
+                    orgId: worker.orgId,
+                    jobTitle: worker.jobTitle
+                };
+                setProfile(mappedProfile);
+                setProfileError('');
+                setProfileForm({
+                    companyType: worker.companyType || '',
+                    companyName: worker.companyName || '',
+                    registrationNumber: ''
+                });
+                return;
+            }
+            // Platform admin / legacy
             const response = await authFetch('/api/auth/me');
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -59,7 +125,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                 return;
             }
             const data = await response.json();
-            setProfile(data);
+            setProfile({ ...data, type: 'platform' });
             setProfileError('');
             setProfileForm({
                 companyType: data.companyType || '',
@@ -99,13 +165,35 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         loadProfile();
     }, [authToken, loadProfile]);
 
+    const loadAdminOrgs = useCallback(async () => {
+        if (!authToken) return;
+        setAdminOrgsLoading(true);
+        setAdminOrgsError('');
+        try {
+            const response = await authFetch('/api/admin/orgs');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to load organisations.');
+            }
+            const data = await response.json();
+            setAdminOrgs(Array.isArray(data.orgs) ? data.orgs : []);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setAdminOrgsError(message || 'Failed to load organisations.');
+        } finally {
+            setAdminOrgsLoading(false);
+        }
+    }, [authFetch, authToken]);
+
     useEffect(() => {
         if (profile?.isAdmin) {
             loadAdminUsers();
+            loadAdminOrgs();
         } else {
             setAdminUsers([]);
+            setAdminOrgs([]);
         }
-    }, [loadAdminUsers, profile?.isAdmin]);
+    }, [loadAdminUsers, loadAdminOrgs, profile?.isAdmin]);
 
     useEffect(() => {
         if (!authToken && requiresAuth) {
@@ -174,10 +262,11 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     return;
                 }
                 localStorage.setItem('authToken', data.token);
+                localStorage.setItem('authTokenType', 'platform');
                 setAuthToken(data.token);
                 setLoginForm({ username: '', password: '', email: '' });
                 if (data.user) {
-                    setProfile(data.user);
+                    setProfile({ ...data.user, type: 'platform' });
                     setProfileForm({
                         companyType: data.user.companyType || '',
                         companyName: data.user.companyName || '',
@@ -255,9 +344,12 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
             authFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
         }
         localStorage.removeItem('authToken');
+        localStorage.removeItem('authTokenType');
         setAuthToken(null);
         setProfile(null);
         setProfileForm({ companyType: '', companyName: '', registrationNumber: '' });
+        setAdminOrgs([]);
+        setOrgWorkers([]);
         navigate('/');
     }, [authFetch, authToken, navigate]);
 
@@ -387,6 +479,280 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
+    const orgLogin = useCallback(
+        async (username: string, password: string) => {
+            const response = await fetch(buildUrl('/api/org/login'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Login failed.');
+            }
+            const data = await response.json();
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('authTokenType', 'org');
+            setAuthToken(data.token);
+            const org = data.org;
+            const mappedProfile: UserProfile = {
+                username: org.adminUsername,
+                companyType: org.companyType,
+                companyName: org.companyName,
+                approvalStatus: org.approvalStatus,
+                registrationNumber: org.registrationNumber,
+                email: org.adminEmail,
+                adminEmail: org.adminEmail,
+                adminFirstName: org.adminFirstName,
+                adminLastName: org.adminLastName,
+                isAdmin: false,
+                type: 'org',
+                orgId: org.orgId
+            };
+            setProfile(mappedProfile);
+            return data;
+        },
+        []
+    );
+
+    const workerLogin = useCallback(
+        async (username: string, password: string) => {
+            const response = await fetch(buildUrl('/api/worker/login'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Login failed.');
+            }
+            const data = await response.json();
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('authTokenType', 'worker');
+            setAuthToken(data.token);
+            const worker = data.worker;
+            const mappedProfile: UserProfile = {
+                username: worker.username,
+                companyType: worker.companyType,
+                companyName: worker.companyName,
+                approvalStatus: 'approved',
+                isAdmin: false,
+                type: 'worker',
+                orgId: worker.orgId,
+                jobTitle: worker.jobTitle
+            };
+            setProfile(mappedProfile);
+            return data;
+        },
+        []
+    );
+
+    const handleOrgSignup = useCallback(
+        async (formData: {
+            adminFirstName: string; adminLastName: string; adminUsername: string;
+            adminEmail: string; password: string; companyName: string;
+            companyType: string; registrationNumber: string;
+        }) => {
+            const response = await fetch(buildUrl('/api/org/signup'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Signup failed.');
+            }
+            const data = await response.json();
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('authTokenType', 'org');
+            setAuthToken(data.token);
+            const org = data.org;
+            setProfile({
+                username: org.adminUsername,
+                companyType: org.companyType,
+                companyName: org.companyName,
+                approvalStatus: 'pending',
+                isAdmin: false,
+                type: 'org',
+                orgId: org.orgId
+            });
+            return data;
+        },
+        []
+    );
+
+    // ── Org admin — worker management ───────────────────────────────────────
+
+    const loadOrgWorkers = useCallback(async () => {
+        if (!authToken) return;
+        setOrgWorkersLoading(true);
+        setOrgWorkersError('');
+        try {
+            const response = await authFetch('/api/org/workers');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to load workers.');
+            }
+            const data = await response.json();
+            setOrgWorkers(Array.isArray(data.workers) ? data.workers : []);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setOrgWorkersError(message);
+        } finally {
+            setOrgWorkersLoading(false);
+        }
+    }, [authFetch, authToken]);
+
+    const addOrgWorker = useCallback(
+        async (username: string, password: string, jobTitle: string) => {
+            const response = await authFetch('/api/org/workers', {
+                method: 'POST',
+                body: JSON.stringify({ username, password, jobTitle })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to add worker.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const removeOrgWorker = useCallback(
+        async (username: string) => {
+            const response = await authFetch(`/api/org/workers/${encodeURIComponent(username)}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to remove worker.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const updateOrgWorkerJobTitle = useCallback(
+        async (username: string, jobTitle: string) => {
+            const response = await authFetch(`/api/org/workers/${encodeURIComponent(username)}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ jobTitle })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to update worker.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    // ── Platform admin — org management ────────────────────────────────────
+
+    const approveOrg = useCallback(
+        async (orgId: string) => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/approve`, { method: 'POST' });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to approve organisation.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const rejectOrg = useCallback(
+        async (orgId: string) => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/reject`, { method: 'POST' });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to reject organisation.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const deleteOrg = useCallback(
+        async (orgId: string) => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to delete organisation.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const updateOrg = useCallback(
+        async (orgId: string, data: { companyName?: string; companyType?: string; registrationNumber?: string; adminEmail?: string }) => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to update organisation.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const resetOrgPassword = useCallback(
+        async (orgId: string, newPassword: string) => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/reset-password`, {
+                method: 'POST',
+                body: JSON.stringify({ newPassword })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to reset password.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const loadAdminOrgWorkers = useCallback(
+        async (orgId: string): Promise<OrgWorker[]> => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/workers`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to load workers.');
+            }
+            const data = await response.json();
+            return Array.isArray(data.workers) ? data.workers : [];
+        },
+        [authFetch]
+    );
+
+    const deleteAdminOrgWorker = useCallback(
+        async (orgId: string, username: string) => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/workers/${encodeURIComponent(username)}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to delete worker.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
+    const resetAdminOrgWorkerPassword = useCallback(
+        async (orgId: string, username: string, newPassword: string) => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/workers/${encodeURIComponent(username)}/reset-password`, {
+                method: 'POST',
+                body: JSON.stringify({ newPassword })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to reset password.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
     const bootstrapAdmin = useCallback(
         async (username: string, password: string) => {
             const response = await fetch(buildUrl('/api/admin/bootstrap'), {
@@ -439,6 +805,29 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         updateUserCompany,
         resetUserPassword,
         requestEmailChange,
-        bootstrapAdmin
+        bootstrapAdmin,
+        // org/worker system
+        orgLogin,
+        workerLogin,
+        handleOrgSignup,
+        adminOrgs,
+        adminOrgsLoading,
+        adminOrgsError,
+        loadAdminOrgs,
+        approveOrg,
+        rejectOrg,
+        deleteOrg,
+        updateOrg,
+        resetOrgPassword,
+        loadAdminOrgWorkers,
+        deleteAdminOrgWorker,
+        resetAdminOrgWorkerPassword,
+        orgWorkers,
+        orgWorkersLoading,
+        orgWorkersError,
+        loadOrgWorkers,
+        addOrgWorker,
+        removeOrgWorker,
+        updateOrgWorkerJobTitle
     };
 };

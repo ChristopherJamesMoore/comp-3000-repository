@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { UserProfile } from '../types';
+import { RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { OrgProfile, OrgWorker } from '../types';
 import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
 
 type AdminFilter = 'all' | 'pending' | 'approved' | 'rejected';
@@ -9,138 +9,168 @@ type AdminPageProps = {
     userName: string;
     onAccountClick: () => void;
     onNavSelect: (nav: DashboardNav) => void;
-    adminUsers: UserProfile[];
-    adminLoading: boolean;
-    adminError: string;
+    adminOrgs: OrgProfile[];
+    adminOrgsLoading: boolean;
+    adminOrgsError: string;
     onReloadAdmin: () => void;
-    onApproveUser: (username: string) => Promise<unknown>;
-    onRejectUser: (username: string) => Promise<unknown>;
-    onDeleteUser: (username: string) => Promise<unknown>;
-    onUpdateUserCompany: (username: string, data: { companyType: string; companyName: string; registrationNumber: string; email: string }) => Promise<unknown>;
-    onResetUserPassword: (username: string, newPassword: string) => Promise<unknown>;
+    onApproveOrg: (orgId: string) => Promise<unknown>;
+    onRejectOrg: (orgId: string) => Promise<unknown>;
+    onDeleteOrg: (orgId: string) => Promise<unknown>;
+    onUpdateOrg: (orgId: string, data: { companyName?: string; companyType?: string; registrationNumber?: string; adminEmail?: string }) => Promise<unknown>;
+    onResetOrgPassword: (orgId: string, newPassword: string) => Promise<unknown>;
+    onLoadOrgWorkers: (orgId: string) => Promise<OrgWorker[]>;
+    onDeleteOrgWorker: (orgId: string, username: string) => Promise<unknown>;
+    onResetOrgWorkerPassword: (orgId: string, username: string, newPassword: string) => Promise<unknown>;
 };
 
 const AdminPage: React.FC<AdminPageProps> = ({
     userName,
     onAccountClick,
     onNavSelect,
-    adminUsers,
-    adminLoading,
-    adminError,
+    adminOrgs,
+    adminOrgsLoading,
+    adminOrgsError,
     onReloadAdmin,
-    onApproveUser,
-    onRejectUser,
-    onDeleteUser,
-    onUpdateUserCompany,
-    onResetUserPassword
+    onApproveOrg,
+    onRejectOrg,
+    onDeleteOrg,
+    onUpdateOrg,
+    onResetOrgPassword,
+    onLoadOrgWorkers,
+    onDeleteOrgWorker,
+    onResetOrgWorkerPassword
 }) => {
     const [filter, setFilter] = useState<AdminFilter>('all');
-    const [expandedUser, setExpandedUser] = useState<string | null>(null);
-    const [expandMode, setExpandMode] = useState<'edit' | 'password' | null>(null);
-    const [editForm, setEditForm] = useState({ companyType: '', companyName: '', registrationNumber: '', email: '' });
+    const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
+    const [expandMode, setExpandMode] = useState<'edit' | 'password' | 'workers' | null>(null);
+    const [editForm, setEditForm] = useState({ companyName: '', companyType: '', registrationNumber: '', adminEmail: '' });
     const [passwordInput, setPasswordInput] = useState('');
     const [actionError, setActionError] = useState('');
+    const [orgWorkers, setOrgWorkers] = useState<OrgWorker[]>([]);
+    const [orgWorkersLoading, setOrgWorkersLoading] = useState(false);
+    const [workerPasswordTarget, setWorkerPasswordTarget] = useState<string | null>(null);
+    const [workerPasswordInput, setWorkerPasswordInput] = useState('');
 
     const closeExpanded = () => {
-        setExpandedUser(null);
+        setExpandedOrg(null);
         setExpandMode(null);
         setActionError('');
         setPasswordInput('');
+        setOrgWorkers([]);
+        setWorkerPasswordTarget(null);
     };
 
-    const openEdit = (user: UserProfile) => {
-        setExpandedUser(user.username);
+    const openEdit = (org: OrgProfile) => {
+        setExpandedOrg(org.orgId);
         setExpandMode('edit');
         setEditForm({
-            companyType: user.companyType || '',
-            companyName: user.companyName || '',
-            registrationNumber: user.registrationNumber || '',
-            email: user.email || ''
+            companyName: org.companyName || '',
+            companyType: org.companyType || '',
+            registrationNumber: org.registrationNumber || '',
+            adminEmail: org.adminEmail || ''
         });
         setActionError('');
     };
 
-    const openPassword = (username: string) => {
-        setExpandedUser(username);
+    const openPassword = (orgId: string) => {
+        setExpandedOrg(orgId);
         setExpandMode('password');
         setPasswordInput('');
         setActionError('');
     };
 
-    const handleApprove = async (username: string) => {
+    const openWorkers = async (orgId: string) => {
+        if (expandedOrg === orgId && expandMode === 'workers') {
+            closeExpanded();
+            return;
+        }
+        setExpandedOrg(orgId);
+        setExpandMode('workers');
         setActionError('');
+        setOrgWorkers([]);
+        setOrgWorkersLoading(true);
         try {
-            await onApproveUser(username);
-            onReloadAdmin();
+            const workers = await onLoadOrgWorkers(orgId);
+            setOrgWorkers(workers);
         } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to approve user.');
+            setActionError(err instanceof Error ? err.message : 'Failed to load workers.');
+        } finally {
+            setOrgWorkersLoading(false);
         }
     };
 
-    const handleReject = async (username: string) => {
+    const handleApprove = async (orgId: string) => {
         setActionError('');
-        try {
-            await onRejectUser(username);
-            onReloadAdmin();
-        } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to reject user.');
+        try { await onApproveOrg(orgId); onReloadAdmin(); } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to approve.');
         }
     };
 
-    const handleDelete = async (username: string) => {
-        if (!window.confirm(`Delete user "${username}"? This cannot be undone.`)) return;
+    const handleReject = async (orgId: string) => {
         setActionError('');
-        try {
-            await onDeleteUser(username);
-            onReloadAdmin();
-        } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to delete user.');
+        try { await onRejectOrg(orgId); onReloadAdmin(); } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to reject.');
+        }
+    };
+
+    const handleDelete = async (orgId: string, companyName: string) => {
+        if (!window.confirm(`Delete organisation "${companyName}" and all its workers? This cannot be undone.`)) return;
+        setActionError('');
+        try { await onDeleteOrg(orgId); closeExpanded(); onReloadAdmin(); } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to delete.');
         }
     };
 
     const handleSaveEdit = async () => {
-        if (!expandedUser) return;
+        if (!expandedOrg) return;
         setActionError('');
-        try {
-            await onUpdateUserCompany(expandedUser, editForm);
-            closeExpanded();
-            onReloadAdmin();
-        } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to update company info.');
+        try { await onUpdateOrg(expandedOrg, editForm); closeExpanded(); onReloadAdmin(); } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to update.');
         }
     };
 
     const handleSavePassword = async () => {
-        if (!expandedUser) return;
-        if (passwordInput.length < 6) {
-            setActionError('Password must be at least 6 characters.');
-            return;
+        if (!expandedOrg) return;
+        if (passwordInput.length < 6) { setActionError('Password must be at least 6 characters.'); return; }
+        setActionError('');
+        try { await onResetOrgPassword(expandedOrg, passwordInput); closeExpanded(); } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to reset password.');
         }
+    };
+
+    const handleDeleteWorker = async (orgId: string, username: string) => {
+        if (!window.confirm(`Remove worker "${username}"?`)) return;
+        try {
+            await onDeleteOrgWorker(orgId, username);
+            setOrgWorkers((prev) => prev.filter((w) => w.username !== username));
+            onReloadAdmin();
+        } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to delete worker.');
+        }
+    };
+
+    const handleResetWorkerPassword = async (orgId: string, username: string) => {
+        if (workerPasswordInput.length < 6) { setActionError('Password must be at least 6 characters.'); return; }
         setActionError('');
         try {
-            await onResetUserPassword(expandedUser, passwordInput);
-            closeExpanded();
+            await onResetOrgWorkerPassword(orgId, username, workerPasswordInput);
+            setWorkerPasswordTarget(null);
+            setWorkerPasswordInput('');
         } catch (err: unknown) {
             setActionError(err instanceof Error ? err.message : 'Failed to reset password.');
         }
     };
 
-    const total = adminUsers.length;
-    const pending = adminUsers.filter((u) => (u.approvalStatus || 'approved') === 'pending').length;
-    const approved = adminUsers.filter((u) => (u.approvalStatus || 'approved') === 'approved').length;
-    const rejected = adminUsers.filter((u) => (u.approvalStatus || 'approved') === 'rejected').length;
+    const total = adminOrgs.length;
+    const pending = adminOrgs.filter((o) => o.approvalStatus === 'pending').length;
+    const approved = adminOrgs.filter((o) => o.approvalStatus === 'approved').length;
+    const rejected = adminOrgs.filter((o) => o.approvalStatus === 'rejected').length;
 
-    const filtered = filter === 'all'
-        ? adminUsers
-        : adminUsers.filter((u) => (u.approvalStatus || 'approved') === filter);
+    const filtered = filter === 'all' ? adminOrgs : adminOrgs.filter((o) => o.approvalStatus === filter);
 
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return '—';
-        try {
-            return new Date(dateStr).toLocaleDateString();
-        } catch {
-            return '—';
-        }
+        try { return new Date(dateStr).toLocaleDateString(); } catch { return '—'; }
     };
 
     return (
@@ -150,14 +180,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
             activeNav="admin"
             onNavSelect={onNavSelect}
             heading="Admin"
-            subheading="Manage organisation onboarding requests and user access."
+            subheading="Manage organisation onboarding requests and worker accounts."
             isAdmin={true}
         >
             <div className="admin-dashboard">
                 <div className="admin-stats">
                     <div className="admin-stat">
                         <span className="admin-stat__value">{total}</span>
-                        <span className="admin-stat__label">Total users</span>
+                        <span className="admin-stat__label">Total orgs</span>
                     </div>
                     <div className="admin-stat admin-stat--pending">
                         <span className="admin-stat__value">{pending}</span>
@@ -189,98 +219,95 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     </button>
                 </div>
 
-                {adminError && <div className="inline-error">{adminError}</div>}
+                {adminOrgsError && <div className="inline-error">{adminOrgsError}</div>}
                 {actionError && <div className="inline-error">{actionError}</div>}
+                {adminOrgsLoading && <p style={{ color: 'var(--muted)' }}>Loading…</p>}
 
-                {adminLoading && <p style={{ color: 'var(--muted)' }}>Loading…</p>}
-
-                {!adminLoading && !adminError && (
+                {!adminOrgsLoading && (
                     <div className="admin-table">
                         <div className="admin-table__row admin-table__row--head admin-table__row--full">
-                            <span>Username</span>
-                            <span>Company</span>
+                            <span>Organisation</span>
+                            <span>Type</span>
                             <span>Reg No.</span>
-                            <span>Role</span>
-                            <span>Requested</span>
+                            <span>Admin</span>
+                            <span>Workers</span>
                             <span>Status</span>
                             <span>Actions</span>
                         </div>
                         {filtered.length === 0 && (
-                            <p style={{ color: 'var(--muted)', padding: '12px' }}>
-                                No users match the current filter.
-                            </p>
+                            <p style={{ color: 'var(--muted)', padding: '12px' }}>No organisations match the current filter.</p>
                         )}
-                        {filtered.map((user) => {
-                            const status = user.approvalStatus || 'approved';
-                            const isExpanded = expandedUser === user.username;
+                        {filtered.map((org) => {
+                            const status = org.approvalStatus || 'pending';
+                            const isExpanded = expandedOrg === org.orgId;
                             return (
-                                <React.Fragment key={user.username}>
+                                <React.Fragment key={org.orgId}>
                                     <div className="admin-table__row admin-table__row--full">
                                         <span>
-                                            <span className="admin-table__primary">{user.username}</span>
-                                            {user.email && <span className="admin-table__secondary">{user.email}</span>}
+                                            <span className="admin-table__primary">{org.companyName}</span>
+                                            {org.adminEmail && <span className="admin-table__secondary">{org.adminEmail}</span>}
                                         </span>
-                                        <span>{user.companyName || '—'}</span>
-                                        <span>{user.registrationNumber || '—'}</span>
-                                        <span>{user.companyType || '—'}</span>
-                                        <span>{formatDate(user.approvedAt)}</span>
+                                        <span>{org.companyType || '—'}</span>
+                                        <span>{org.registrationNumber || '—'}</span>
+                                        <span>{org.adminUsername}</span>
+                                        <span>
+                                            <button
+                                                className="button button--ghost button--mini"
+                                                onClick={() => openWorkers(org.orgId)}
+                                                title="Show workers"
+                                            >
+                                                {org.workerCount ?? 0}
+                                                {isExpanded && expandMode === 'workers'
+                                                    ? <ChevronUp size={12} style={{ marginLeft: 4 }} />
+                                                    : <ChevronDown size={12} style={{ marginLeft: 4 }} />
+                                                }
+                                            </button>
+                                        </span>
                                         <span>
                                             <span className="admin-table__actions">
                                                 {(status === 'pending' || status === 'rejected') && (
-                                                    <button
-                                                        className="button button--primary button--mini"
-                                                        onClick={() => handleApprove(user.username)}
-                                                    >
+                                                    <button className="button button--primary button--mini" onClick={() => handleApprove(org.orgId)}>
                                                         Approve
                                                     </button>
                                                 )}
                                                 {(status === 'pending' || status === 'approved') && (
-                                                    <button
-                                                        className="button button--ghost button--mini"
-                                                        onClick={() => handleReject(user.username)}
-                                                    >
+                                                    <button className="button button--ghost button--mini" onClick={() => handleReject(org.orgId)}>
                                                         Reject
                                                     </button>
                                                 )}
-                                                {status === 'rejected' && (
-                                                    <span className="pill pill--rejected">rejected</span>
-                                                )}
-                                                {status === 'approved' && (
-                                                    <span className="pill pill--approved">approved</span>
-                                                )}
+                                                {status === 'rejected' && <span className="pill pill--rejected">rejected</span>}
+                                                {status === 'approved' && <span className="pill pill--approved">approved</span>}
                                             </span>
                                         </span>
                                         <span>
                                             <span className="admin-table__actions">
                                                 <button
                                                     className="button button--ghost button--mini"
-                                                    onClick={() => isExpanded && expandMode === 'edit' ? closeExpanded() : openEdit(user)}
+                                                    onClick={() => isExpanded && expandMode === 'edit' ? closeExpanded() : openEdit(org)}
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     className="button button--ghost button--mini"
-                                                    onClick={() => isExpanded && expandMode === 'password' ? closeExpanded() : openPassword(user.username)}
+                                                    onClick={() => isExpanded && expandMode === 'password' ? closeExpanded() : openPassword(org.orgId)}
                                                 >
-                                                    Reset password
+                                                    Reset pw
                                                 </button>
                                                 <button
                                                     className="button button--ghost button--mini"
-                                                    onClick={() => handleDelete(user.username)}
+                                                    onClick={() => handleDelete(org.orgId, org.companyName)}
                                                 >
                                                     Delete
                                                 </button>
                                             </span>
                                         </span>
                                     </div>
+
                                     {isExpanded && expandMode === 'edit' && (
                                         <div className="admin-table__expanded">
                                             <div className="field">
                                                 <label>Company type</label>
-                                                <select
-                                                    value={editForm.companyType}
-                                                    onChange={(e) => setEditForm((f) => ({ ...f, companyType: e.target.value }))}
-                                                >
+                                                <select value={editForm.companyType} onChange={(e) => setEditForm((f) => ({ ...f, companyType: e.target.value }))}>
                                                     <option value="">Select…</option>
                                                     <option value="production">Production</option>
                                                     <option value="distribution">Distribution</option>
@@ -290,28 +317,15 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                             </div>
                                             <div className="field">
                                                 <label>Company name</label>
-                                                <input
-                                                    type="text"
-                                                    value={editForm.companyName}
-                                                    onChange={(e) => setEditForm((f) => ({ ...f, companyName: e.target.value }))}
-                                                />
+                                                <input type="text" value={editForm.companyName} onChange={(e) => setEditForm((f) => ({ ...f, companyName: e.target.value }))} />
                                             </div>
                                             <div className="field">
                                                 <label>Registration number</label>
-                                                <input
-                                                    type="text"
-                                                    value={editForm.registrationNumber}
-                                                    onChange={(e) => setEditForm((f) => ({ ...f, registrationNumber: e.target.value }))}
-                                                />
+                                                <input type="text" value={editForm.registrationNumber} onChange={(e) => setEditForm((f) => ({ ...f, registrationNumber: e.target.value }))} />
                                             </div>
                                             <div className="field">
-                                                <label>Work email</label>
-                                                <input
-                                                    type="email"
-                                                    value={editForm.email}
-                                                    onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
-                                                    placeholder="contact@organisation.com"
-                                                />
+                                                <label>Admin email</label>
+                                                <input type="email" value={editForm.adminEmail} onChange={(e) => setEditForm((f) => ({ ...f, adminEmail: e.target.value }))} />
                                             </div>
                                             <div className="admin-table__expanded-actions">
                                                 <button className="button button--primary button--mini" onClick={handleSaveEdit}>Save</button>
@@ -319,20 +333,85 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                             </div>
                                         </div>
                                     )}
+
                                     {isExpanded && expandMode === 'password' && (
                                         <div className="admin-table__expanded">
                                             <div className="field">
-                                                <label>New password</label>
-                                                <input
-                                                    type="password"
-                                                    value={passwordInput}
-                                                    onChange={(e) => setPasswordInput(e.target.value)}
-                                                    placeholder="Min 6 characters"
-                                                />
+                                                <label>New password for org admin</label>
+                                                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Min 6 characters" />
                                             </div>
                                             <div className="admin-table__expanded-actions">
                                                 <button className="button button--primary button--mini" onClick={handleSavePassword}>Confirm</button>
                                                 <button className="button button--ghost button--mini" onClick={closeExpanded}>Cancel</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {isExpanded && expandMode === 'workers' && (
+                                        <div className="admin-table__expanded">
+                                            <p style={{ color: 'var(--muted)', fontSize: '0.8rem', marginBottom: '8px' }}>
+                                                Workers for <strong>{org.companyName}</strong>
+                                            </p>
+                                            {orgWorkersLoading && <p style={{ color: 'var(--muted)' }}>Loading workers…</p>}
+                                            {!orgWorkersLoading && orgWorkers.length === 0 && (
+                                                <p style={{ color: 'var(--muted)' }}>No workers yet.</p>
+                                            )}
+                                            {!orgWorkersLoading && orgWorkers.length > 0 && (
+                                                <div className="admin-table" style={{ marginTop: 0 }}>
+                                                    <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+                                                        <span>Username</span>
+                                                        <span>Job title</span>
+                                                        <span>Actions</span>
+                                                    </div>
+                                                    {orgWorkers.map((worker) => (
+                                                        <React.Fragment key={worker.username}>
+                                                            <div className="admin-table__row" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+                                                                <span>{worker.username}</span>
+                                                                <span>{worker.jobTitle || '—'}</span>
+                                                                <span>
+                                                                    <span className="admin-table__actions">
+                                                                        <button
+                                                                            className="button button--ghost button--mini"
+                                                                            onClick={() => {
+                                                                                setWorkerPasswordTarget(workerPasswordTarget === worker.username ? null : worker.username);
+                                                                                setWorkerPasswordInput('');
+                                                                                setActionError('');
+                                                                            }}
+                                                                        >
+                                                                            Reset pw
+                                                                        </button>
+                                                                        <button
+                                                                            className="button button--ghost button--mini"
+                                                                            onClick={() => handleDeleteWorker(org.orgId, worker.username)}
+                                                                        >
+                                                                            Remove
+                                                                        </button>
+                                                                    </span>
+                                                                </span>
+                                                            </div>
+                                                            {workerPasswordTarget === worker.username && (
+                                                                <div className="admin-table__expanded" style={{ paddingLeft: '16px' }}>
+                                                                    <div className="field">
+                                                                        <label>New password for {worker.username}</label>
+                                                                        <input
+                                                                            type="password"
+                                                                            value={workerPasswordInput}
+                                                                            onChange={(e) => setWorkerPasswordInput(e.target.value)}
+                                                                            placeholder="Min 6 characters"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="admin-table__expanded-actions">
+                                                                        <button className="button button--primary button--mini" onClick={() => handleResetWorkerPassword(org.orgId, worker.username)}>Confirm</button>
+                                                                        <button className="button button--ghost button--mini" onClick={() => { setWorkerPasswordTarget(null); setActionError(''); }}>Cancel</button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </React.Fragment>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div style={{ marginTop: '8px' }}>
+                                                <button className="button button--ghost button--mini" onClick={closeExpanded}>Close</button>
                                             </div>
                                         </div>
                                     )}

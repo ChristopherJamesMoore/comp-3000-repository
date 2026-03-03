@@ -36,6 +36,39 @@ export type UserProfile = {
     email?: string;
     approvedBy?: string;
     approvedAt?: string;
+    // org/worker system
+    type?: 'platform' | 'org' | 'worker';
+    orgId?: string;
+    jobTitle?: string;
+    adminEmail?: string;
+    adminFirstName?: string;
+    adminLastName?: string;
+};
+
+export type OrgWorker = {
+    workerId?: string;
+    username: string;
+    orgId: string;
+    companyName: string;
+    companyType: string;
+    jobTitle?: string;
+    createdAt?: string;
+    createdBy?: string;
+};
+
+export type OrgProfile = {
+    orgId: string;
+    adminUsername: string;
+    companyName: string;
+    companyType: string;
+    approvalStatus?: 'pending' | 'approved' | 'rejected';
+    adminEmail?: string;
+    adminFirstName?: string;
+    adminLastName?: string;
+    registrationNumber?: string;
+    workerCount?: number;
+    createdAt?: string;
+    approvedAt?: string;
 };
 
 export type AuthMode = 'login' | 'signup';

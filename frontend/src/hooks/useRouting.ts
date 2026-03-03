@@ -19,7 +19,7 @@ export const useRouting = () => {
         });
     }, []);
 
-    const requiresAuth = route === '/app' || route === '/account' || route === '/app/add';
+    const requiresAuth = route === '/app' || route === '/account' || route === '/app/add' || route === '/org';
 
     return { route, navigate, requiresAuth };
 };

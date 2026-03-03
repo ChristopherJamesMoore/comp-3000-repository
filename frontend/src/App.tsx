@@ -4,6 +4,10 @@ import { QRCodeSVG } from 'qrcode.react';
 import './App.css';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import OrgLoginPage from './pages/OrgLoginPage';
+import OrgSignupPage from './pages/OrgSignupPage';
+import WorkerLoginPage from './pages/WorkerLoginPage';
+import OrgDashboardPage from './pages/OrgDashboardPage';
 import DashboardPage from './pages/DashboardPage';
 import AccountPage from './pages/AccountPage';
 import ProductPage from './pages/ProductPage';
@@ -39,12 +43,8 @@ const App: React.FC = () => {
         profileForm,
         profileError,
         profileSaving,
-        adminUsers,
-        adminError,
-        adminLoading,
         hasAdmin,
         authFetch,
-        loadAdminUsers,
         handleLoginFormChange,
         handleProfileFormChange,
         handleToggleAuthMode,
@@ -52,13 +52,30 @@ const App: React.FC = () => {
         handleSignup,
         handleLogout,
         handleProfileSave,
-        approveUser,
-        rejectUser,
-        deleteUser,
-        updateUserCompany,
-        resetUserPassword,
         requestEmailChange,
-        bootstrapAdmin
+        bootstrapAdmin,
+        orgLogin,
+        workerLogin,
+        handleOrgSignup,
+        adminOrgs,
+        adminOrgsLoading,
+        adminOrgsError,
+        loadAdminOrgs,
+        approveOrg,
+        rejectOrg,
+        deleteOrg,
+        updateOrg,
+        resetOrgPassword,
+        loadAdminOrgWorkers,
+        deleteAdminOrgWorker,
+        resetAdminOrgWorkerPassword,
+        orgWorkers,
+        orgWorkersLoading,
+        orgWorkersError,
+        loadOrgWorkers,
+        addOrgWorker,
+        removeOrgWorker,
+        updateOrgWorkerJobTitle
     } = useAuth({ requiresAuth, navigate, setToast });
     const onNavigate = useNavigateWithAuthMode(navigate, setAuthMode);
     const { activeTab, handleNavSelect } = useDashboardNav(navigate);
@@ -206,19 +223,28 @@ const App: React.FC = () => {
         )
     };
 
-    const profileIncomplete = !!authToken && profile !== null && !profile.companyType;
+    const profileType = profile?.type;
+    // Org admins and workers always have companyType set, so profileIncomplete only applies to legacy users
+    const profileIncomplete = !!authToken && profile !== null && !profile.companyType && profileType !== 'org' && profileType !== 'worker';
     const approvalStatus = profile?.approvalStatus || 'approved';
     const isPendingApproval = !!authToken && profile !== null && !profileIncomplete
         && approvalStatus !== 'approved' && !profile.isAdmin;
     const showSetup = route === '/setup';
+    const showOrgSignup = route === '/signup' && !authToken;
+    const showOrgLogin = route === '/login/org' && !authToken;
+    const showWorkerLogin = route === '/login/worker' && !authToken;
+    const showOrgDashboard = route === '/org' && !!authToken && profileType === 'org' && approvalStatus === 'approved';
+    const showOrgPending = route === '/org' && !!authToken && profileType === 'org' && approvalStatus !== 'approved';
     const showOnboarding = profileIncomplete && (route === '/app' || route === '/app/add' || route === '/account');
-    const showPendingApproval = isPendingApproval && (route === '/app' || route === '/app/add' || route === '/account');
-    const showDashboard = route === '/app' && !!authToken && !profileIncomplete && !isPendingApproval;
-    const showAddMedication = route === '/app/add' && !!authToken && !profileIncomplete && !isPendingApproval;
+    const showPendingApproval = isPendingApproval && (route === '/app' || route === '/app/add' || route === '/account' || route === '/org');
+    const showDashboard = route === '/app' && !!authToken && !profileIncomplete && !isPendingApproval && profileType !== 'org';
+    const showAddMedication = route === '/app/add' && !!authToken && !profileIncomplete && !isPendingApproval && profileType !== 'org';
     const showAccount = route === '/account' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAdmin = route === '/app/admin' && !!authToken && !profileIncomplete && !isPendingApproval;
-    const showLogin = (route === '/login' || (!authToken && requiresAuth)) && !showSetup;
-    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding && !showPendingApproval && !showSetup && !showAdmin;
+    const showLogin = (route === '/login' || (!authToken && requiresAuth && route !== '/org' && route !== '/signup' && route !== '/login/org' && route !== '/login/worker')) && !showSetup;
+    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding
+        && !showPendingApproval && !showSetup && !showAdmin && !showOrgDashboard && !showOrgPending
+        && !showOrgSignup && !showOrgLogin && !showWorkerLogin;
     const marketingPage = marketingPages[route] ?? marketingPages['/'];
 
     const companyType = (profile?.companyType || '').toLowerCase();
@@ -241,7 +267,41 @@ const App: React.FC = () => {
                 </>
             )}
 
-            {showPendingApproval && (
+            {showOrgSignup && (
+                <OrgSignupPage
+                    onSignup={async (data) => {
+                        await handleOrgSignup(data);
+                        navigate('/org');
+                    }}
+                    onNavigateHome={() => navigate('/')}
+                    onNavigateLogin={() => navigate('/login/org')}
+                />
+            )}
+
+            {showOrgLogin && (
+                <OrgLoginPage
+                    onLogin={async (username, password) => {
+                        await orgLogin(username, password);
+                        navigate('/org');
+                    }}
+                    onNavigateHome={() => navigate('/')}
+                    onNavigateSignup={() => navigate('/signup')}
+                    onNavigateWorkerLogin={() => navigate('/login/worker')}
+                />
+            )}
+
+            {showWorkerLogin && (
+                <WorkerLoginPage
+                    onLogin={async (username, password) => {
+                        await workerLogin(username, password);
+                        navigate('/app');
+                    }}
+                    onNavigateHome={() => navigate('/')}
+                    onNavigateOrgLogin={() => navigate('/login/org')}
+                />
+            )}
+
+            {(showPendingApproval || showOrgPending) && (
                 <PendingApprovalPage
                     status={approvalStatus === 'rejected' ? 'rejected' : 'pending'}
                     onLogout={handleLogout}
@@ -279,6 +339,21 @@ const App: React.FC = () => {
                     onSubmitSignup={handleSignup}
                     onNavigateHome={() => onNavigate('/')}
                     onSetup={!hasAdmin ? () => navigate('/setup') : undefined}
+                />
+            )}
+
+            {showOrgDashboard && profile && (
+                <OrgDashboardPage
+                    profile={profile}
+                    orgWorkers={orgWorkers}
+                    orgWorkersLoading={orgWorkersLoading}
+                    orgWorkersError={orgWorkersError}
+                    onLoadWorkers={loadOrgWorkers}
+                    onAddWorker={addOrgWorker}
+                    onRemoveWorker={removeOrgWorker}
+                    onUpdateJobTitle={updateOrgWorkerJobTitle}
+                    onLogout={handleLogout}
+                    onAccountClick={() => navigate('/account')}
                 />
             )}
 
@@ -360,15 +435,18 @@ const App: React.FC = () => {
                     userName={profile?.username || 'User'}
                     onAccountClick={() => navigate('/account')}
                     onNavSelect={handleNavSelect}
-                    adminUsers={adminUsers}
-                    adminLoading={adminLoading}
-                    adminError={adminError}
-                    onReloadAdmin={loadAdminUsers}
-                    onApproveUser={approveUser}
-                    onRejectUser={rejectUser}
-                    onDeleteUser={deleteUser}
-                    onUpdateUserCompany={updateUserCompany}
-                    onResetUserPassword={resetUserPassword}
+                    adminOrgs={adminOrgs}
+                    adminOrgsLoading={adminOrgsLoading}
+                    adminOrgsError={adminOrgsError}
+                    onReloadAdmin={loadAdminOrgs}
+                    onApproveOrg={approveOrg}
+                    onRejectOrg={rejectOrg}
+                    onDeleteOrg={deleteOrg}
+                    onUpdateOrg={updateOrg}
+                    onResetOrgPassword={resetOrgPassword}
+                    onLoadOrgWorkers={loadAdminOrgWorkers}
+                    onDeleteOrgWorker={deleteAdminOrgWorker}
+                    onResetOrgWorkerPassword={resetAdminOrgWorkerPassword}
                 />
             )}
 

@@ -207,10 +207,15 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
             <section className="home-cta fade-section">
                 <div className="home-cta__inner">
                     <h2>Ready to secure your supply chain?</h2>
-                    <p>Log in to manage your organisation's medication records and supply chain data.</p>
-                    <button className="button button--primary" onClick={() => onNavigate('/login', 'login')}>
-                        Sign in
-                    </button>
+                    <p>Register your organisation or sign in to manage medication records across your supply chain.</p>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        <button className="button button--primary" onClick={() => onNavigate('/signup')}>
+                            Register organisation
+                        </button>
+                        <button className="button button--ghost" onClick={() => onNavigate('/login/org')}>
+                            Sign in
+                        </button>
+                    </div>
                 </div>
             </section>
         </main>
