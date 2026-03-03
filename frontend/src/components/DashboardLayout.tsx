@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, Truck, CheckCircle2, List, Shield } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Truck, CheckCircle2, List, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view' | 'admin';
 
@@ -29,56 +29,80 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     canReceive = true,
     canArrived = true,
     isAdmin = false
-}) => (
-    <div className="dashboard">
+}) => {
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+    return (
+    <div className={`dashboard${sidebarCollapsed ? ' dashboard--collapsed' : ''}`}>
         <aside className="dashboard__sidebar">
-            <div className="dashboard__brand">LedgRx</div>
-            <button className="dashboard__account" onClick={onAccountClick}>
-                <span>Account</span>
-                <strong>{userName}</strong>
+            <div className="dashboard__sidebar-top">
+                <div className="dashboard__brand">
+                    <span className="dashboard__brand-text">LedgRx</span>
+                    <span className="dashboard__brand-mark" />
+                </div>
+                <button
+                    type="button"
+                    className="dashboard__collapse"
+                    onClick={() => setSidebarCollapsed((prev) => !prev)}
+                    aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                    {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                </button>
+            </div>
+            <button className="dashboard__account" onClick={onAccountClick} title={userName}>
+                <div className="dashboard__account-meta">
+                    <span>Account</span>
+                    <strong>{userName}</strong>
+                </div>
             </button>
             <nav className="dashboard__nav">
                 {!isAdmin && (
                     <button
                         className={activeNav === 'add' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                         onClick={() => onNavSelect('add')}
+                        title="Add medication"
                     >
                         <Plus size={16} />
-                        Add medication
+                        <span className="dashboard__link-label">Add medication</span>
                     </button>
                 )}
                 {!isAdmin && (
                     <button
                         className={activeNav === 'receive' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                         onClick={() => onNavSelect('receive')}
+                        title="Mark received by distributor"
                     >
                         <Truck size={16} />
-                        Mark received by distributor
+                        <span className="dashboard__link-label">Mark received by distributor</span>
                     </button>
                 )}
                 {!isAdmin && (
                     <button
                         className={activeNav === 'arrived' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                         onClick={() => onNavSelect('arrived')}
+                        title="Mark arrived at pharmacy"
                     >
                         <CheckCircle2 size={16} />
-                        Mark arrived at pharmacy
+                        <span className="dashboard__link-label">Mark arrived at pharmacy</span>
                     </button>
                 )}
                 <button
                     className={activeNav === 'view' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                     onClick={() => onNavSelect('view')}
+                    title="View records"
                 >
                     <List size={16} />
-                    View records
+                    <span className="dashboard__link-label">View records</span>
                 </button>
                 {isAdmin && (
                     <button
                         className={activeNav === 'admin' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                         onClick={() => onNavSelect('admin')}
+                        title="Admin"
                     >
                         <Shield size={16} />
-                        Admin
+                        <span className="dashboard__link-label">Admin</span>
                     </button>
                 )}
             </nav>
@@ -94,6 +118,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {children}
         </div>
     </div>
-);
+    );
+};
 
 export default DashboardLayout;
