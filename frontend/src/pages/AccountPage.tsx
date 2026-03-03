@@ -28,6 +28,10 @@ const AccountPage: React.FC<AccountPageProps> = ({
     onAdminClick
 }) => {
     const profileLocked = !!profile?.companyType && !!profile?.companyName;
+    const isFormDirty =
+        profileForm.companyType !== (profile?.companyType || '') ||
+        profileForm.companyName !== (profile?.companyName || '') ||
+        profileForm.registrationNumber !== (profile?.registrationNumber || '');
     const [changeEmailOpen, setChangeEmailOpen] = useState(false);
     const [newEmailInput, setNewEmailInput] = useState('');
     const [changeEmailStatus, setChangeEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -78,7 +82,12 @@ const AccountPage: React.FC<AccountPageProps> = ({
             <div className="card card--form account-card">
                 <div className="account-card__header">
                     <h2>Account details</h2>
-                    <span>{profile?.username || 'Authenticated user'}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span>{profile?.username || 'Authenticated user'}</span>
+                        <button type="button" className="button button--ghost button--mini" onClick={onLogout}>
+                            Sign out
+                        </button>
+                    </div>
                 </div>
                 <form onSubmit={onProfileSave}>
                     {profileLocked && (
@@ -112,7 +121,7 @@ const AccountPage: React.FC<AccountPageProps> = ({
                     </div>
                     {profileError && <div className="inline-error">{profileError}</div>}
                     <div className="form__actions">
-                        <button type="submit" className="button button--primary" disabled={profileSaving}>
+                        <button type="submit" className="button button--primary" disabled={!isFormDirty || profileSaving}>
                             {profileSaving ? 'Saving...' : 'Save details'}
                         </button>
                         {profile?.isAdmin && onAdminClick && (
@@ -122,9 +131,6 @@ const AccountPage: React.FC<AccountPageProps> = ({
                         )}
                         <button type="button" className="button button--ghost" onClick={onBack}>
                             Back to dashboard
-                        </button>
-                        <button type="button" className="button button--ghost" onClick={onLogout}>
-                            Log out
                         </button>
                     </div>
                 </form>

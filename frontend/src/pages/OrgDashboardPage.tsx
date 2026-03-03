@@ -250,6 +250,10 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                 </button>
                             </div>
 
+                            <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '-4px 0 10px' }}>
+                                Excel / CSV must have columns: <code>username</code> <code>password</code> <code>jobTitle</code> — jobTitle is optional.
+                            </p>
+
                             {bulkParseError && <div className="inline-error" style={{ marginBottom: '8px' }}>{bulkParseError}</div>}
 
                             {bulkRows.length > 0 && (
