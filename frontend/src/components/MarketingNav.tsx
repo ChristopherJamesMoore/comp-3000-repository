@@ -6,6 +6,7 @@ type MarketingNavProps = {
     onNavigate: (path: string, mode?: AuthMode) => void;
 };
 
+
 const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, onNavigate }) => {
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -55,11 +56,11 @@ const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, onNavigate }) =>
                         </button>
                     ) : (
                         <>
-                            <button className="home-nav__action" onClick={() => handleNavigate('/login', 'login')}>
+                            <button className="home-nav__action" onClick={() => handleNavigate('/login/org')}>
                                 Log in
                             </button>
-                            <button className="home-nav__cta" onClick={() => handleNavigate('/login', 'signup')}>
-                                Sign up
+                            <button className="home-nav__cta" onClick={() => handleNavigate('/signup')}>
+                                Register
                             </button>
                         </>
                     )}
@@ -72,11 +73,11 @@ const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, onNavigate }) =>
                     </button>
                 ) : (
                     <>
-                        <button className="home-nav__action" onClick={() => handleNavigate('/login', 'login')}>
+                        <button className="home-nav__action" onClick={() => handleNavigate('/login/org')}>
                             Log in
                         </button>
-                        <button className="home-nav__cta" onClick={() => handleNavigate('/login', 'signup')}>
-                            Sign up
+                        <button className="home-nav__cta" onClick={() => handleNavigate('/signup')}>
+                            Register
                         </button>
                     </>
                 )}

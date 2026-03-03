@@ -68,14 +68,17 @@ const OrgLoginPage: React.FC<OrgLoginPageProps> = ({ onLogin, onNavigateHome, on
                         <button type="button" className="button button--ghost" onClick={onNavigateSignup}>
                             Register your organisation
                         </button>
-                        <button type="button" className="button button--ghost" onClick={onNavigateWorkerLogin}>
-                            Sign in as a worker instead
-                        </button>
                         <button type="button" className="button button--ghost" onClick={onNavigateHome}>
                             <Home size={16} />
                             Back to home
                         </button>
                     </div>
+                    <div className="auth-card__divider">
+                        <span>Are you a worker?</span>
+                    </div>
+                    <button type="button" className="button button--ghost" style={{ width: '100%' }} onClick={onNavigateWorkerLogin}>
+                        Worker sign in
+                    </button>
                 </form>
             </div>
         </main>

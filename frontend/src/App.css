@@ -869,6 +869,22 @@ body {
   margin: 0 0 16px;
 }
 
+.auth-card__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 12px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.auth-card__divider::before,
+.auth-card__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--stroke);
+}
+
 .auth-card__actions {
   display: grid;
   gap: 12px;
