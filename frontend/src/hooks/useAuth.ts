@@ -479,6 +479,29 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
+    const platformLogin = useCallback(
+        async (username: string, password: string) => {
+            const response = await fetch(buildUrl('/api/auth/login'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Login failed.');
+            }
+            const data = await response.json();
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('authTokenType', 'platform');
+            setAuthToken(data.token);
+            if (data.user) {
+                setProfile({ ...data.user, type: 'platform' });
+            }
+            return data;
+        },
+        []
+    );
+
     const orgLogin = useCallback(
         async (username: string, password: string) => {
             const response = await fetch(buildUrl('/api/org/login'), {
@@ -807,6 +830,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         requestEmailChange,
         bootstrapAdmin,
         // org/worker system
+        platformLogin,
         orgLogin,
         workerLogin,
         handleOrgSignup,

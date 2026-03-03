@@ -21,6 +21,7 @@ import AdminSetupPage from './pages/AdminSetupPage';
 import AdminPage from './pages/AdminPage';
 import OnboardingPage from './pages/OnboardingPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
+import PlatformLoginPage from './pages/PlatformLoginPage';
 import MarketingFooter from './components/MarketingFooter';
 import { useAuth } from './hooks/useAuth';
 import { useDashboardNav } from './hooks/useDashboardNav';
@@ -54,6 +55,7 @@ const App: React.FC = () => {
         handleProfileSave,
         requestEmailChange,
         bootstrapAdmin,
+        platformLogin,
         orgLogin,
         workerLogin,
         handleOrgSignup,
@@ -241,10 +243,16 @@ const App: React.FC = () => {
     const showAddMedication = route === '/app/add' && !!authToken && !profileIncomplete && !isPendingApproval && profileType !== 'org';
     const showAccount = route === '/account' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAdmin = route === '/app/admin' && !!authToken && !profileIncomplete && !isPendingApproval;
-    const showLogin = (route === '/login' || (!authToken && requiresAuth && route !== '/org' && route !== '/signup' && route !== '/login/org' && route !== '/login/worker')) && !showSetup;
+    const showPlatformLogin = route === '/staff-a7f3' && !authToken;
+    const showLogin = false; // old /login redirected below
+    // Redirect bare /login to org login
+    if (route === '/login' && !authToken) {
+        navigate('/login/org');
+    }
+
     const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding
         && !showPendingApproval && !showSetup && !showAdmin && !showOrgDashboard && !showOrgPending
-        && !showOrgSignup && !showOrgLogin && !showWorkerLogin;
+        && !showOrgSignup && !showOrgLogin && !showWorkerLogin && !showPlatformLogin;
     const marketingPage = marketingPages[route] ?? marketingPages['/'];
 
     const companyType = (profile?.companyType || '').toLowerCase();
@@ -328,17 +336,12 @@ const App: React.FC = () => {
                 />
             )}
 
-            {showLogin && (
-                <LoginPage
-                    authMode={authMode}
-                    loginForm={loginForm}
-                    authError={authError}
-                    onLoginFormChange={handleLoginFormChange}
-                    onToggleMode={handleToggleAuthMode}
-                    onSubmitLogin={handleLogin}
-                    onSubmitSignup={handleSignup}
-                    onNavigateHome={() => onNavigate('/')}
-                    onSetup={!hasAdmin ? () => navigate('/setup') : undefined}
+            {showPlatformLogin && (
+                <PlatformLoginPage
+                    onLogin={async (username, password) => {
+                        await platformLogin(username, password);
+                        navigate('/app');
+                    }}
                 />
             )}
 
