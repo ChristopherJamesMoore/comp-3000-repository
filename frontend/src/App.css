@@ -885,13 +885,14 @@ body {
   gap: 18px;
   min-height: 80vh;
   align-items: start;
+  transition: grid-template-columns 0.32s ease;
 }
 
 .dashboard__sidebar {
   border: 1px solid var(--stroke);
   border-radius: 14px;
   padding: 14px 10px;
-  background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 74%, #eef4ff 100%);
+  background: #ffffff;
   box-shadow: var(--shadow);
   margin-left: -10px;
   transition: width 0.32s ease, margin-left 0.32s ease, padding 0.32s ease;
@@ -918,7 +919,9 @@ body {
   font-size: 1.1rem;
   font-weight: 700;
   white-space: nowrap;
-  transition: opacity 0.24s ease, transform 0.24s ease;
+  overflow: hidden;
+  max-width: 140px;
+  transition: opacity 0.24s ease, transform 0.24s ease, max-width 0.24s ease;
 }
 
 .dashboard__brand-mark {
@@ -959,14 +962,24 @@ body {
   background: var(--surface-2);
   border-radius: 12px;
   padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   text-align: left;
   cursor: pointer;
   margin-bottom: 18px;
 }
 
+.dashboard__account-icon {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
 .dashboard__account-meta {
   display: block;
-  transition: opacity 0.24s ease, transform 0.24s ease;
+  overflow: hidden;
+  max-width: 180px;
+  transition: opacity 0.24s ease, transform 0.24s ease, max-width 0.24s ease;
 }
 
 .dashboard__account span {
@@ -994,7 +1007,9 @@ body {
 
 .dashboard__link-label {
   white-space: nowrap;
-  transition: opacity 0.24s ease, transform 0.24s ease;
+  overflow: hidden;
+  max-width: 220px;
+  transition: opacity 0.24s ease, transform 0.24s ease, max-width 0.24s ease;
 }
 
 .dashboard__link--active {
@@ -1017,11 +1032,13 @@ body {
 .dashboard--collapsed .dashboard__link-label {
   opacity: 0;
   transform: translateX(-6px);
+  max-width: 0;
   pointer-events: none;
 }
 
 .dashboard--collapsed .dashboard__account {
   padding: 10px;
+  justify-content: center;
 }
 
 .dashboard--collapsed .dashboard__link {

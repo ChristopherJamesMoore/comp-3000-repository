@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Truck, CheckCircle2, List, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Truck, CheckCircle2, List, Shield, ChevronLeft, ChevronRight, UserCircle2 } from 'lucide-react';
 
 export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view' | 'admin';
 
@@ -51,6 +51,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </button>
             </div>
             <button className="dashboard__account" onClick={onAccountClick} title={userName}>
+                <UserCircle2 size={18} className="dashboard__account-icon" />
                 <div className="dashboard__account-meta">
                     <span>Account</span>
                     <strong>{userName}</strong>
