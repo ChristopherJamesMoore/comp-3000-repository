@@ -3,7 +3,6 @@ import { Copy, Check } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import './App.css';
 import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
 import OrgLoginPage from './pages/OrgLoginPage';
 import OrgSignupPage from './pages/OrgSignupPage';
 import WorkerLoginPage from './pages/WorkerLoginPage';
@@ -36,21 +35,13 @@ const App: React.FC = () => {
     const { toast, setToast } = useToast();
     const {
         authToken,
-        authMode,
         setAuthMode,
-        loginForm,
-        authError,
         profile,
         profileForm,
         profileError,
         profileSaving,
-        hasAdmin,
         authFetch,
-        handleLoginFormChange,
         handleProfileFormChange,
-        handleToggleAuthMode,
-        handleLogin,
-        handleSignup,
         handleLogout,
         handleProfileSave,
         requestEmailChange,
