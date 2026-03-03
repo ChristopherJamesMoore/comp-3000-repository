@@ -997,7 +997,7 @@ body {
   text-align: left;
   border-radius: 10px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   font-weight: 600;
   color: var(--ink);
@@ -1006,9 +1006,13 @@ body {
 }
 
 .dashboard__link-label {
-  white-space: nowrap;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.3;
   overflow: hidden;
-  max-width: 220px;
+  max-width: 100%;
   transition: opacity 0.24s ease, transform 0.24s ease, max-width 0.24s ease;
 }
 
