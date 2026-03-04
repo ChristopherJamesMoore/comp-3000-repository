@@ -175,7 +175,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
             activeNav="admin"
             onNavSelect={onNavSelect}
             heading="Admin"
-            subheading="Manage organisation onboarding requests and worker accounts."
+            subheading=""
             isAdmin={true}
         >
             <div className="admin-dashboard">

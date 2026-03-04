@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home } from 'lucide-react';
+import { Home, Loader2 } from 'lucide-react';
 
 type OrgLoginPageProps = {
     onLogin: (username: string, password: string) => Promise<unknown>;
@@ -63,7 +63,7 @@ const OrgLoginPage: React.FC<OrgLoginPageProps> = ({ onLogin, onNavigateHome, on
                     <p className="auth-card__hint">Forgotten your password? Contact your platform administrator.</p>
                     <div className="auth-card__actions">
                         <button type="submit" className="button button--primary auth-card__primary" disabled={submitting}>
-                            {submitting ? 'Signing in…' : 'Sign in'}
+                            {submitting ? <><Loader2 size={15} className="spin" /> Signing in…</> : 'Sign in'}
                         </button>
                         <button type="button" className="button button--ghost" onClick={onNavigateSignup}>
                             Register your organisation

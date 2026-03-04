@@ -138,7 +138,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             activeNav={props.activeNav}
             onNavSelect={props.onNavSelect}
             heading="Dashboard"
-            subheading="Track medications across manufacturing, distribution, and pharmacy delivery."
+            subheading=""
             canAdd={props.canAdd}
             canReceive={props.canReceive}
             canArrived={props.canArrived}
@@ -404,7 +404,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                                             <span className="pill">Serial</span>
                                             <h3>{med.serialNumber}</h3>
                                         </div>
-                                        <button className="button button--mini" onClick={() => props.onShowQR(med.qrHash || '')}>
+                                        <button className="button button--ghost button--mini" onClick={() => props.onShowQR(med.qrHash || '')}>
                                             <QrCode size={14} />
                                             View QR
                                         </button>

@@ -219,7 +219,6 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                         <div className="dashboard__topbar">
                             <div>
                                 <h1>Workers</h1>
-                                <p>Manage worker accounts for {profile.companyName || 'your organisation'}.</p>
                             </div>
                         </div>
                         <div className="admin-dashboard">
@@ -433,7 +432,6 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                         <div className="dashboard__topbar">
                             <div>
                                 <h1>Records</h1>
-                                <p>Medication records for {profile.companyName || 'your organisation'}.</p>
                             </div>
                         </div>
                         <div className="admin-dashboard">

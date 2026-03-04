@@ -9,7 +9,7 @@ type DashboardLayoutProps = {
     activeNav: DashboardNav;
     onNavSelect: (nav: DashboardNav) => void;
     heading: string;
-    subheading: string;
+    subheading?: string;
     children: React.ReactNode;
     canAdd?: boolean;
     canReceive?: boolean;
@@ -123,7 +123,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="dashboard__topbar">
                 <div>
                     <h1>{heading}</h1>
-                    <p>{subheading}</p>
+                    {subheading && <p>{subheading}</p>}
                 </div>
             </div>
             {children}

@@ -2548,3 +2548,69 @@ code {
 .admin-table__expanded {
   animation: contentIn 0.24s ease;
 }
+
+/* ============================================================
+   MINIMALISM — compact admin stats, tighter dashboard padding
+   ============================================================ */
+
+/* Smaller stat cards — less imposing number display */
+.admin-stat {
+  padding: 12px 16px;
+}
+
+.admin-stat__value {
+  font-size: 1.5rem;
+}
+
+/* Remove the internal 24px padding from admin-dashboard —
+   dashboard__content gap + each element's own margins are sufficient.
+   Note: .dashboard__topbar + .admin-dashboard { padding-top: 8px } still
+   wins via higher specificity, giving a subtle gap below the heading. */
+.admin-dashboard {
+  padding: 0;
+}
+
+/* No bottom margin on the dashboard heading when no subheading follows */
+.dashboard__topbar h1 {
+  margin: 0;
+}
+
+/* Slightly tighter tab-content spacing on the worker org dashboard */
+.org-dashboard__content {
+  gap: 16px;
+}
+
+/* ============================================================
+   CONSISTENCY — align all card/stat surfaces to the 16px system
+   ============================================================ */
+
+/* Dashboard stat boxes: match admin-stat — no border, no shadow,
+   slightly translucent background, same 16px radius */
+.dashboard__stats div {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.75);
+  border: none;
+  box-shadow: none;
+}
+
+/* Stats row animates in the same way panels do */
+.dashboard__stats {
+  animation: contentIn 0.34s ease;
+}
+
+/* Record cards: bring in line with the 16px system used by all panels */
+.record-card {
+  border-radius: 16px;
+}
+
+/* Lookup card inside dashboard panel: normalize radius and remove
+   double-shadow (panel already provides depth) */
+.dashboard__panel .lookup.card {
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+/* Admin filter tabs: align transition timing with .button (0.2s ease) */
+.admin-filter {
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 type PlatformLoginPageProps = {
     onLogin: (username: string, password: string) => Promise<void>;
@@ -55,7 +56,7 @@ const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({ onLogin }) => {
                     {error && <div className="inline-error">{error}</div>}
                     <div className="auth-card__actions">
                         <button type="submit" className="button button--primary auth-card__primary" disabled={submitting}>
-                            {submitting ? 'Signing in…' : 'Sign in'}
+                            {submitting ? <><Loader2 size={15} className="spin" /> Signing in…</> : 'Sign in'}
                         </button>
                     </div>
                 </form>
