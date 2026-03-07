@@ -621,15 +621,14 @@ body {
 
 .home-chain__pill {
   position: absolute;
-  width: 6px;
-  height: 13px;
+  width: 7px;
+  height: 16px;
   border-radius: 999px;
   display: flex;
   flex-direction: column;
-  opacity: 0.22;
+  opacity: 1;
   box-shadow: none;
-  border: 1px solid #d4d4d8;
-  filter: blur(0.3px);
+  border: 1px solid #8fa9da;
   overflow: hidden;
 }
 
@@ -638,50 +637,40 @@ body {
   height: 50%;
 }
 
-/* All variants use the same monochrome palette */
-.home-chain__pill-half--top,
-.home-chain__pill-half--color {
-  background: #27272a;
+.home-chain__pill-half--top {
+  background: #3b82f6;
 }
 
-.home-chain__pill-half--bottom,
-.home-chain__pill-half--white {
-  background: #d4d4d8;
+.home-chain__pill-half--bottom {
+  background: #10b981;
+  border-top: 1px solid #86efac;
 }
 
-/* duo-a: darker pill */
 .home-chain__pill--duo-a {
-  border-color: #a1a1aa;
+  border-color: #8fa9da;
 }
 
-.home-chain__pill--duo-a .home-chain__pill-half--top,
-.home-chain__pill--duo-a .home-chain__pill-half--color {
-  background: #18181b;
+.home-chain__pill--duo-a .home-chain__pill-half--top {
+  background: #3b82f6;
 }
 
-.home-chain__pill--duo-a .home-chain__pill-half--bottom,
-.home-chain__pill--duo-a .home-chain__pill-half--white {
-  background: #a1a1aa;
+.home-chain__pill--duo-a .home-chain__pill-half--bottom {
+  background: #10b981;
+  border-top: 1px solid #86efac;
 }
 
-/* duo-b: lighter pill */
 .home-chain__pill--duo-b {
-  border-color: #d4d4d8;
+  border-color: #8ea0d6;
 }
 
-.home-chain__pill--duo-b .home-chain__pill-half--top,
-.home-chain__pill--duo-b .home-chain__pill-half--color {
-  background: #52525b;
+.home-chain__pill--duo-b .home-chain__pill-half--top {
+  background: #1e3a8a;
 }
 
-.home-chain__pill--duo-b .home-chain__pill-half--bottom,
-.home-chain__pill--duo-b .home-chain__pill-half--white {
-  background: #e4e4e7;
+.home-chain__pill--duo-b .home-chain__pill-half--bottom {
+  background: #3b82f6;
+  border-top: 1px solid #8fa9da;
 }
-
-/* legacy blue/teal kept for compat */
-.home-chain__pill--blue { border-color: #a1a1aa; }
-.home-chain__pill--teal { border-color: #d4d4d8; }
 
 .home-chain__model {
   transform-style: preserve-3d;
