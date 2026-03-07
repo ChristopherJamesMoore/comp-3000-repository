@@ -274,7 +274,7 @@ body {
   background: var(--accent);
   color: #ffffff;
   padding: 8px 14px;
-  border-radius: 999px;
+  border-radius: 0;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(26, 115, 232, 0.24);
@@ -638,6 +638,7 @@ body {
   height: 50%;
 }
 
+/* Legacy class names kept for backwards compat */
 .home-chain__pill-half--color {
   background: #8fb8f5;
 }
@@ -647,15 +648,27 @@ body {
   border-top: 1px solid #e5eaf2;
 }
 
+/* Active class names used by HeroChainBackdrop component */
+.home-chain__pill-half--top {
+  background: #8fb8f5;
+}
+
+.home-chain__pill-half--bottom {
+  background: #ffffff;
+  border-top: 1px solid #e5eaf2;
+}
+
 .home-chain__pill--blue {
   border-color: #dbe6f8;
 }
 
-.home-chain__pill--blue .home-chain__pill-half--color {
+.home-chain__pill--blue .home-chain__pill-half--color,
+.home-chain__pill--blue .home-chain__pill-half--top {
   background: #8fb8f5;
 }
 
-.home-chain__pill--blue .home-chain__pill-half--white {
+.home-chain__pill--blue .home-chain__pill-half--white,
+.home-chain__pill--blue .home-chain__pill-half--bottom {
   border-top: 1px solid #e5eaf2;
 }
 
@@ -663,11 +676,45 @@ body {
   border-color: #d8ecec;
 }
 
-.home-chain__pill--teal .home-chain__pill-half--color {
+.home-chain__pill--teal .home-chain__pill-half--color,
+.home-chain__pill--teal .home-chain__pill-half--top {
   background: #86d9d9;
 }
 
-.home-chain__pill--teal .home-chain__pill-half--white {
+.home-chain__pill--teal .home-chain__pill-half--white,
+.home-chain__pill--teal .home-chain__pill-half--bottom {
+  border-top: 1px solid #e5eaf2;
+}
+
+/* duo-a: blue pill variant */
+.home-chain__pill--duo-a {
+  border-color: #dbe6f8;
+}
+
+.home-chain__pill--duo-a .home-chain__pill-half--top,
+.home-chain__pill--duo-a .home-chain__pill-half--color {
+  background: #8fb8f5;
+}
+
+.home-chain__pill--duo-a .home-chain__pill-half--bottom,
+.home-chain__pill--duo-a .home-chain__pill-half--white {
+  background: #ffffff;
+  border-top: 1px solid #e5eaf2;
+}
+
+/* duo-b: teal/slate pill variant */
+.home-chain__pill--duo-b {
+  border-color: #d8ecec;
+}
+
+.home-chain__pill--duo-b .home-chain__pill-half--top,
+.home-chain__pill--duo-b .home-chain__pill-half--color {
+  background: #86d9d9;
+}
+
+.home-chain__pill--duo-b .home-chain__pill-half--bottom,
+.home-chain__pill--duo-b .home-chain__pill-half--white {
+  background: #ffffff;
   border-top: 1px solid #e5eaf2;
 }
 
@@ -910,7 +957,7 @@ body {
   color: #71717a;
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1451,7 +1498,7 @@ body {
 .button {
   border: none;
   padding: 10px 18px;
-  border-radius: 8px;
+  border-radius: 0;
   font-weight: 600;
   font-family: inherit;
   display: inline-flex;
@@ -1477,14 +1524,14 @@ body {
 }
 
 .button--ghost {
-  background: #ffffff;
-  color: #52525b;
-  border: 1px solid #e4e4e7;
+  background: #18181b;
+  color: #ffffff;
+  border: 1px solid #18181b;
 }
 
 .button--ghost:hover {
-  background: #f4f4f5;
-  color: #18181b;
+  background: #3f3f46;
+  border-color: #3f3f46;
 }
 
 .button--mini {
@@ -1759,16 +1806,109 @@ body {
   color: var(--muted);
 }
 
+/* Dashboard inline footer */
 .footer {
   position: relative;
   z-index: 1;
   margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid #e4e4e7;
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  color: var(--muted);
-  font-size: 0.9rem;
+  color: #71717a;
+  font-size: 0.8rem;
+}
+
+/* Marketing footer (below home/marketing pages) */
+.marketing-footer {
+  width: 100%;
+  border-top: 1px solid #e4e4e7;
+  background: #ffffff;
+  padding: 48px 6vw 32px;
+}
+
+.marketing-footer__inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 48px;
+  align-items: start;
+}
+
+.marketing-footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.marketing-footer__logo {
+  border: none;
+  background: transparent;
+  font-family: 'Fraunces', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #18181b;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.marketing-footer__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 160px);
+  gap: 32px;
+}
+
+.marketing-footer__group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.marketing-footer__group h4 {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #18181b;
+}
+
+.marketing-footer__link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.875rem;
+  color: #71717a;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s;
+  font-family: inherit;
+}
+
+.marketing-footer__link:hover {
+  color: #18181b;
+}
+
+@media (max-width: 720px) {
+  .marketing-footer__inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .marketing-footer__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .marketing-footer__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .spin {
@@ -2121,7 +2261,7 @@ body {
   background: #ffffff;
   color: #52525b;
   padding: 5px 12px;
-  border-radius: 999px;
+  border-radius: 0;
   font-weight: 500;
   font-size: 0.8rem;
   cursor: pointer;
