@@ -638,38 +638,38 @@ body {
 }
 
 .home-chain__pill-half--top {
-  background: #3b82f6;
+  background: #1a52a8;
 }
 
 .home-chain__pill-half--bottom {
-  background: #10b981;
-  border-top: 1px solid #86efac;
+  background: #eef2f8;
+  border-top: 1px solid #c5d3e8;
 }
 
 .home-chain__pill--duo-a {
-  border-color: #8fa9da;
+  border-color: #2a62b8;
 }
 
 .home-chain__pill--duo-a .home-chain__pill-half--top {
-  background: #3b82f6;
+  background: #1a52a8;
 }
 
 .home-chain__pill--duo-a .home-chain__pill-half--bottom {
-  background: #10b981;
-  border-top: 1px solid #86efac;
+  background: #eef2f8;
+  border-top: 1px solid #c5d3e8;
 }
 
 .home-chain__pill--duo-b {
-  border-color: #8ea0d6;
+  border-color: #1a3f8a;
 }
 
 .home-chain__pill--duo-b .home-chain__pill-half--top {
-  background: #1e3a8a;
+  background: #163d87;
 }
 
 .home-chain__pill--duo-b .home-chain__pill-half--bottom {
-  background: #3b82f6;
-  border-top: 1px solid #8fa9da;
+  background: #f0f4fa;
+  border-top: 1px solid #bccbe0;
 }
 
 .home-chain__model {
