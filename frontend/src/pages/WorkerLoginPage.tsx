@@ -1,30 +1,29 @@
 import React, { useState } from 'react';
-import { Home, Loader2 } from 'lucide-react';
+import { Home, Fingerprint, Loader2 } from 'lucide-react';
 
 type WorkerLoginPageProps = {
-    onLogin: (username: string, password: string) => Promise<unknown>;
+    onLogin: (username: string) => Promise<unknown>;
     onNavigateHome: () => void;
     onNavigateOrgLogin: () => void;
 };
 
 const WorkerLoginPage: React.FC<WorkerLoginPageProps> = ({ onLogin, onNavigateHome, onNavigateOrgLogin }) => {
     const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!username || !password) {
-            setError('Enter your username and password.');
+        if (!username.trim()) {
+            setError('Enter your username.');
             return;
         }
         setSubmitting(true);
         try {
-            await onLogin(username, password);
+            await onLogin(username.trim());
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Login failed.');
+            setError(err instanceof Error ? err.message : 'Passkey login failed.');
         } finally {
             setSubmitting(false);
         }
@@ -38,7 +37,7 @@ const WorkerLoginPage: React.FC<WorkerLoginPageProps> = ({ onLogin, onNavigateHo
                     <span className="auth-card__eyebrow">Worker sign in</span>
                 </div>
                 <h2>Welcome back.</h2>
-                <p>Sign in with your worker account to access the supply chain dashboard.</p>
+                <p>Sign in with your worker account using your passkey to access the supply chain dashboard.</p>
                 <form onSubmit={handleSubmit}>
                     <div className="field">
                         <label>Username</label>
@@ -46,23 +45,17 @@ const WorkerLoginPage: React.FC<WorkerLoginPageProps> = ({ onLogin, onNavigateHo
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="field">
-                        <label>Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            autoComplete="username webauthn"
                             required
                         />
                     </div>
                     {error && <div className="inline-error">{error}</div>}
-                    <p className="auth-card__hint">Forgotten your password? Contact your organisation admin.</p>
+                    <p className="auth-card__hint">Lost your passkey? Contact your organisation admin to send a new invite link.</p>
                     <div className="auth-card__actions">
                         <button type="submit" className="button button--primary auth-card__primary" disabled={submitting}>
-                            {submitting ? <><Loader2 size={15} className="spin" /> Signing in…</> : 'Sign in'}
+                            {submitting
+                                ? <><Loader2 size={15} className="spin" /> Waiting for passkey…</>
+                                : <><Fingerprint size={15} /> Sign in with passkey</>}
                         </button>
                         <button type="button" className="button button--ghost" onClick={onNavigateOrgLogin}>
                             Sign in as organisation admin instead

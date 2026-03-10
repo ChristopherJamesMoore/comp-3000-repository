@@ -3,8 +3,8 @@ import * as xlsx from 'xlsx';
 import { ChevronLeft, ChevronRight, List, Users, UserCircle2, RefreshCw, Trash2 } from 'lucide-react';
 import { OrgWorker, UserProfile } from '../types';
 
-type BulkWorkerRow = { username: string; password: string; jobTitle: string; _valid: boolean; _error: string };
-type BulkWorkerResult = { succeeded: { username: string }[]; failed: { username: string; error: string }[] };
+type BulkWorkerRow = { username: string; jobTitle: string; _valid: boolean; _error: string };
+type BulkWorkerResult = { succeeded: { username: string; inviteUrl?: string }[]; failed: { username: string; error: string }[] };
 
 type OrgDashboardPageProps = {
     profile: UserProfile;
@@ -12,10 +12,10 @@ type OrgDashboardPageProps = {
     orgWorkersLoading: boolean;
     orgWorkersError: string;
     onLoadWorkers: () => void;
-    onAddWorker: (username: string, password: string, jobTitle: string) => Promise<unknown>;
+    onAddWorker: (username: string, jobTitle: string) => Promise<{ worker: unknown; inviteUrl: string }>;
     onRemoveWorker: (username: string) => Promise<unknown>;
     onUpdateJobTitle: (username: string, jobTitle: string) => Promise<unknown>;
-    onBulkAddWorkers: (workers: { username: string; password: string; jobTitle: string }[]) => Promise<BulkWorkerResult>;
+    onBulkAddWorkers: (workers: { username: string; jobTitle: string }[]) => Promise<BulkWorkerResult>;
     onLogout: () => void;
     onAccountClick: () => void;
     // Records view - pass medications as JSX or a simple list
@@ -51,9 +51,10 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
 
     // Add worker form
     const [showAddForm, setShowAddForm] = useState(false);
-    const [addForm, setAddForm] = useState({ username: '', password: '', jobTitle: '' });
+    const [addForm, setAddForm] = useState({ username: '', jobTitle: '' });
     const [addError, setAddError] = useState('');
     const [addSubmitting, setAddSubmitting] = useState(false);
+    const [addedInviteUrl, setAddedInviteUrl] = useState('');
 
     // Edit job title inline
     const [editingUsername, setEditingUsername] = useState<string | null>(null);
@@ -77,17 +78,14 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     const handleAddWorker = async (e: React.FormEvent) => {
         e.preventDefault();
         setAddError('');
-        if (!addForm.username || !addForm.password) {
-            setAddError('Username and password are required.');
-            return;
-        }
+        setAddedInviteUrl('');
+        if (!addForm.username) { setAddError('Username is required.'); return; }
         if (addForm.username.length < 3) { setAddError('Username must be at least 3 characters.'); return; }
-        if (addForm.password.length < 6) { setAddError('Password must be at least 6 characters.'); return; }
         setAddSubmitting(true);
         try {
-            await onAddWorker(addForm.username, addForm.password, addForm.jobTitle);
-            setAddForm({ username: '', password: '', jobTitle: '' });
-            setShowAddForm(false);
+            const result = await onAddWorker(addForm.username, addForm.jobTitle);
+            setAddedInviteUrl(result.inviteUrl);
+            setAddForm({ username: '', jobTitle: '' });
             onLoadWorkers();
         } catch (err: unknown) {
             setAddError(err instanceof Error ? err.message : 'Failed to add worker.');
@@ -131,12 +129,10 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                 const rows: Record<string, unknown>[] = xlsx.utils.sheet_to_json(ws, { defval: '' });
                 const mapped: BulkWorkerRow[] = rows.map((row) => {
                     const username = String(row['username'] || row['Username'] || '').trim();
-                    const password = String(row['password'] || row['Password'] || '').trim();
                     const jobTitle = String(row['jobTitle'] || row['Job Title'] || row['job_title'] || '').trim();
                     let _error = '';
                     if (!username || username.length < 3) _error = 'Username must be at least 3 characters.';
-                    else if (!password || password.length < 6) _error = 'Password must be at least 6 characters.';
-                    return { username, password, jobTitle, _valid: !_error, _error };
+                    return { username, jobTitle, _valid: !_error, _error };
                 });
                 setBulkRows(mapped);
             } catch {
@@ -152,7 +148,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
         setBulkResult(null);
         try {
             const validRows = bulkRows.filter((r) => r._valid);
-            const result = await onBulkAddWorkers(validRows.map(({ username, password, jobTitle }) => ({ username, password, jobTitle })));
+            const result = await onBulkAddWorkers(validRows.map(({ username, jobTitle }) => ({ username, jobTitle })));
             setBulkResult(result);
             if (result.failed.length === 0) {
                 setBulkRows([]);
@@ -250,7 +246,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                             </div>
 
                             <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '-4px 0 10px' }}>
-                                Excel / CSV must have columns: <code>username</code> <code>password</code> <code>jobTitle</code> — jobTitle is optional.
+                                Excel / CSV must have columns: <code>username</code> <code>jobTitle</code> — jobTitle is optional. Each worker will receive a unique invite link to register their passkey.
                             </p>
 
                             {bulkParseError && <div className="inline-error" style={{ marginBottom: '8px' }}>{bulkParseError}</div>}
@@ -258,19 +254,17 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                             {bulkRows.length > 0 && (
                                 <div className="admin-table__expanded" style={{ marginBottom: '12px' }}>
                                     <p style={{ marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
-                                        Expected columns: <code>username | password | jobTitle</code>
+                                        Expected columns: <code>username | jobTitle</code>
                                     </p>
                                     <div className="admin-table">
-                                        <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+                                        <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
                                             <span>Username</span>
-                                            <span>Password</span>
                                             <span>Job title</span>
                                             <span>Status</span>
                                         </div>
                                         {bulkRows.map((row, i) => (
-                                            <div key={i} className="admin-table__row" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+                                            <div key={i} className="admin-table__row" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
                                                 <span className="admin-table__primary">{row.username || <em style={{ color: 'var(--muted)' }}>empty</em>}</span>
-                                                <span>{'••••••'}</span>
                                                 <span>{row.jobTitle || '—'}</span>
                                                 <span style={{ color: row._valid ? 'var(--success, #22c55e)' : 'var(--error, #ef4444)', fontSize: '12px' }}>
                                                     {row._valid ? '✓ valid' : row._error}
@@ -299,8 +293,27 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                             {bulkResult && (
                                 <div className="admin-table__expanded" style={{ marginBottom: '12px' }}>
                                     <p style={{ fontWeight: 600, marginBottom: '6px' }}>
-                                        Import results: {bulkResult.succeeded.length} succeeded, {bulkResult.failed.length} failed
+                                        Import results: {bulkResult.succeeded.length} created, {bulkResult.failed.length} failed
                                     </p>
+                                    {bulkResult.succeeded.length > 0 && (
+                                        <>
+                                            <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '6px' }}>Send each worker their unique invite link to register their passkey:</p>
+                                            <div className="admin-table" style={{ marginBottom: '8px' }}>
+                                                <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 2fr' }}>
+                                                    <span>Username</span>
+                                                    <span>Invite link (48h)</span>
+                                                </div>
+                                                {bulkResult.succeeded.map((s, i) => (
+                                                    <div key={i} className="admin-table__row" style={{ gridTemplateColumns: '1fr 2fr' }}>
+                                                        <span>{s.username}</span>
+                                                        <span style={{ fontSize: '11px', wordBreak: 'break-all' }}>
+                                                            {s.inviteUrl ? <a href={s.inviteUrl} target="_blank" rel="noreferrer">{s.inviteUrl}</a> : '—'}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
                                     {bulkResult.failed.length > 0 && (
                                         <div className="admin-table">
                                             <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 2fr' }}>
@@ -318,7 +331,18 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                 </div>
                             )}
 
-                            {showAddForm && (
+                            {addedInviteUrl && (
+                                <div className="admin-table__expanded" style={{ marginBottom: '12px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                                    <p style={{ fontWeight: 600, marginBottom: 4 }}>Worker created. Send them this invite link:</p>
+                                    <p style={{ fontSize: '0.8rem', wordBreak: 'break-all', marginBottom: 8 }}>
+                                        <a href={addedInviteUrl} target="_blank" rel="noreferrer">{addedInviteUrl}</a>
+                                    </p>
+                                    <p style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>The link expires in 48 hours. They'll use it to register their passkey.</p>
+                                    <button className="button button--ghost button--mini" style={{ marginTop: 8 }} onClick={() => { setAddedInviteUrl(''); setShowAddForm(false); }}>Done</button>
+                                </div>
+                            )}
+
+                            {showAddForm && !addedInviteUrl && (
                                 <form className="admin-table__expanded" onSubmit={handleAddWorker} style={{ marginBottom: '12px' }}>
                                     <div className="field">
                                         <label>Username</label>
@@ -327,15 +351,6 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                             value={addForm.username}
                                             onChange={(e) => setAddForm((f) => ({ ...f, username: e.target.value }))}
                                             placeholder="Min 3 characters"
-                                        />
-                                    </div>
-                                    <div className="field">
-                                        <label>Password</label>
-                                        <input
-                                            type="password"
-                                            value={addForm.password}
-                                            onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))}
-                                            placeholder="Min 6 characters"
                                         />
                                     </div>
                                     <div className="field">
@@ -348,6 +363,9 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                         />
                                     </div>
                                     {addError && <div className="inline-error">{addError}</div>}
+                                    <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 4 }}>
+                                        No password needed — the worker will receive an invite link to register their passkey.
+                                    </p>
                                     <div className="admin-table__expanded-actions">
                                         <button type="submit" className="button button--primary button--mini" disabled={addSubmitting}>
                                             {addSubmitting ? 'Adding…' : 'Add worker'}

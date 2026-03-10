@@ -1,25 +1,24 @@
 import React, { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Fingerprint, Loader2 } from 'lucide-react';
 
 type PlatformLoginPageProps = {
-    onLogin: (username: string, password: string) => Promise<void>;
+    onLogin: (username: string) => Promise<void>;
 };
 
 const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({ onLogin }) => {
     const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!username || !password) { setError('Enter your username and password.'); return; }
+        if (!username.trim()) { setError('Enter your username.'); return; }
         setSubmitting(true);
         try {
-            await onLogin(username, password);
+            await onLogin(username.trim());
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Login failed.');
+            setError(err instanceof Error ? err.message : 'Passkey login failed.');
         } finally {
             setSubmitting(false);
         }
@@ -39,24 +38,16 @@ const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({ onLogin }) => {
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            autoComplete="username"
-                            required
-                        />
-                    </div>
-                    <div className="field">
-                        <label>Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            autoComplete="current-password"
+                            autoComplete="username webauthn"
                             required
                         />
                     </div>
                     {error && <div className="inline-error">{error}</div>}
                     <div className="auth-card__actions">
                         <button type="submit" className="button button--primary auth-card__primary" disabled={submitting}>
-                            {submitting ? <><Loader2 size={15} className="spin" /> Signing in…</> : 'Sign in'}
+                            {submitting
+                                ? <><Loader2 size={15} className="spin" /> Waiting for passkey…</>
+                                : <><Fingerprint size={15} /> Sign in with passkey</>}
                         </button>
                     </div>
                 </form>

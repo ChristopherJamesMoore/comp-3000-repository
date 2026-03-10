@@ -9,6 +9,12 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { MongoClient } = require('mongodb');
+const {
+    generateRegistrationOptions,
+    verifyRegistrationResponse,
+    generateAuthenticationOptions,
+    verifyAuthenticationResponse,
+} = require('@simplewebauthn/server');
 
 const getEnv = (name, fallback = undefined) => {
     const value = process.env[name];
@@ -326,6 +332,12 @@ const ensureStatus = async (statusCollection, serialNumber) => {
     return seeded;
 };
 
+const getWebAuthnConfig = () => ({
+    rpID: getEnv('WEBAUTHN_RP_ID', 'localhost'),
+    rpName: getEnv('WEBAUTHN_RP_NAME', 'LedgRx'),
+    origin: getEnv('WEBAUTHN_ORIGIN', 'http://localhost:3000'),
+});
+
 const createApp = (contract, db) => {
     const app = express();
     app.use(cors(corsOptions()));
@@ -333,7 +345,35 @@ const createApp = (contract, db) => {
 
     const usersCollection = db ? db.collection('users') : null;
     const blacklistCollection = db ? db.collection('token_blacklist') : null;
+    const credentialsCollection = db ? db.collection('webauthn_credentials') : null;
+    const challengesCollection = db ? db.collection('webauthn_challenges') : null;
+    const invitesCollection = db ? db.collection('worker_invites') : null;
     const authMiddleware = createAuthMiddleware(db);
+
+    // Ensure TTL indexes exist for challenges and invites
+    if (challengesCollection) {
+        challengesCollection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
+    }
+    if (invitesCollection) {
+        invitesCollection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
+    }
+
+    const saveChallenge = async (userType, identifier, challenge, type) => {
+        if (!challengesCollection) throw new Error('Database required for passkey auth.');
+        await challengesCollection.deleteMany({ userType, identifier, type });
+        await challengesCollection.insertOne({
+            userType, identifier, challenge, type,
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+            createdAt: new Date(),
+        });
+    };
+
+    const getAndDeleteChallenge = async (userType, identifier, type) => {
+        if (!challengesCollection) throw new Error('Database required for passkey auth.');
+        const doc = await challengesCollection.findOneAndDelete({ userType, identifier, type });
+        if (!doc || new Date() > doc.expiresAt) return null;
+        return doc.challenge;
+    };
 
     app.get('/api/health', (req, res) => {
         res.json({ ok: true });
@@ -366,38 +406,31 @@ const createApp = (contract, db) => {
             if (adminUser) {
                 return res.status(409).json({ error: 'Admin already exists.' });
             }
-            const { username, password } = req.body;
-            if (!username || !password) {
-                return res.status(400).json({ error: 'Username and password are required.' });
-            }
-            if (username.length < 3) {
-                return res.status(400).json({ error: 'Username must be at least 3 characters.' });
-            }
-            if (password.length < 6) {
-                return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-            }
+            const { username } = req.body;
+            if (!username) return res.status(400).json({ error: 'Username is required.' });
+            if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters.' });
             const existing = await usersCollection.findOne({ username });
-            if (existing) {
-                return res.status(409).json({ error: 'Username already exists.' });
-            }
-            const passwordHash = await bcrypt.hash(password, 10);
+            if (existing) return res.status(409).json({ error: 'Username already exists.' });
             await usersCollection.insertOne({
-                username,
-                passwordHash,
-                companyType: '',
-                companyName: '',
-                createdAt: new Date(),
-                isAdmin: true,
-                approvalStatus: 'approved',
-                registrationNumber: '',
-                approvedBy: null,
-                approvedAt: null
+                username, companyType: '', companyName: '',
+                createdAt: new Date(), isAdmin: true,
+                approvalStatus: 'approved', registrationNumber: '',
+                approvedBy: null, approvedAt: null,
             });
-            const token = createToken({ sub: username, jti: crypto.randomUUID() });
-            return res.json({
-                token,
-                user: { username, isAdmin: true, approvalStatus: 'approved' }
+            // Return registration options so the browser immediately registers a passkey
+            const { rpID, rpName } = getWebAuthnConfig();
+            const options = await generateRegistrationOptions({
+                rpName, rpID,
+                userID: new TextEncoder().encode(username),
+                userName: username,
+                userDisplayName: 'Platform Admin',
+                attestationType: 'none',
+                authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+                excludeCredentials: [],
+                timeout: 60000,
             });
+            await saveChallenge('platform', username, options.challenge, 'registration');
+            return res.json({ username, registrationOptions: options });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Bootstrap failed.' });
         }
@@ -688,6 +721,491 @@ const createApp = (contract, db) => {
         }
     });
 
+    // ── WebAuthn — Platform (admin / platform users) ──────────────────────────
+
+    app.post('/api/auth/webauthn/register/begin', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { username } = req.body;
+            if (!username) return res.status(400).json({ error: 'Username is required.' });
+            const user = await usersCollection.findOne({ username });
+            if (!user) return res.status(404).json({ error: 'User not found.' });
+            const existingCredentials = await credentialsCollection.find({ userType: 'platform', identifier: username }).toArray();
+            const { rpID, rpName, origin } = getWebAuthnConfig();
+            const options = await generateRegistrationOptions({
+                rpName, rpID,
+                userID: new TextEncoder().encode(username),
+                userName: username,
+                userDisplayName: username,
+                attestationType: 'none',
+                authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+                excludeCredentials: existingCredentials.map((c) => ({ id: c.credentialId, transports: c.transports })),
+                timeout: 60000,
+            });
+            await saveChallenge('platform', username, options.challenge, 'registration');
+            return res.json(options);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to begin registration.' });
+        }
+    });
+
+    app.post('/api/auth/webauthn/register/complete', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { username, credential } = req.body;
+            if (!username || !credential) return res.status(400).json({ error: 'username and credential are required.' });
+            const expectedChallenge = await getAndDeleteChallenge('platform', username, 'registration');
+            if (!expectedChallenge) return res.status(400).json({ error: 'Challenge expired or not found. Please start again.' });
+            const { rpID, origin } = getWebAuthnConfig();
+            const { verified, registrationInfo } = await verifyRegistrationResponse({
+                response: credential,
+                expectedChallenge,
+                expectedOrigin: origin,
+                expectedRPID: rpID,
+            });
+            if (!verified) return res.status(400).json({ error: 'Passkey verification failed.' });
+            const { id, publicKey, counter, transports } = registrationInfo.credential;
+            await credentialsCollection.insertOne({
+                userType: 'platform', identifier: username,
+                credentialId: id,
+                publicKey: Buffer.from(publicKey),
+                counter, transports,
+                createdAt: new Date(),
+            });
+            const user = await usersCollection.findOne({ username });
+            const token = createToken({ sub: username, jti: crypto.randomUUID() });
+            return res.json({
+                token,
+                user: {
+                    username,
+                    companyType: user?.companyType || '',
+                    companyName: user?.companyName || '',
+                    isAdmin: !!user?.isAdmin || isAdminUser(username),
+                    approvalStatus: getUserApprovalStatus(user),
+                    registrationNumber: user?.registrationNumber || '',
+                    email: user?.email || '',
+                },
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to complete registration.' });
+        }
+    });
+
+    app.post('/api/auth/webauthn/login/begin', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { username } = req.body;
+            if (!username) return res.status(400).json({ error: 'Username is required.' });
+            const credentials = await credentialsCollection.find({ userType: 'platform', identifier: username }).toArray();
+            if (credentials.length === 0) return res.status(404).json({ error: 'No passkey registered for this account.' });
+            const { rpID } = getWebAuthnConfig();
+            const options = await generateAuthenticationOptions({
+                rpID, timeout: 60000,
+                allowCredentials: credentials.map((c) => ({ id: c.credentialId, transports: c.transports })),
+                userVerification: 'preferred',
+            });
+            await saveChallenge('platform', username, options.challenge, 'authentication');
+            return res.json(options);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to begin login.' });
+        }
+    });
+
+    app.post('/api/auth/webauthn/login/complete', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { username, credential } = req.body;
+            if (!username || !credential) return res.status(400).json({ error: 'username and credential are required.' });
+            const expectedChallenge = await getAndDeleteChallenge('platform', username, 'authentication');
+            if (!expectedChallenge) return res.status(400).json({ error: 'Challenge expired. Please try again.' });
+            const storedCred = await credentialsCollection.findOne({ userType: 'platform', identifier: username, credentialId: credential.id });
+            if (!storedCred) return res.status(401).json({ error: 'Passkey not recognised.' });
+            const { rpID, origin } = getWebAuthnConfig();
+            const { verified, authenticationInfo } = await verifyAuthenticationResponse({
+                response: credential,
+                expectedChallenge,
+                expectedOrigin: origin,
+                expectedRPID: rpID,
+                credential: {
+                    id: storedCred.credentialId,
+                    publicKey: storedCred.publicKey.buffer ? new Uint8Array(storedCred.publicKey.buffer) : storedCred.publicKey,
+                    counter: storedCred.counter,
+                    transports: storedCred.transports,
+                },
+            });
+            if (!verified) return res.status(401).json({ error: 'Passkey verification failed.' });
+            await credentialsCollection.updateOne(
+                { _id: storedCred._id },
+                { $set: { counter: authenticationInfo.newCounter } }
+            );
+            const user = await usersCollection.findOne({ username });
+            if (!user) return res.status(401).json({ error: 'User not found.' });
+            const token = createToken({ sub: username, jti: crypto.randomUUID() });
+            return res.json({
+                token,
+                user: {
+                    username,
+                    companyType: user.companyType || '',
+                    companyName: user.companyName || '',
+                    isAdmin: !!user.isAdmin || isAdminUser(username),
+                    approvalStatus: getUserApprovalStatus(user),
+                    registrationNumber: user.registrationNumber || '',
+                    email: user.email || '',
+                },
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Login failed.' });
+        }
+    });
+
+    // ── WebAuthn — Organisation ───────────────────────────────────────────────
+
+    app.post('/api/org/webauthn/register/begin', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { adminUsername } = req.body;
+            if (!adminUsername) return res.status(400).json({ error: 'adminUsername is required.' });
+            const org = await db.collection('organisations').findOne({ adminUsername });
+            if (!org) return res.status(404).json({ error: 'Organisation not found.' });
+            const existingCredentials = await credentialsCollection.find({ userType: 'org', identifier: adminUsername }).toArray();
+            const { rpID, rpName } = getWebAuthnConfig();
+            const options = await generateRegistrationOptions({
+                rpName, rpID,
+                userID: new TextEncoder().encode(adminUsername),
+                userName: adminUsername,
+                userDisplayName: `${org.adminFirstName} ${org.adminLastName}`.trim() || adminUsername,
+                attestationType: 'none',
+                authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+                excludeCredentials: existingCredentials.map((c) => ({ id: c.credentialId, transports: c.transports })),
+                timeout: 60000,
+            });
+            await saveChallenge('org', adminUsername, options.challenge, 'registration');
+            return res.json(options);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to begin registration.' });
+        }
+    });
+
+    app.post('/api/org/webauthn/register/complete', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { adminUsername, credential } = req.body;
+            if (!adminUsername || !credential) return res.status(400).json({ error: 'adminUsername and credential are required.' });
+            const expectedChallenge = await getAndDeleteChallenge('org', adminUsername, 'registration');
+            if (!expectedChallenge) return res.status(400).json({ error: 'Challenge expired. Please start again.' });
+            const { rpID, origin } = getWebAuthnConfig();
+            const { verified, registrationInfo } = await verifyRegistrationResponse({
+                response: credential,
+                expectedChallenge,
+                expectedOrigin: origin,
+                expectedRPID: rpID,
+            });
+            if (!verified) return res.status(400).json({ error: 'Passkey verification failed.' });
+            const { id, publicKey, counter, transports } = registrationInfo.credential;
+            await credentialsCollection.insertOne({
+                userType: 'org', identifier: adminUsername,
+                credentialId: id,
+                publicKey: Buffer.from(publicKey),
+                counter, transports,
+                createdAt: new Date(),
+            });
+            const org = await db.collection('organisations').findOne({ adminUsername });
+            const token = createToken({ sub: adminUsername, type: 'org', orgId: org.orgId, jti: crypto.randomUUID() });
+            return res.json({
+                token,
+                org: {
+                    orgId: org.orgId, adminUsername: org.adminUsername,
+                    companyName: org.companyName, companyType: org.companyType,
+                    approvalStatus: org.approvalStatus, adminEmail: org.adminEmail,
+                    adminFirstName: org.adminFirstName, adminLastName: org.adminLastName,
+                    registrationNumber: org.registrationNumber,
+                },
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to complete registration.' });
+        }
+    });
+
+    app.post('/api/org/webauthn/login/begin', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { username } = req.body;
+            if (!username) return res.status(400).json({ error: 'Username is required.' });
+            const credentials = await credentialsCollection.find({ userType: 'org', identifier: username }).toArray();
+            if (credentials.length === 0) return res.status(404).json({ error: 'No passkey registered for this account.' });
+            const { rpID } = getWebAuthnConfig();
+            const options = await generateAuthenticationOptions({
+                rpID, timeout: 60000,
+                allowCredentials: credentials.map((c) => ({ id: c.credentialId, transports: c.transports })),
+                userVerification: 'preferred',
+            });
+            await saveChallenge('org', username, options.challenge, 'authentication');
+            return res.json(options);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to begin login.' });
+        }
+    });
+
+    app.post('/api/org/webauthn/login/complete', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { username, credential } = req.body;
+            if (!username || !credential) return res.status(400).json({ error: 'username and credential are required.' });
+            const expectedChallenge = await getAndDeleteChallenge('org', username, 'authentication');
+            if (!expectedChallenge) return res.status(400).json({ error: 'Challenge expired. Please try again.' });
+            const storedCred = await credentialsCollection.findOne({ userType: 'org', identifier: username, credentialId: credential.id });
+            if (!storedCred) return res.status(401).json({ error: 'Passkey not recognised.' });
+            const { rpID, origin } = getWebAuthnConfig();
+            const { verified, authenticationInfo } = await verifyAuthenticationResponse({
+                response: credential,
+                expectedChallenge,
+                expectedOrigin: origin,
+                expectedRPID: rpID,
+                credential: {
+                    id: storedCred.credentialId,
+                    publicKey: storedCred.publicKey.buffer ? new Uint8Array(storedCred.publicKey.buffer) : storedCred.publicKey,
+                    counter: storedCred.counter,
+                    transports: storedCred.transports,
+                },
+            });
+            if (!verified) return res.status(401).json({ error: 'Passkey verification failed.' });
+            await credentialsCollection.updateOne(
+                { _id: storedCred._id },
+                { $set: { counter: authenticationInfo.newCounter } }
+            );
+            const org = await db.collection('organisations').findOne({ adminUsername: username });
+            if (!org) return res.status(401).json({ error: 'Organisation not found.' });
+            const token = createToken({ sub: username, type: 'org', orgId: org.orgId, jti: crypto.randomUUID() });
+            return res.json({
+                token,
+                org: {
+                    orgId: org.orgId, adminUsername: org.adminUsername,
+                    companyName: org.companyName, companyType: org.companyType,
+                    approvalStatus: org.approvalStatus, adminEmail: org.adminEmail,
+                    adminFirstName: org.adminFirstName, adminLastName: org.adminLastName,
+                    registrationNumber: org.registrationNumber,
+                },
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Login failed.' });
+        }
+    });
+
+    // ── WebAuthn — Worker ─────────────────────────────────────────────────────
+
+    app.get('/api/worker/invite/:token', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const invite = await invitesCollection.findOne({ token: req.params.token, used: false });
+            if (!invite || new Date() > invite.expiresAt) {
+                return res.status(404).json({ error: 'Invite link is invalid or has expired.' });
+            }
+            const worker = await db.collection('workers').findOne({ workerId: invite.workerId });
+            if (!worker) return res.status(404).json({ error: 'Worker account not found.' });
+            return res.json({
+                valid: true,
+                username: worker.username,
+                orgId: worker.orgId,
+                companyName: worker.companyName,
+                companyType: worker.companyType,
+                jobTitle: worker.jobTitle,
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to validate invite.' });
+        }
+    });
+
+    app.post('/api/worker/webauthn/register/begin', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { inviteToken } = req.body;
+            if (!inviteToken) return res.status(400).json({ error: 'inviteToken is required.' });
+            const invite = await invitesCollection.findOne({ token: inviteToken, used: false });
+            if (!invite || new Date() > invite.expiresAt) {
+                return res.status(400).json({ error: 'Invite link is invalid or has expired.' });
+            }
+            const worker = await db.collection('workers').findOne({ workerId: invite.workerId });
+            if (!worker) return res.status(404).json({ error: 'Worker account not found.' });
+            const { rpID, rpName } = getWebAuthnConfig();
+            const options = await generateRegistrationOptions({
+                rpName, rpID,
+                userID: new TextEncoder().encode(worker.username),
+                userName: worker.username,
+                userDisplayName: worker.username,
+                attestationType: 'none',
+                authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+                excludeCredentials: [],
+                timeout: 60000,
+            });
+            await saveChallenge('worker', worker.username, options.challenge, 'registration');
+            return res.json(options);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to begin registration.' });
+        }
+    });
+
+    app.post('/api/worker/webauthn/register/complete', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { inviteToken, credential } = req.body;
+            if (!inviteToken || !credential) return res.status(400).json({ error: 'inviteToken and credential are required.' });
+            const invite = await invitesCollection.findOne({ token: inviteToken, used: false });
+            if (!invite || new Date() > invite.expiresAt) {
+                return res.status(400).json({ error: 'Invite link is invalid or has expired.' });
+            }
+            const worker = await db.collection('workers').findOne({ workerId: invite.workerId });
+            if (!worker) return res.status(404).json({ error: 'Worker account not found.' });
+            const expectedChallenge = await getAndDeleteChallenge('worker', worker.username, 'registration');
+            if (!expectedChallenge) return res.status(400).json({ error: 'Challenge expired. Please start again.' });
+            const { rpID, origin } = getWebAuthnConfig();
+            const { verified, registrationInfo } = await verifyRegistrationResponse({
+                response: credential,
+                expectedChallenge,
+                expectedOrigin: origin,
+                expectedRPID: rpID,
+            });
+            if (!verified) return res.status(400).json({ error: 'Passkey verification failed.' });
+            const { id, publicKey, counter, transports } = registrationInfo.credential;
+            await credentialsCollection.insertOne({
+                userType: 'worker', identifier: worker.username,
+                credentialId: id,
+                publicKey: Buffer.from(publicKey),
+                counter, transports,
+                createdAt: new Date(),
+            });
+            await invitesCollection.updateOne({ _id: invite._id }, { $set: { used: true, usedAt: new Date() } });
+            const org = await db.collection('organisations').findOne({ orgId: worker.orgId });
+            if (!org || org.approvalStatus !== 'approved') {
+                return res.status(403).json({ error: 'Your organisation is pending approval.' });
+            }
+            const token = createToken({ sub: worker.username, type: 'worker', orgId: worker.orgId, jti: crypto.randomUUID() });
+            return res.json({
+                token,
+                worker: {
+                    username: worker.username, orgId: worker.orgId,
+                    companyName: worker.companyName, companyType: worker.companyType,
+                    jobTitle: worker.jobTitle, approvalStatus: 'approved',
+                },
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to complete registration.' });
+        }
+    });
+
+    app.post('/api/worker/webauthn/login/begin', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { username } = req.body;
+            if (!username) return res.status(400).json({ error: 'Username is required.' });
+            const credentials = await credentialsCollection.find({ userType: 'worker', identifier: username }).toArray();
+            if (credentials.length === 0) return res.status(404).json({ error: 'No passkey registered for this account.' });
+            const { rpID } = getWebAuthnConfig();
+            const options = await generateAuthenticationOptions({
+                rpID, timeout: 60000,
+                allowCredentials: credentials.map((c) => ({ id: c.credentialId, transports: c.transports })),
+                userVerification: 'preferred',
+            });
+            await saveChallenge('worker', username, options.challenge, 'authentication');
+            return res.json(options);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to begin login.' });
+        }
+    });
+
+    app.post('/api/worker/webauthn/login/complete', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { username, credential } = req.body;
+            if (!username || !credential) return res.status(400).json({ error: 'username and credential are required.' });
+            const expectedChallenge = await getAndDeleteChallenge('worker', username, 'authentication');
+            if (!expectedChallenge) return res.status(400).json({ error: 'Challenge expired. Please try again.' });
+            const storedCred = await credentialsCollection.findOne({ userType: 'worker', identifier: username, credentialId: credential.id });
+            if (!storedCred) return res.status(401).json({ error: 'Passkey not recognised.' });
+            const { rpID, origin } = getWebAuthnConfig();
+            const { verified, authenticationInfo } = await verifyAuthenticationResponse({
+                response: credential,
+                expectedChallenge,
+                expectedOrigin: origin,
+                expectedRPID: rpID,
+                credential: {
+                    id: storedCred.credentialId,
+                    publicKey: storedCred.publicKey.buffer ? new Uint8Array(storedCred.publicKey.buffer) : storedCred.publicKey,
+                    counter: storedCred.counter,
+                    transports: storedCred.transports,
+                },
+            });
+            if (!verified) return res.status(401).json({ error: 'Passkey verification failed.' });
+            await credentialsCollection.updateOne(
+                { _id: storedCred._id },
+                { $set: { counter: authenticationInfo.newCounter } }
+            );
+            const worker = await db.collection('workers').findOne({ username });
+            if (!worker) return res.status(401).json({ error: 'Worker not found.' });
+            const org = await db.collection('organisations').findOne({ orgId: worker.orgId });
+            if (!org || org.approvalStatus !== 'approved') {
+                return res.status(403).json({ error: 'Your organisation is pending approval.' });
+            }
+            const token = createToken({ sub: username, type: 'worker', orgId: worker.orgId, jti: crypto.randomUUID() });
+            return res.json({
+                token,
+                worker: {
+                    username: worker.username, orgId: worker.orgId,
+                    companyName: worker.companyName, companyType: worker.companyType,
+                    jobTitle: worker.jobTitle, approvalStatus: 'approved',
+                },
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Login failed.' });
+        }
+    });
+
+    // ── Admin — Passkey Management ────────────────────────────────────────────
+
+    app.delete('/api/admin/orgs/:orgId/passkeys', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const org = await db.collection('organisations').findOne({ orgId: req.params.orgId });
+            if (!org) return res.status(404).json({ error: 'Organisation not found.' });
+            await credentialsCollection.deleteMany({ userType: 'org', identifier: org.adminUsername });
+            const inviteToken = crypto.randomUUID();
+            const appUrl = getEnv('APP_URL', 'https://ledgrx.duckdns.org');
+            await invitesCollection.insertOne({
+                token: inviteToken,
+                workerId: null,
+                orgAdminUsername: org.adminUsername,
+                type: 'org_passkey_reset',
+                used: false,
+                expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+                createdAt: new Date(),
+            });
+            return res.json({ ok: true, registerUrl: `${appUrl}/org/register-passkey?token=${inviteToken}&username=${encodeURIComponent(org.adminUsername)}` });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to reset passkey.' });
+        }
+    });
+
+    app.delete('/api/admin/orgs/:orgId/workers/:username/passkeys', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const worker = await db.collection('workers').findOne({ username: req.params.username, orgId: req.params.orgId });
+            if (!worker) return res.status(404).json({ error: 'Worker not found.' });
+            await credentialsCollection.deleteMany({ userType: 'worker', identifier: worker.username });
+            const inviteToken = crypto.randomUUID();
+            const appUrl = getEnv('APP_URL', 'https://ledgrx.duckdns.org');
+            await invitesCollection.insertOne({
+                token: inviteToken,
+                workerId: worker.workerId,
+                type: 'worker_passkey_reset',
+                used: false,
+                expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+                createdAt: new Date(),
+            });
+            return res.json({ ok: true, registerUrl: `${appUrl}/invite/${inviteToken}` });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to reset passkey.' });
+        }
+    });
+
     app.get('/api/admin/users', authMiddleware, requireAdmin(db), async (req, res) => {
         try {
             if (!usersCollection) {
@@ -829,28 +1347,24 @@ const createApp = (contract, db) => {
     app.post('/api/org/signup', async (req, res) => {
         try {
             if (!db) return res.status(501).json({ error: 'Signup requires MONGODB_URI.' });
-            const { adminFirstName, adminLastName, adminUsername, adminEmail, password,
+            const { adminFirstName, adminLastName, adminUsername, adminEmail,
                     companyName, companyType, registrationNumber } = req.body;
-            if (!adminFirstName || !adminLastName || !adminUsername || !password || !companyName || !companyType) {
+            if (!adminFirstName || !adminLastName || !adminUsername || !companyName || !companyType) {
                 return res.status(400).json({ error: 'Missing required fields.' });
             }
             if (adminUsername.length < 3) {
                 return res.status(400).json({ error: 'Username must be at least 3 characters.' });
-            }
-            if (password.length < 6) {
-                return res.status(400).json({ error: 'Password must be at least 6 characters.' });
             }
             const normalizedType = String(companyType).trim().toLowerCase();
             if (!['production', 'distribution', 'pharmacy', 'clinic'].includes(normalizedType)) {
                 return res.status(400).json({ error: 'Company type must be production, distribution, pharmacy, or clinic.' });
             }
             const orgsCollection = db.collection('organisations');
-            const workersCollection = db.collection('workers');
+            const workersCol = db.collection('workers');
             const existing = await orgsCollection.findOne({ adminUsername });
             if (existing) return res.status(409).json({ error: 'Username already taken.' });
-            const workerConflict = await workersCollection.findOne({ username: adminUsername });
+            const workerConflict = await workersCol.findOne({ username: adminUsername });
             if (workerConflict) return res.status(409).json({ error: 'Username already taken.' });
-            const passwordHash = await bcrypt.hash(password, 10);
             const orgId = crypto.randomUUID();
             await orgsCollection.insertOne({
                 orgId,
@@ -861,15 +1375,26 @@ const createApp = (contract, db) => {
                 adminLastName: String(adminLastName).trim(),
                 adminUsername,
                 adminEmail: adminEmail ? String(adminEmail).trim().toLowerCase() : '',
-                passwordHash,
                 approvalStatus: 'pending',
                 createdAt: new Date(),
-                approvedAt: null
+                approvedAt: null,
             });
-            const token = createToken({ sub: adminUsername, type: 'org', orgId, jti: crypto.randomUUID() });
+            // Return registration options so the browser immediately starts passkey setup
+            const { rpID, rpName } = getWebAuthnConfig();
+            const options = await generateRegistrationOptions({
+                rpName, rpID,
+                userID: new TextEncoder().encode(adminUsername),
+                userName: adminUsername,
+                userDisplayName: `${String(adminFirstName).trim()} ${String(adminLastName).trim()}`.trim(),
+                attestationType: 'none',
+                authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+                excludeCredentials: [],
+                timeout: 60000,
+            });
+            await saveChallenge('org', adminUsername, options.challenge, 'registration');
             return res.status(201).json({
-                token,
-                org: { orgId, adminUsername, companyName: String(companyName).trim(), companyType: normalizedType, approvalStatus: 'pending' }
+                org: { orgId, adminUsername, companyName: String(companyName).trim(), companyType: normalizedType, approvalStatus: 'pending' },
+                registrationOptions: options,
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Signup failed.' });
@@ -1005,39 +1530,36 @@ const createApp = (contract, db) => {
     app.post('/api/org/workers', authMiddleware, requireOrgAdmin, async (req, res) => {
         try {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
-            const { username, password, jobTitle } = req.body;
-            if (!username || !password) {
-                return res.status(400).json({ error: 'Username and password are required.' });
-            }
-            if (username.length < 3) {
-                return res.status(400).json({ error: 'Username must be at least 3 characters.' });
-            }
-            if (password.length < 6) {
-                return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-            }
-            const workersCollection = db.collection('workers');
-            const orgsCollection = db.collection('organisations');
-            const workerConflict = await workersCollection.findOne({ username });
+            const { username, jobTitle } = req.body;
+            if (!username) return res.status(400).json({ error: 'Username is required.' });
+            if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters.' });
+            const workersCol = db.collection('workers');
+            const orgsCol = db.collection('organisations');
+            const workerConflict = await workersCol.findOne({ username });
             if (workerConflict) return res.status(409).json({ error: 'Username already taken.' });
-            const orgConflict = await orgsCollection.findOne({ adminUsername: username });
+            const orgConflict = await orgsCol.findOne({ adminUsername: username });
             if (orgConflict) return res.status(409).json({ error: 'Username already taken.' });
-            const org = await orgsCollection.findOne({ orgId: req.user.orgId });
+            const org = await orgsCol.findOne({ orgId: req.user.orgId });
             if (!org) return res.status(404).json({ error: 'Organisation not found.' });
-            const passwordHash = await bcrypt.hash(password, 10);
             const workerId = crypto.randomUUID();
-            await workersCollection.insertOne({
-                workerId,
-                username,
-                passwordHash,
-                orgId: org.orgId,
-                companyName: org.companyName,
-                companyType: org.companyType,
+            await workersCol.insertOne({
+                workerId, username,
+                orgId: org.orgId, companyName: org.companyName, companyType: org.companyType,
                 jobTitle: String(jobTitle || '').trim(),
-                createdAt: new Date(),
-                createdBy: req.user.sub
+                createdAt: new Date(), createdBy: req.user.sub,
             });
+            const inviteToken = crypto.randomUUID();
+            await invitesCollection.insertOne({
+                token: inviteToken, workerId, type: 'worker_setup',
+                used: false,
+                expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+                createdAt: new Date(),
+            });
+            const appUrl = getEnv('APP_URL', 'https://ledgrx.duckdns.org');
+            const inviteUrl = `${appUrl}/invite/${inviteToken}`;
             return res.status(201).json({
-                worker: { workerId, username, orgId: org.orgId, companyName: org.companyName, companyType: org.companyType, jobTitle: jobTitle || '' }
+                worker: { workerId, username, orgId: org.orgId, companyName: org.companyName, companyType: org.companyType, jobTitle: jobTitle || '' },
+                inviteUrl,
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to add worker.' });
@@ -1060,14 +1582,11 @@ const createApp = (contract, db) => {
             if (!org) return res.status(404).json({ error: 'Organisation not found.' });
             const succeeded = [];
             const failed = [];
+            const appUrl = getEnv('APP_URL', 'https://ledgrx.duckdns.org');
             for (const row of workers) {
-                const { username, password, jobTitle } = row;
+                const { username, jobTitle } = row;
                 if (!username || username.length < 3) {
                     failed.push({ username: username || '', error: 'Username must be at least 3 characters.' });
-                    continue;
-                }
-                if (!password || password.length < 6) {
-                    failed.push({ username, error: 'Password must be at least 6 characters.' });
                     continue;
                 }
                 try {
@@ -1075,20 +1594,21 @@ const createApp = (contract, db) => {
                     if (workerConflict) { failed.push({ username, error: 'Username already taken.' }); continue; }
                     const orgConflict = await orgsCollection.findOne({ adminUsername: username });
                     if (orgConflict) { failed.push({ username, error: 'Username already taken.' }); continue; }
-                    const passwordHash = await bcrypt.hash(password, 10);
                     const workerId = crypto.randomUUID();
                     await workersCollection.insertOne({
-                        workerId,
-                        username,
-                        passwordHash,
-                        orgId: org.orgId,
-                        companyName: org.companyName,
-                        companyType: org.companyType,
+                        workerId, username,
+                        orgId: org.orgId, companyName: org.companyName, companyType: org.companyType,
                         jobTitle: String(jobTitle || '').trim(),
-                        createdAt: new Date(),
-                        createdBy: req.user.sub
+                        createdAt: new Date(), createdBy: req.user.sub,
                     });
-                    succeeded.push({ username });
+                    const inviteToken = crypto.randomUUID();
+                    await invitesCollection.insertOne({
+                        token: inviteToken, workerId, type: 'worker_setup',
+                        used: false,
+                        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+                        createdAt: new Date(),
+                    });
+                    succeeded.push({ username, inviteUrl: `${appUrl}/invite/${inviteToken}` });
                 } catch (rowErr) {
                     failed.push({ username, error: rowErr.message || 'Failed to create worker.' });
                 }

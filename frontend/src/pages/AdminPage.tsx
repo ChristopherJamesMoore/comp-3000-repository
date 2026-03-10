@@ -17,10 +17,10 @@ type AdminPageProps = {
     onRejectOrg: (orgId: string) => Promise<unknown>;
     onDeleteOrg: (orgId: string) => Promise<unknown>;
     onUpdateOrg: (orgId: string, data: { companyName?: string; companyType?: string; registrationNumber?: string; adminEmail?: string }) => Promise<unknown>;
-    onResetOrgPassword: (orgId: string, newPassword: string) => Promise<unknown>;
+    onResetOrgPasskey: (orgId: string) => Promise<{ ok: boolean; registerUrl: string }>;
     onLoadOrgWorkers: (orgId: string) => Promise<OrgWorker[]>;
     onDeleteOrgWorker: (orgId: string, username: string) => Promise<unknown>;
-    onResetOrgWorkerPassword: (orgId: string, username: string, newPassword: string) => Promise<unknown>;
+    onResetWorkerPasskey: (orgId: string, username: string) => Promise<{ ok: boolean; registerUrl: string }>;
 };
 
 const AdminPage: React.FC<AdminPageProps> = ({
@@ -35,29 +35,28 @@ const AdminPage: React.FC<AdminPageProps> = ({
     onRejectOrg,
     onDeleteOrg,
     onUpdateOrg,
-    onResetOrgPassword,
+    onResetOrgPasskey,
     onLoadOrgWorkers,
     onDeleteOrgWorker,
-    onResetOrgWorkerPassword
+    onResetWorkerPasskey
 }) => {
     const [filter, setFilter] = useState<AdminFilter>('all');
     const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
-    const [expandMode, setExpandMode] = useState<'edit' | 'password' | 'workers' | null>(null);
+    const [expandMode, setExpandMode] = useState<'edit' | 'workers' | null>(null);
     const [editForm, setEditForm] = useState({ companyName: '', companyType: '', registrationNumber: '', adminEmail: '' });
-    const [passwordInput, setPasswordInput] = useState('');
     const [actionError, setActionError] = useState('');
+    const [resetLinkTarget, setResetLinkTarget] = useState<string | null>(null);
+    const [resetLinkUrl, setResetLinkUrl] = useState('');
     const [orgWorkers, setOrgWorkers] = useState<OrgWorker[]>([]);
     const [orgWorkersLoading, setOrgWorkersLoading] = useState(false);
-    const [workerPasswordTarget, setWorkerPasswordTarget] = useState<string | null>(null);
-    const [workerPasswordInput, setWorkerPasswordInput] = useState('');
 
     const closeExpanded = () => {
         setExpandedOrg(null);
         setExpandMode(null);
         setActionError('');
-        setPasswordInput('');
         setOrgWorkers([]);
-        setWorkerPasswordTarget(null);
+        setResetLinkTarget(null);
+        setResetLinkUrl('');
     };
 
     const openEdit = (org: OrgProfile) => {
@@ -67,15 +66,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
             companyName: org.companyName || '',
             companyType: org.companyType || '',
             registrationNumber: org.registrationNumber || '',
-            adminEmail: org.adminEmail || ''
+            adminEmail: org.adminEmail || '',
         });
-        setActionError('');
-    };
-
-    const openPassword = (orgId: string) => {
-        setExpandedOrg(orgId);
-        setExpandMode('password');
-        setPasswordInput('');
         setActionError('');
     };
 
@@ -129,12 +121,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
         }
     };
 
-    const handleSavePassword = async () => {
-        if (!expandedOrg) return;
-        if (passwordInput.length < 6) { setActionError('Password must be at least 6 characters.'); return; }
+    const handleResetOrgPasskey = async (orgId: string) => {
         setActionError('');
-        try { await onResetOrgPassword(expandedOrg, passwordInput); closeExpanded(); } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to reset password.');
+        try {
+            const result = await onResetOrgPasskey(orgId);
+            setResetLinkTarget(orgId);
+            setResetLinkUrl(result.registerUrl);
+        } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to reset passkey.');
         }
     };
 
@@ -149,15 +143,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
         }
     };
 
-    const handleResetWorkerPassword = async (orgId: string, username: string) => {
-        if (workerPasswordInput.length < 6) { setActionError('Password must be at least 6 characters.'); return; }
+    const handleResetWorkerPasskey = async (orgId: string, username: string) => {
         setActionError('');
         try {
-            await onResetOrgWorkerPassword(orgId, username, workerPasswordInput);
-            setWorkerPasswordTarget(null);
-            setWorkerPasswordInput('');
+            const result = await onResetWorkerPasskey(orgId, username);
+            setResetLinkTarget(`${orgId}:${username}`);
+            setResetLinkUrl(result.registerUrl);
         } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to reset password.');
+            setActionError(err instanceof Error ? err.message : 'Failed to reset passkey.');
         }
     };
 
@@ -284,10 +277,15 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                                 </button>
                                                 <button
                                                     className="button button--ghost button--mini"
-                                                    onClick={() => isExpanded && expandMode === 'password' ? closeExpanded() : openPassword(org.orgId)}
+                                                    onClick={() => handleResetOrgPasskey(org.orgId)}
                                                 >
-                                                    Reset pw
+                                                    Reset passkey
                                                 </button>
+                                                {resetLinkTarget === org.orgId && (
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--muted)', wordBreak: 'break-all' }}>
+                                                        Send this link: <a href={resetLinkUrl} target="_blank" rel="noreferrer">{resetLinkUrl}</a>
+                                                    </span>
+                                                )}
                                                 <button
                                                     className="button button--ghost button--mini"
                                                     onClick={() => handleDelete(org.orgId, org.companyName)}
@@ -329,19 +327,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                         </div>
                                     )}
 
-                                    {isExpanded && expandMode === 'password' && (
-                                        <div className="admin-table__expanded">
-                                            <div className="field">
-                                                <label>New password for org admin</label>
-                                                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Min 6 characters" />
-                                            </div>
-                                            <div className="admin-table__expanded-actions">
-                                                <button className="button button--primary button--mini" onClick={handleSavePassword}>Confirm</button>
-                                                <button className="button button--ghost button--mini" onClick={closeExpanded}>Cancel</button>
-                                            </div>
-                                        </div>
-                                    )}
-
                                     {isExpanded && expandMode === 'workers' && (
                                         <div className="admin-table__expanded">
                                             <p style={{ color: 'var(--muted)', fontSize: '0.8rem', marginBottom: '8px' }}>
@@ -367,14 +352,15 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                                                     <span className="admin-table__actions">
                                                                         <button
                                                                             className="button button--ghost button--mini"
-                                                                            onClick={() => {
-                                                                                setWorkerPasswordTarget(workerPasswordTarget === worker.username ? null : worker.username);
-                                                                                setWorkerPasswordInput('');
-                                                                                setActionError('');
-                                                                            }}
+                                                                            onClick={() => handleResetWorkerPasskey(org.orgId, worker.username)}
                                                                         >
-                                                                            Reset pw
+                                                                            Reset passkey
                                                                         </button>
+                                                                        {resetLinkTarget === `${org.orgId}:${worker.username}` && (
+                                                                            <span style={{ fontSize: '0.75rem', color: 'var(--muted)', wordBreak: 'break-all' }}>
+                                                                                Send: <a href={resetLinkUrl} target="_blank" rel="noreferrer">{resetLinkUrl}</a>
+                                                                            </span>
+                                                                        )}
                                                                         <button
                                                                             className="button button--ghost button--mini"
                                                                             onClick={() => handleDeleteWorker(org.orgId, worker.username)}
@@ -384,23 +370,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                                                     </span>
                                                                 </span>
                                                             </div>
-                                                            {workerPasswordTarget === worker.username && (
-                                                                <div className="admin-table__expanded" style={{ paddingLeft: '16px' }}>
-                                                                    <div className="field">
-                                                                        <label>New password for {worker.username}</label>
-                                                                        <input
-                                                                            type="password"
-                                                                            value={workerPasswordInput}
-                                                                            onChange={(e) => setWorkerPasswordInput(e.target.value)}
-                                                                            placeholder="Min 6 characters"
-                                                                        />
-                                                                    </div>
-                                                                    <div className="admin-table__expanded-actions">
-                                                                        <button className="button button--primary button--mini" onClick={() => handleResetWorkerPassword(org.orgId, worker.username)}>Confirm</button>
-                                                                        <button className="button button--ghost button--mini" onClick={() => { setWorkerPasswordTarget(null); setActionError(''); }}>Cancel</button>
-                                                                    </div>
-                                                                </div>
-                                                            )}
                                                         </React.Fragment>
                                                     ))}
                                                 </div>

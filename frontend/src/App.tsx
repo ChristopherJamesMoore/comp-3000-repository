@@ -18,6 +18,7 @@ import PolicyPage from './pages/PolicyPage';
 import AddMedicationPage from './pages/AddMedicationPage';
 import AdminSetupPage from './pages/AdminSetupPage';
 import AdminPage from './pages/AdminPage';
+import WorkerInvitePage from './pages/WorkerInvitePage';
 import OnboardingPage from './pages/OnboardingPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import PlatformLoginPage from './pages/PlatformLoginPage';
@@ -58,10 +59,10 @@ const App: React.FC = () => {
         rejectOrg,
         deleteOrg,
         updateOrg,
-        resetOrgPassword,
+        resetOrgPasskey,
         loadAdminOrgWorkers,
         deleteAdminOrgWorker,
-        resetAdminOrgWorkerPassword,
+        resetWorkerPasskey,
         orgWorkers,
         orgWorkersLoading,
         orgWorkersError,
@@ -243,9 +244,13 @@ const App: React.FC = () => {
         navigate('/login/org');
     }
 
+    const inviteMatch = route.match(/^\/invite\/([^/]+)$/);
+    const showWorkerInvite = !!inviteMatch && !authToken;
+    const inviteToken = inviteMatch ? inviteMatch[1] : '';
+
     const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding
         && !showPendingApproval && !showSetup && !showAdmin && !showOrgDashboard && !showOrgPending
-        && !showOrgSignup && !showOrgLogin && !showWorkerLogin && !showPlatformLogin;
+        && !showOrgSignup && !showOrgLogin && !showWorkerLogin && !showPlatformLogin && !showWorkerInvite;
     const marketingPage = marketingPages[route] ?? marketingPages['/'];
 
     const companyType = (profile?.companyType || '').toLowerCase();
@@ -281,8 +286,8 @@ const App: React.FC = () => {
 
             {showOrgLogin && (
                 <OrgLoginPage
-                    onLogin={async (username, password) => {
-                        await orgLogin(username, password);
+                    onLogin={async (username) => {
+                        await orgLogin(username);
                         navigate('/org');
                     }}
                     onNavigateHome={() => navigate('/')}
@@ -293,12 +298,24 @@ const App: React.FC = () => {
 
             {showWorkerLogin && (
                 <WorkerLoginPage
-                    onLogin={async (username, password) => {
-                        await workerLogin(username, password);
+                    onLogin={async (username) => {
+                        await workerLogin(username);
                         navigate('/app');
                     }}
                     onNavigateHome={() => navigate('/')}
                     onNavigateOrgLogin={() => navigate('/login/org')}
+                />
+            )}
+
+            {showWorkerInvite && (
+                <WorkerInvitePage
+                    inviteToken={inviteToken}
+                    onSuccess={(token, tokenType) => {
+                        localStorage.setItem('authToken', token);
+                        localStorage.setItem('authTokenType', tokenType);
+                        window.location.href = '/app';
+                    }}
+                    onNavigateHome={() => navigate('/')}
                 />
             )}
 
@@ -321,8 +338,8 @@ const App: React.FC = () => {
 
             {showSetup && (
                 <AdminSetupPage
-                    onBootstrap={async (username, password) => {
-                        await bootstrapAdmin(username, password);
+                    onBootstrap={async (username) => {
+                        await bootstrapAdmin(username);
                         navigate('/app');
                     }}
                     onNavigateLogin={() => navigate('/login')}
@@ -331,8 +348,8 @@ const App: React.FC = () => {
 
             {showPlatformLogin && (
                 <PlatformLoginPage
-                    onLogin={async (username, password) => {
-                        await platformLogin(username, password);
+                    onLogin={async (username) => {
+                        await platformLogin(username);
                         navigate('/app');
                     }}
                 />
@@ -441,10 +458,10 @@ const App: React.FC = () => {
                     onRejectOrg={rejectOrg}
                     onDeleteOrg={deleteOrg}
                     onUpdateOrg={updateOrg}
-                    onResetOrgPassword={resetOrgPassword}
+                    onResetOrgPasskey={resetOrgPasskey}
                     onLoadOrgWorkers={loadAdminOrgWorkers}
                     onDeleteOrgWorker={deleteAdminOrgWorker}
-                    onResetOrgWorkerPassword={resetAdminOrgWorkerPassword}
+                    onResetWorkerPasskey={resetWorkerPasskey}
                 />
             )}
 

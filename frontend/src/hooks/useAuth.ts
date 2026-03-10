@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { API_BASE, buildUrl } from '../utils/api';
 import { AuthMode, OrgProfile, OrgWorker, Toast, UserProfile } from '../types';
 
@@ -480,45 +481,65 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     );
 
     const platformLogin = useCallback(
-        async (username: string, password: string) => {
-            const response = await fetch(buildUrl('/api/auth/login'), {
+        async (username: string) => {
+            const beginRes = await fetch(buildUrl('/api/auth/webauthn/login/begin'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username }),
             });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Login failed.');
+            if (!beginRes.ok) {
+                const err = await beginRes.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to start passkey login.');
             }
-            const data = await response.json();
+            const options = await beginRes.json();
+            const credential = await startAuthentication({ optionsJSON: options });
+            const completeRes = await fetch(buildUrl('/api/auth/webauthn/login/complete'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, credential }),
+            });
+            if (!completeRes.ok) {
+                const err = await completeRes.json().catch(() => ({}));
+                throw new Error(err.error || 'Passkey login failed.');
+            }
+            const data = await completeRes.json();
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('authTokenType', 'platform');
             setAuthToken(data.token);
-            if (data.user) {
-                setProfile({ ...data.user, type: 'platform' });
-            }
+            if (data.user) setProfile({ ...data.user, type: 'platform' });
             return data;
         },
         []
     );
 
     const orgLogin = useCallback(
-        async (username: string, password: string) => {
-            const response = await fetch(buildUrl('/api/org/login'), {
+        async (username: string) => {
+            const beginRes = await fetch(buildUrl('/api/org/webauthn/login/begin'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username }),
             });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Login failed.');
+            if (!beginRes.ok) {
+                const err = await beginRes.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to start passkey login.');
             }
-            const data = await response.json();
+            const options = await beginRes.json();
+            const credential = await startAuthentication({ optionsJSON: options });
+            const completeRes = await fetch(buildUrl('/api/org/webauthn/login/complete'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, credential }),
+            });
+            if (!completeRes.ok) {
+                const err = await completeRes.json().catch(() => ({}));
+                throw new Error(err.error || 'Passkey login failed.');
+            }
+            const data = await completeRes.json();
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('authTokenType', 'org');
             setAuthToken(data.token);
             const org = data.org;
-            const mappedProfile: UserProfile = {
+            setProfile({
                 username: org.adminUsername,
                 companyType: org.companyType,
                 companyName: org.companyName,
@@ -530,31 +551,41 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                 adminLastName: org.adminLastName,
                 isAdmin: false,
                 type: 'org',
-                orgId: org.orgId
-            };
-            setProfile(mappedProfile);
+                orgId: org.orgId,
+            });
             return data;
         },
         []
     );
 
     const workerLogin = useCallback(
-        async (username: string, password: string) => {
-            const response = await fetch(buildUrl('/api/worker/login'), {
+        async (username: string) => {
+            const beginRes = await fetch(buildUrl('/api/worker/webauthn/login/begin'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username }),
             });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Login failed.');
+            if (!beginRes.ok) {
+                const err = await beginRes.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to start passkey login.');
             }
-            const data = await response.json();
+            const options = await beginRes.json();
+            const credential = await startAuthentication({ optionsJSON: options });
+            const completeRes = await fetch(buildUrl('/api/worker/webauthn/login/complete'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, credential }),
+            });
+            if (!completeRes.ok) {
+                const err = await completeRes.json().catch(() => ({}));
+                throw new Error(err.error || 'Passkey login failed.');
+            }
+            const data = await completeRes.json();
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('authTokenType', 'worker');
             setAuthToken(data.token);
             const worker = data.worker;
-            const mappedProfile: UserProfile = {
+            setProfile({
                 username: worker.username,
                 companyType: worker.companyType,
                 companyName: worker.companyName,
@@ -562,9 +593,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                 isAdmin: false,
                 type: 'worker',
                 orgId: worker.orgId,
-                jobTitle: worker.jobTitle
-            };
-            setProfile(mappedProfile);
+                jobTitle: worker.jobTitle,
+            });
             return data;
         },
         []
@@ -573,19 +603,32 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     const handleOrgSignup = useCallback(
         async (formData: {
             adminFirstName: string; adminLastName: string; adminUsername: string;
-            adminEmail: string; password: string; companyName: string;
-            companyType: string; registrationNumber: string;
+            adminEmail: string; companyName: string; companyType: string; registrationNumber: string;
         }) => {
-            const response = await fetch(buildUrl('/api/org/signup'), {
+            // Step 1: create org record, get registration options back
+            const signupRes = await fetch(buildUrl('/api/org/signup'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(formData),
             });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Signup failed.');
+            if (!signupRes.ok) {
+                const err = await signupRes.json().catch(() => ({}));
+                throw new Error(err.error || 'Signup failed.');
             }
-            const data = await response.json();
+            const signupData = await signupRes.json();
+            // Step 2: browser creates passkey
+            const credential = await startRegistration({ optionsJSON: signupData.registrationOptions });
+            // Step 3: send credential back to complete registration
+            const completeRes = await fetch(buildUrl('/api/org/webauthn/register/complete'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminUsername: formData.adminUsername, credential }),
+            });
+            if (!completeRes.ok) {
+                const err = await completeRes.json().catch(() => ({}));
+                throw new Error(err.error || 'Passkey registration failed.');
+            }
+            const data = await completeRes.json();
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('authTokenType', 'org');
             setAuthToken(data.token);
@@ -597,7 +640,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                 approvalStatus: 'pending',
                 isAdmin: false,
                 type: 'org',
-                orgId: org.orgId
+                orgId: org.orgId,
             });
             return data;
         },
@@ -627,16 +670,16 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     }, [authFetch, authToken]);
 
     const addOrgWorker = useCallback(
-        async (username: string, password: string, jobTitle: string) => {
+        async (username: string, jobTitle: string) => {
             const response = await authFetch('/api/org/workers', {
                 method: 'POST',
-                body: JSON.stringify({ username, password, jobTitle })
+                body: JSON.stringify({ username, jobTitle }),
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || 'Failed to add worker.');
             }
-            return response.json();
+            return response.json(); // { worker, inviteUrl }
         },
         [authFetch]
     );
@@ -669,10 +712,10 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     );
 
     const bulkAddWorkers = useCallback(
-        async (workers: { username: string; password: string; jobTitle: string }[]) => {
+        async (workers: { username: string; jobTitle: string }[]) => {
             const res = await authFetch('/api/org/workers/bulk', { method: 'POST', body: JSON.stringify({ workers }) });
             if (!res.ok) throw new Error((await res.json()).error || 'Bulk import failed');
-            return res.json();
+            return res.json(); // { succeeded: [{ username, inviteUrl }], failed: [...] }
         },
         [authFetch]
     );
@@ -730,17 +773,16 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
-    const resetOrgPassword = useCallback(
-        async (orgId: string, newPassword: string) => {
-            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/reset-password`, {
-                method: 'POST',
-                body: JSON.stringify({ newPassword })
+    const resetOrgPasskey = useCallback(
+        async (orgId: string) => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/passkeys`, {
+                method: 'DELETE',
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Failed to reset password.');
+                throw new Error(errorData.error || 'Failed to reset passkey.');
             }
-            return response.json();
+            return response.json(); // { ok, registerUrl }
         },
         [authFetch]
     );
@@ -770,36 +812,45 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
-    const resetAdminOrgWorkerPassword = useCallback(
-        async (orgId: string, username: string, newPassword: string) => {
-            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/workers/${encodeURIComponent(username)}/reset-password`, {
-                method: 'POST',
-                body: JSON.stringify({ newPassword })
+    const resetWorkerPasskey = useCallback(
+        async (orgId: string, username: string) => {
+            const response = await authFetch(`/api/admin/orgs/${encodeURIComponent(orgId)}/workers/${encodeURIComponent(username)}/passkeys`, {
+                method: 'DELETE',
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Failed to reset password.');
+                throw new Error(errorData.error || 'Failed to reset passkey.');
             }
-            return response.json();
+            return response.json(); // { ok, registerUrl }
         },
         [authFetch]
     );
 
     const bootstrapAdmin = useCallback(
-        async (username: string, password: string) => {
-            const response = await fetch(buildUrl('/api/admin/bootstrap'), {
+        async (username: string) => {
+            // Step 1: create admin user, get registration options
+            const bootstrapRes = await fetch(buildUrl('/api/admin/bootstrap'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username }),
             });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error || 'Bootstrap failed.');
-            }
+            const bootstrapData = await bootstrapRes.json();
+            if (!bootstrapRes.ok) throw new Error(bootstrapData.error || 'Bootstrap failed.');
+            // Step 2: browser creates passkey
+            const credential = await startRegistration({ optionsJSON: bootstrapData.registrationOptions });
+            // Step 3: complete registration
+            const completeRes = await fetch(buildUrl('/api/auth/webauthn/register/complete'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, credential }),
+            });
+            const data = await completeRes.json();
+            if (!completeRes.ok) throw new Error(data.error || 'Passkey registration failed.');
             localStorage.setItem('authToken', data.token);
+            localStorage.setItem('authTokenType', 'platform');
             setAuthToken(data.token);
             if (data.user) {
-                setProfile(data.user);
+                setProfile({ ...data.user, type: 'platform' });
                 setProfileForm({ companyType: '', companyName: '', registrationNumber: '' });
             }
             setHasAdmin(true);
@@ -851,10 +902,10 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         rejectOrg,
         deleteOrg,
         updateOrg,
-        resetOrgPassword,
+        resetOrgPasskey,
         loadAdminOrgWorkers,
         deleteAdminOrgWorker,
-        resetAdminOrgWorkerPassword,
+        resetWorkerPasskey,
         orgWorkers,
         orgWorkersLoading,
         orgWorkersError,

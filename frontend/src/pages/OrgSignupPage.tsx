@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home } from 'lucide-react';
+import { Home, Fingerprint, Loader2 } from 'lucide-react';
 
 type OrgSignupPageProps = {
     onSignup: (data: {
@@ -7,7 +7,6 @@ type OrgSignupPageProps = {
         adminLastName: string;
         adminUsername: string;
         adminEmail: string;
-        password: string;
         companyName: string;
         companyType: string;
         registrationNumber: string;
@@ -22,10 +21,9 @@ const OrgSignupPage: React.FC<OrgSignupPageProps> = ({ onSignup, onNavigateHome,
         adminLastName: '',
         adminUsername: '',
         adminEmail: '',
-        password: '',
         companyName: '',
         companyType: '',
-        registrationNumber: ''
+        registrationNumber: '',
     });
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -36,16 +34,12 @@ const OrgSignupPage: React.FC<OrgSignupPageProps> = ({ onSignup, onNavigateHome,
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!form.adminFirstName || !form.adminLastName || !form.adminUsername || !form.password || !form.companyName || !form.companyType) {
+        if (!form.adminFirstName || !form.adminLastName || !form.adminUsername || !form.companyName || !form.companyType) {
             setError('Please fill in all required fields.');
             return;
         }
         if (form.adminUsername.length < 3) {
             setError('Username must be at least 3 characters.');
-            return;
-        }
-        if (form.password.length < 6) {
-            setError('Password must be at least 6 characters.');
             return;
         }
         setSubmitting(true);
@@ -66,7 +60,7 @@ const OrgSignupPage: React.FC<OrgSignupPageProps> = ({ onSignup, onNavigateHome,
                     <span className="auth-card__eyebrow">Register organisation</span>
                 </div>
                 <h2>Build trust in every handoff.</h2>
-                <p>Register your organisation to begin tracking medication provenance on the LedgRx network.</p>
+                <p>Register your organisation. Once submitted, you'll be prompted to set up a passkey on this device — no password required.</p>
                 <form onSubmit={handleSubmit}>
                     <div className="field">
                         <label>First name</label>
@@ -100,16 +94,14 @@ const OrgSignupPage: React.FC<OrgSignupPageProps> = ({ onSignup, onNavigateHome,
                     </div>
                     <div className="field">
                         <label>Admin username</label>
-                        <input type="text" value={form.adminUsername} onChange={set('adminUsername')} required />
-                    </div>
-                    <div className="field">
-                        <label>Password</label>
-                        <input type="password" value={form.password} onChange={set('password')} required />
+                        <input type="text" value={form.adminUsername} onChange={set('adminUsername')} autoComplete="username" required />
                     </div>
                     {error && <div className="inline-error">{error}</div>}
                     <div className="auth-card__actions">
                         <button type="submit" className="button button--primary auth-card__primary" disabled={submitting}>
-                            {submitting ? 'Registering…' : 'Register organisation'}
+                            {submitting
+                                ? <><Loader2 size={15} className="spin" /> Setting up passkey…</>
+                                : <><Fingerprint size={15} /> Register &amp; create passkey</>}
                         </button>
                         <button type="button" className="button button--ghost" onClick={onNavigateLogin}>
                             Already registered? Sign in
