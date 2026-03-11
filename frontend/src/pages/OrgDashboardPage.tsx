@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as xlsx from 'xlsx';
-import { ChevronLeft, ChevronRight, List, Users, UserCircle2, RefreshCw, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, Users, UserCircle2, RefreshCw, Trash2, Copy, Check } from 'lucide-react';
 import { OrgWorker, UserProfile } from '../types';
 
 type BulkWorkerRow = { username: string; jobTitle: string; _valid: boolean; _error: string };
@@ -55,6 +55,14 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     const [addError, setAddError] = useState('');
     const [addSubmitting, setAddSubmitting] = useState(false);
     const [addedInviteUrl, setAddedInviteUrl] = useState('');
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+    const copyToClipboard = (text: string, key: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopiedKey(key);
+            setTimeout(() => setCopiedKey(null), 2000);
+        });
+    };
 
     // Edit job title inline
     const [editingUsername, setEditingUsername] = useState<string | null>(null);
@@ -299,15 +307,23 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                         <>
                                             <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '6px' }}>Send each worker their unique invite link to register their passkey:</p>
                                             <div className="admin-table" style={{ marginBottom: '8px' }}>
-                                                <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 2fr' }}>
+                                                <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 2fr auto' }}>
                                                     <span>Username</span>
                                                     <span>Invite link (48h)</span>
+                                                    <span></span>
                                                 </div>
                                                 {bulkResult.succeeded.map((s, i) => (
-                                                    <div key={i} className="admin-table__row" style={{ gridTemplateColumns: '1fr 2fr' }}>
+                                                    <div key={i} className="admin-table__row" style={{ gridTemplateColumns: '1fr 2fr auto' }}>
                                                         <span>{s.username}</span>
                                                         <span style={{ fontSize: '11px', wordBreak: 'break-all' }}>
                                                             {s.inviteUrl ? <a href={s.inviteUrl} target="_blank" rel="noreferrer">{s.inviteUrl}</a> : '—'}
+                                                        </span>
+                                                        <span>
+                                                            {s.inviteUrl && (
+                                                                <button className="button button--ghost button--mini" onClick={() => copyToClipboard(s.inviteUrl!, `bulk-${s.username}`)}>
+                                                                    {copiedKey === `bulk-${s.username}` ? <Check size={13} /> : <Copy size={13} />}
+                                                                </button>
+                                                            )}
                                                         </span>
                                                     </div>
                                                 ))}
@@ -338,7 +354,12 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                         <a href={addedInviteUrl} target="_blank" rel="noreferrer">{addedInviteUrl}</a>
                                     </p>
                                     <p style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>The link expires in 48 hours. They'll use it to register their passkey.</p>
-                                    <button className="button button--ghost button--mini" style={{ marginTop: 8 }} onClick={() => { setAddedInviteUrl(''); setShowAddForm(false); }}>Done</button>
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                        <button className="button button--ghost button--mini" onClick={() => copyToClipboard(addedInviteUrl, 'single')}>
+                                            {copiedKey === 'single' ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy link</>}
+                                        </button>
+                                        <button className="button button--ghost button--mini" onClick={() => { setAddedInviteUrl(''); setShowAddForm(false); }}>Done</button>
+                                    </div>
                                 </div>
                             )}
 
