@@ -860,6 +860,19 @@ const createApp = (contract, db) => {
 
     // ── WebAuthn — Organisation ───────────────────────────────────────────────
 
+    app.get('/api/org/invite/:token', async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const invite = await invitesCollection.findOne({ token: req.params.token, used: false, type: 'org_passkey_reset' });
+            if (!invite || new Date() > invite.expiresAt) {
+                return res.status(404).json({ error: 'Reset link is invalid or has expired.' });
+            }
+            return res.json({ valid: true, adminUsername: invite.orgAdminUsername });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to validate reset link.' });
+        }
+    });
+
     app.post('/api/org/webauthn/register/begin', async (req, res) => {
         try {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
@@ -889,7 +902,7 @@ const createApp = (contract, db) => {
     app.post('/api/org/webauthn/register/complete', async (req, res) => {
         try {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
-            const { adminUsername, credential } = req.body;
+            const { adminUsername, credential, resetToken } = req.body;
             if (!adminUsername || !credential) return res.status(400).json({ error: 'adminUsername and credential are required.' });
             const expectedChallenge = await getAndDeleteChallenge('org', adminUsername, 'registration');
             if (!expectedChallenge) return res.status(400).json({ error: 'Challenge expired. Please start again.' });
@@ -909,6 +922,9 @@ const createApp = (contract, db) => {
                 counter, transports,
                 createdAt: new Date(),
             });
+            if (resetToken) {
+                await invitesCollection.updateOne({ token: resetToken }, { $set: { used: true, usedAt: new Date() } });
+            }
             const org = await db.collection('organisations').findOne({ adminUsername });
             const token = createToken({ sub: adminUsername, type: 'org', orgId: org.orgId, jti: crypto.randomUUID() });
             return res.json({
@@ -1156,6 +1172,72 @@ const createApp = (contract, db) => {
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Login failed.' });
+        }
+    });
+
+    // ── Admin — Backup Passkey ────────────────────────────────────────────────
+
+    app.get('/api/admin/webauthn/backup', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const username = req.user.sub;
+            const credentials = await credentialsCollection.find({ userType: 'platform', identifier: username }).toArray();
+            return res.json({ count: credentials.length, credentials: credentials.map((c) => ({ id: c._id, createdAt: c.createdAt })) });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to list credentials.' });
+        }
+    });
+
+    app.post('/api/admin/webauthn/backup/begin', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const username = req.user.sub;
+            const existingCredentials = await credentialsCollection.find({ userType: 'platform', identifier: username }).toArray();
+            const { rpID, rpName } = getWebAuthnConfig();
+            const options = await generateRegistrationOptions({
+                rpName, rpID,
+                userID: new TextEncoder().encode(username),
+                userName: username,
+                userDisplayName: username,
+                attestationType: 'none',
+                authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+                excludeCredentials: existingCredentials.map((c) => ({ id: c.credentialId, transports: c.transports })),
+                timeout: 60000,
+            });
+            await saveChallenge('platform', username, options.challenge, 'backup_registration');
+            return res.json(options);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to begin backup passkey registration.' });
+        }
+    });
+
+    app.post('/api/admin/webauthn/backup/complete', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const username = req.user.sub;
+            const { credential } = req.body;
+            if (!credential) return res.status(400).json({ error: 'credential is required.' });
+            const expectedChallenge = await getAndDeleteChallenge('platform', username, 'backup_registration');
+            if (!expectedChallenge) return res.status(400).json({ error: 'Challenge expired. Please try again.' });
+            const { rpID, origin } = getWebAuthnConfig();
+            const { verified, registrationInfo } = await verifyRegistrationResponse({
+                response: credential,
+                expectedChallenge,
+                expectedOrigin: origin,
+                expectedRPID: rpID,
+            });
+            if (!verified) return res.status(400).json({ error: 'Passkey verification failed.' });
+            const { id, publicKey, counter, transports } = registrationInfo.credential;
+            await credentialsCollection.insertOne({
+                userType: 'platform', identifier: username,
+                credentialId: id,
+                publicKey: Buffer.from(publicKey),
+                counter, transports,
+                createdAt: new Date(),
+            });
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to complete backup passkey registration.' });
         }
     });
 
