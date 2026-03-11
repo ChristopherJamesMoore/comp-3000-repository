@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Truck, CheckCircle2, List, Shield, ChevronLeft, ChevronRight, UserCircle2 } from 'lucide-react';
+import { Plus, Truck, CheckCircle2, List, Shield, ShieldCheck, ChevronLeft, ChevronRight, UserCircle2 } from 'lucide-react';
 
-export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view' | 'admin';
+export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view' | 'admin' | 'security';
 
 type DashboardLayoutProps = {
     userName: string;
@@ -114,6 +114,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     >
                         <Shield size={16} />
                         <span className="dashboard__link-label">Admin</span>
+                    </button>
+                )}
+                {isAdmin && (
+                    <button
+                        className={activeNav === 'security' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => onNavSelect('security')}
+                        title="Security"
+                    >
+                        <ShieldCheck size={16} />
+                        <span className="dashboard__link-label">Security</span>
                     </button>
                 )}
             </nav>

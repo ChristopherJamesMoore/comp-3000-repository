@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, ChevronDown, ChevronUp, ShieldCheck, Loader2 } from 'lucide-react';
+import { RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { OrgProfile, OrgWorker } from '../types';
 import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
 
@@ -21,7 +21,6 @@ type AdminPageProps = {
     onLoadOrgWorkers: (orgId: string) => Promise<OrgWorker[]>;
     onDeleteOrgWorker: (orgId: string, username: string) => Promise<unknown>;
     onResetWorkerPasskey: (orgId: string, username: string) => Promise<{ ok: boolean; registerUrl: string }>;
-    onAddBackupPasskey: () => Promise<void>;
 };
 
 const AdminPage: React.FC<AdminPageProps> = ({
@@ -40,7 +39,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
     onLoadOrgWorkers,
     onDeleteOrgWorker,
     onResetWorkerPasskey,
-    onAddBackupPasskey,
 }) => {
     const [filter, setFilter] = useState<AdminFilter>('all');
     const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
@@ -51,9 +49,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
     const [resetLinkUrl, setResetLinkUrl] = useState('');
     const [orgWorkers, setOrgWorkers] = useState<OrgWorker[]>([]);
     const [orgWorkersLoading, setOrgWorkersLoading] = useState(false);
-    const [backupSubmitting, setBackupSubmitting] = useState(false);
-    const [backupSuccess, setBackupSuccess] = useState(false);
-    const [backupError, setBackupError] = useState('');
 
     const closeExpanded = () => {
         setExpandedOrg(null);
@@ -156,20 +151,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
             setResetLinkUrl(result.registerUrl);
         } catch (err: unknown) {
             setActionError(err instanceof Error ? err.message : 'Failed to reset passkey.');
-        }
-    };
-
-    const handleAddBackupPasskey = async () => {
-        setBackupError('');
-        setBackupSuccess(false);
-        setBackupSubmitting(true);
-        try {
-            await onAddBackupPasskey();
-            setBackupSuccess(true);
-        } catch (err: unknown) {
-            setBackupError(err instanceof Error ? err.message : 'Failed to register backup passkey.');
-        } finally {
-            setBackupSubmitting(false);
         }
     };
 
@@ -403,29 +384,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                         })}
                     </div>
                 )}
-                <div style={{ marginTop: '32px', borderTop: '1px solid var(--border)', paddingTop: '24px' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <ShieldCheck size={16} /> Admin security
-                    </h3>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginBottom: 12 }}>
-                        Register a backup passkey on a USB security key so you can still sign in if your primary device is lost.
-                    </p>
-                    {backupError && <div className="inline-error" style={{ marginBottom: 8 }}>{backupError}</div>}
-                    {backupSuccess && (
-                        <p style={{ fontSize: '0.85rem', color: 'var(--success, #22c55e)', marginBottom: 8 }}>
-                            Backup passkey registered successfully.
-                        </p>
-                    )}
-                    <button
-                        className="button button--ghost button--mini"
-                        onClick={handleAddBackupPasskey}
-                        disabled={backupSubmitting}
-                    >
-                        {backupSubmitting
-                            ? <><Loader2 size={13} className="spin" /> Waiting for key…</>
-                            : <><ShieldCheck size={13} /> Add backup passkey</>}
-                    </button>
-                </div>
             </div>
         </DashboardLayout>
     );
