@@ -5,6 +5,7 @@ import HeroChainBackdrop from '../components/HeroChainBackdrop';
 
 type HomePageProps = {
     authToken: string | null;
+    profileType?: string | null;
     onNavigate: (path: string, mode?: AuthMode) => void;
 };
 
@@ -56,7 +57,7 @@ function useFadeOnScroll() {
     return ref;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
+const HomePage: React.FC<HomePageProps> = ({ authToken, profileType, onNavigate }) => {
     const headline = 'Trust every medication handoff.';
     const [typed, setTyped] = useState('');
     const [showCaret, setShowCaret] = useState(true);
@@ -88,7 +89,7 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, onNavigate }) => {
         <main className="home" ref={mainRef}>
             <section className="home-fold">
                 <HeroChainBackdrop />
-                <MarketingNav authToken={authToken} onNavigate={onNavigate} />
+                <MarketingNav authToken={authToken} profileType={profileType} onNavigate={onNavigate} />
 
                 <section className="home-hero">
                     <div className="home-hero__inner">

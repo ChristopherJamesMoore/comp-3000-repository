@@ -126,8 +126,10 @@ const App: React.FC = () => {
     } = useMedications({ authFetch, route, activeTab, setToast });
     const { showQRModal, selectedQRHash, copied, handleShowQR, handleCopyHash, closeQrModal } = useQrModal(setToast);
 
+    const profileType = profile?.type;
+
     const marketingPages: Record<string, JSX.Element> = {
-        '/': <HomePage authToken={authToken} onNavigate={onNavigate} />,
+        '/': <HomePage authToken={authToken} profileType={profileType} onNavigate={onNavigate} />,
         '/product': <ProductPage authToken={authToken} onNavigate={onNavigate} />,
         '/solutions': <SolutionsPage authToken={authToken} onNavigate={onNavigate} />,
         '/resources': <ResourcesPage authToken={authToken} onNavigate={onNavigate} />,
@@ -219,7 +221,6 @@ const App: React.FC = () => {
         )
     };
 
-    const profileType = profile?.type;
     // Org admins and workers always have companyType set, so profileIncomplete only applies to legacy users
     const profileIncomplete = !!authToken && profile !== null && !profile.companyType && profileType !== 'org' && profileType !== 'worker';
     const approvalStatus = profile?.approvalStatus || 'approved';

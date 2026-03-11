@@ -3,11 +3,13 @@ import { AuthMode } from '../types';
 
 type MarketingNavProps = {
     authToken: string | null;
+    profileType?: string | null;
     onNavigate: (path: string, mode?: AuthMode) => void;
 };
 
 
-const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, onNavigate }) => {
+const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, profileType, onNavigate }) => {
+    const dashboardPath = profileType === 'org' ? '/org' : '/app';
     const [mobileOpen, setMobileOpen] = useState(false);
 
     const handleNavigate = (path: string, mode?: AuthMode) => {
@@ -51,7 +53,7 @@ const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, onNavigate }) =>
                 </button>
                 <div className="home-nav__mobile-auth">
                     {authToken ? (
-                        <button className="home-nav__cta" onClick={() => handleNavigate('/app')}>
+                        <button className="home-nav__cta" onClick={() => handleNavigate(dashboardPath)}>
                             Open dashboard
                         </button>
                     ) : (
@@ -68,7 +70,7 @@ const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, onNavigate }) =>
             </nav>
             <div className="home-nav__actions">
                 {authToken ? (
-                    <button className="home-nav__cta" onClick={() => handleNavigate('/app')}>
+                    <button className="home-nav__cta" onClick={() => handleNavigate(dashboardPath)}>
                         Open dashboard
                     </button>
                 ) : (
