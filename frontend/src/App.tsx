@@ -19,6 +19,8 @@ import AddMedicationPage from './pages/AddMedicationPage';
 import AdminSetupPage from './pages/AdminSetupPage';
 import AdminPage from './pages/AdminPage';
 import WorkerInvitePage from './pages/WorkerInvitePage';
+import OrgRegisterPasskeyPage from './pages/OrgRegisterPasskeyPage';
+import AdminRecoveryPage from './pages/AdminRecoveryPage';
 import OnboardingPage from './pages/OnboardingPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import PlatformLoginPage from './pages/PlatformLoginPage';
@@ -63,6 +65,7 @@ const App: React.FC = () => {
         loadAdminOrgWorkers,
         deleteAdminOrgWorker,
         resetWorkerPasskey,
+        addBackupPasskey,
         orgWorkers,
         orgWorkersLoading,
         orgWorkersError,
@@ -239,6 +242,7 @@ const App: React.FC = () => {
     const showAccount = route === '/account' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAdmin = route === '/app/admin' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showPlatformLogin = route === '/staff-a7f3' && !authToken;
+    const showAdminRecovery = route === '/staff-a7f3/recovery';
     const showLogin = false; // old /login redirected below
     // Redirect bare /login to org login
     if (route === '/login' && !authToken) {
@@ -249,9 +253,17 @@ const App: React.FC = () => {
     const showWorkerInvite = !!inviteMatch && !authToken;
     const inviteToken = inviteMatch ? inviteMatch[1] : '';
 
+    const orgResetParams = route === '/org/register-passkey'
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const showOrgRegisterPasskey = !!orgResetParams && !authToken;
+    const orgResetToken = orgResetParams?.get('token') || '';
+    const orgResetUsername = orgResetParams?.get('username') || '';
+
     const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding
         && !showPendingApproval && !showSetup && !showAdmin && !showOrgDashboard && !showOrgPending
-        && !showOrgSignup && !showOrgLogin && !showWorkerLogin && !showPlatformLogin && !showWorkerInvite;
+        && !showOrgSignup && !showOrgLogin && !showWorkerLogin && !showPlatformLogin && !showWorkerInvite
+        && !showOrgRegisterPasskey && !showAdminRecovery;
     const marketingPage = marketingPages[route] ?? marketingPages['/'];
 
     const companyType = (profile?.companyType || '').toLowerCase();
@@ -320,6 +332,19 @@ const App: React.FC = () => {
                 />
             )}
 
+            {showOrgRegisterPasskey && (
+                <OrgRegisterPasskeyPage
+                    token={orgResetToken}
+                    adminUsername={orgResetUsername}
+                    onSuccess={(token) => {
+                        localStorage.setItem('authToken', token);
+                        localStorage.setItem('authTokenType', 'org');
+                        window.location.href = '/org';
+                    }}
+                    onNavigateHome={() => navigate('/')}
+                />
+            )}
+
             {(showPendingApproval || showOrgPending) && (
                 <PendingApprovalPage
                     status={approvalStatus === 'rejected' ? 'rejected' : 'pending'}
@@ -353,7 +378,12 @@ const App: React.FC = () => {
                         await platformLogin(username);
                         navigate('/app');
                     }}
+                    onRecovery={() => navigate('/staff-a7f3/recovery')}
                 />
+            )}
+
+            {showAdminRecovery && (
+                <AdminRecoveryPage onBack={() => navigate('/staff-a7f3')} />
             )}
 
             {showOrgDashboard && profile && (
@@ -463,6 +493,7 @@ const App: React.FC = () => {
                     onLoadOrgWorkers={loadAdminOrgWorkers}
                     onDeleteOrgWorker={deleteAdminOrgWorker}
                     onResetWorkerPasskey={resetWorkerPasskey}
+                    onAddBackupPasskey={addBackupPasskey}
                 />
             )}
 

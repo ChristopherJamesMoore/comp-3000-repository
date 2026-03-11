@@ -826,6 +826,23 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
+    const addBackupPasskey = useCallback(
+        async () => {
+            const beginRes = await authFetch('/api/admin/webauthn/backup/begin', { method: 'POST' });
+            const beginData = await beginRes.json();
+            if (!beginRes.ok) throw new Error(beginData.error || 'Failed to begin backup passkey.');
+            const credential = await startRegistration({ optionsJSON: beginData });
+            const completeRes = await authFetch('/api/admin/webauthn/backup/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential }),
+            });
+            const completeData = await completeRes.json();
+            if (!completeRes.ok) throw new Error(completeData.error || 'Failed to register backup passkey.');
+        },
+        [authFetch]
+    );
+
     const bootstrapAdmin = useCallback(
         async (username: string) => {
             // Step 1: create admin user, get registration options
@@ -906,6 +923,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         loadAdminOrgWorkers,
         deleteAdminOrgWorker,
         resetWorkerPasskey,
+        addBackupPasskey,
         orgWorkers,
         orgWorkersLoading,
         orgWorkersError,

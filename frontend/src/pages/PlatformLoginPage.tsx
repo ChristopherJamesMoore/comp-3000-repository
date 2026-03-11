@@ -3,9 +3,10 @@ import { Fingerprint, Loader2 } from 'lucide-react';
 
 type PlatformLoginPageProps = {
     onLogin: (username: string) => Promise<void>;
+    onRecovery: () => void;
 };
 
-const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({ onLogin }) => {
+const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({ onLogin, onRecovery }) => {
     const [username, setUsername] = useState('');
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -51,6 +52,14 @@ const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({ onLogin }) => {
                         </button>
                     </div>
                 </form>
+                <button
+                    type="button"
+                    onClick={onRecovery}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'transparent', userSelect: 'none', marginTop: 32, display: 'block' }}
+                    aria-label="Recovery"
+                >
+                    ·
+                </button>
             </div>
         </main>
     );
