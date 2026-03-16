@@ -438,12 +438,6 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                                                 </div>
                                             </div>
                                             <div className="record-row__detail-actions">
-                                                <div className="record-card__hash">
-                                                    <span>QR Hash</span>
-                                                    <button className="button button--ghost button--mini" onClick={(e) => { e.stopPropagation(); props.onShowQR(med.qrHash || ''); }}>
-                                                        Show
-                                                    </button>
-                                                </div>
                                                 <button className="button button--ghost button--mini" onClick={(e) => { e.stopPropagation(); props.onShowQR(med.qrHash || ''); }}>
                                                     <QrCode size={14} />
                                                     View QR
