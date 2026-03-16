@@ -18,6 +18,10 @@ export const useDashboardNav = (navigate: (path: string) => void) => {
                 navigate('/app/admin/security');
                 return;
             }
+            if (nav === 'audit') {
+                navigate('/app/admin/audit');
+                return;
+            }
             setActiveTab(nav);
             navigate('/app');
         },

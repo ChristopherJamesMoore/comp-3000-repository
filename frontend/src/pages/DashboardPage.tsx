@@ -1,8 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { RefreshCw, Search, QrCode, X, ChevronDown } from 'lucide-react';
 import { Medication, AuditEntry, BatchResult } from '../types';
 import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
 import QrScanner from '../components/QrScanner';
+import { WorkerActivityList } from '../components/AuditLogList';
+import { useWorkerActivity } from '../hooks/useAuditLog';
 
 const STAGES = [
     { key: 'manufactured', label: 'Prod' },
@@ -89,6 +91,8 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     const [arrivedInput, setArrivedInput] = useState('');
     const [receiveScannerActive, setReceiveScannerActive] = useState(false);
     const [arrivedScannerActive, setArrivedScannerActive] = useState(false);
+    const activity = useWorkerActivity();
+    useEffect(() => { if (props.activeNav === 'activity') activity.load(); }, [props.activeNav]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleReceiveAdd = useCallback(() => {
         if (receiveInput.trim()) {
@@ -513,6 +517,22 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                                 </div>
                             )}
                         </div>
+                    </div>
+                </section>
+            )}
+
+            {props.activeNav === 'activity' && (
+                <section className="dashboard__panel">
+                    <div className="records">
+                        <h2 style={{ marginBottom: '12px' }}>Your Activity</h2>
+                        <WorkerActivityList
+                            entries={activity.entries}
+                            total={activity.total}
+                            page={activity.page}
+                            loading={activity.loading}
+                            error={activity.error}
+                            onPageChange={activity.setPage}
+                        />
                     </div>
                 </section>
             )}

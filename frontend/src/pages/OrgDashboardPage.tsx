@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as xlsx from 'xlsx';
-import { ChevronLeft, ChevronRight, List, Users, UserCircle2, RefreshCw, Trash2, Copy, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, Users, UserCircle2, RefreshCw, Trash2, Copy, Check, FileText } from 'lucide-react';
 import { OrgWorker, UserProfile } from '../types';
+import { AuditLogList } from '../components/AuditLogList';
+import { useOrgAuditLog } from '../hooks/useAuditLog';
 
 type BulkWorkerRow = { username: string; jobTitle: string; _valid: boolean; _error: string };
 type BulkWorkerResult = { succeeded: { username: string; inviteUrl?: string }[]; failed: { username: string; error: string }[] };
@@ -22,7 +24,7 @@ type OrgDashboardPageProps = {
     recordsContent?: React.ReactNode;
 };
 
-type Tab = 'workers' | 'records';
+type Tab = 'workers' | 'records' | 'audit';
 
 const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     profile,
@@ -48,6 +50,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     }, [sidebarCollapsed]);
 
     const [activeTab, setActiveTab] = useState<Tab>('workers');
+    const auditLog = useOrgAuditLog();
 
     // Add worker form
     const [showAddForm, setShowAddForm] = useState(false);
@@ -79,6 +82,10 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     useEffect(() => {
         if (activeTab === 'workers') {
             onLoadWorkers();
+        }
+        if (activeTab === 'audit') {
+            auditLog.load();
+            auditLog.loadStorage();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
@@ -213,6 +220,14 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                     >
                         <List size={16} />
                         <span className="dashboard__link-label">View records</span>
+                    </button>
+                    <button
+                        className={activeTab === 'audit' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => setActiveTab('audit')}
+                        title="Audit log"
+                    >
+                        <FileText size={16} />
+                        <span className="dashboard__link-label">Audit log</span>
                     </button>
                 </nav>
             </aside>
@@ -475,6 +490,30 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                         </div>
                         <div className="admin-dashboard">
                             {recordsContent || <p style={{ color: 'var(--muted)' }}>No records available.</p>}
+                        </div>
+                    </>
+                )}
+
+                {activeTab === 'audit' && (
+                    <>
+                        <div className="dashboard__topbar">
+                            <div>
+                                <h1>Audit Log</h1>
+                            </div>
+                        </div>
+                        <div className="admin-dashboard">
+                            <AuditLogList
+                                entries={auditLog.entries}
+                                total={auditLog.total}
+                                page={auditLog.page}
+                                loading={auditLog.loading}
+                                error={auditLog.error}
+                                onPageChange={auditLog.setPage}
+                                storageBytes={auditLog.storage?.storageBytes}
+                                limitBytes={auditLog.storage?.limitBytes}
+                                onExport={auditLog.exportCsv}
+                                onReset={auditLog.reset}
+                            />
                         </div>
                     </>
                 )}

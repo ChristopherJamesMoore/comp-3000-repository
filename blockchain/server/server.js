@@ -153,6 +153,31 @@ const buildAuditEntry = (serialNumber, action, user) => ({
     actorCompanyName: user?.companyName || ''
 });
 
+function buildActor(req, user) {
+    const type = req.user?.type === 'worker' ? 'worker' : req.user?.type === 'org' ? 'org_admin' : 'platform_admin';
+    return { username: user?.username || req.user?.sub || '', type };
+}
+
+async function writeAuditLogs(db, { actor, orgId, action, target, metadata }) {
+    if (!db) return;
+    const entry = { actor, orgId: orgId || null, action, target: target || {}, metadata: metadata || {}, createdAt: new Date() };
+    const writes = [db.collection('platform_audit_log').insertOne({ ...entry })];
+    if (orgId) {
+        writes.push(db.collection('org_audit_log').insertOne({ ...entry }));
+    }
+    if (actor.type === 'worker') {
+        writes.push(db.collection('worker_activity_log').insertOne({
+            username: actor.username,
+            orgId,
+            action,
+            serialNumbers: target?.serialNumbers || (target?.serialNumber ? [target.serialNumber] : []),
+            metadata: metadata || {},
+            createdAt: entry.createdAt
+        }));
+    }
+    await Promise.allSettled(writes);
+}
+
 const loadAuthUsers = ({ allowEmpty = false } = {}) => {
     const envUsers = readUsersFromEnv();
     const fileUsers = readUsersFromFile();
@@ -356,6 +381,13 @@ const createApp = (contract, db) => {
     }
     if (invitesCollection) {
         invitesCollection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
+    }
+    // Ensure audit log indexes
+    if (db) {
+        db.collection('worker_activity_log').createIndex({ username: 1, createdAt: -1 }).catch(() => {});
+        db.collection('org_audit_log').createIndex({ orgId: 1, createdAt: -1 }).catch(() => {});
+        db.collection('platform_audit_log').createIndex({ createdAt: -1 }).catch(() => {});
+        db.collection('platform_audit_log').createIndex({ orgId: 1, createdAt: -1 }).catch(() => {});
     }
 
     const saveChallenge = async (userType, identifier, challenge, type) => {
@@ -1260,6 +1292,13 @@ const createApp = (contract, db) => {
                 expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
                 createdAt: new Date(),
             });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'platform_admin' },
+                orgId: req.params.orgId,
+                action: 'org.passkey_reset',
+                target: { orgId: req.params.orgId, username: org.adminUsername },
+                metadata: {}
+            }).catch(() => {});
             return res.json({ ok: true, registerUrl: `${appUrl}/org/register-passkey?token=${inviteToken}&username=${encodeURIComponent(org.adminUsername)}` });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to reset passkey.' });
@@ -1282,6 +1321,13 @@ const createApp = (contract, db) => {
                 expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
                 createdAt: new Date(),
             });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'platform_admin' },
+                orgId: req.params.orgId,
+                action: 'worker.passkey_reset',
+                target: { username: req.params.username, orgId: req.params.orgId },
+                metadata: {}
+            }).catch(() => {});
             return res.json({ ok: true, registerUrl: `${appUrl}/invite/${inviteToken}` });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to reset passkey.' });
@@ -1639,6 +1685,13 @@ const createApp = (contract, db) => {
             });
             const appUrl = getEnv('APP_URL', 'https://ledgrx.duckdns.org');
             const inviteUrl = `${appUrl}/invite/${inviteToken}`;
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'org_admin' },
+                orgId: org.orgId,
+                action: 'worker.created',
+                target: { username },
+                metadata: { jobTitle: jobTitle || '' }
+            }).catch(() => {});
             return res.status(201).json({
                 worker: { workerId, username, orgId: org.orgId, companyName: org.companyName, companyType: org.companyType, jobTitle: jobTitle || '' },
                 inviteUrl,
@@ -1695,6 +1748,15 @@ const createApp = (contract, db) => {
                     failed.push({ username, error: rowErr.message || 'Failed to create worker.' });
                 }
             }
+            if (succeeded.length > 0) {
+                writeAuditLogs(db, {
+                    actor: { username: req.user.sub, type: 'org_admin' },
+                    orgId: org.orgId,
+                    action: 'worker.bulk_created',
+                    target: { count: succeeded.length },
+                    metadata: { usernames: succeeded.map(s => s.username) }
+                }).catch(() => {});
+            }
             return res.json({ succeeded, failed });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Bulk import failed.' });
@@ -1706,6 +1768,13 @@ const createApp = (contract, db) => {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
             const result = await db.collection('workers').deleteOne({ username: req.params.username, orgId: req.user.orgId });
             if (result.deletedCount === 0) return res.status(404).json({ error: 'Worker not found.' });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'org_admin' },
+                orgId: req.user.orgId,
+                action: 'worker.removed',
+                target: { username: req.params.username },
+                metadata: {}
+            }).catch(() => {});
             return res.json({ ok: true });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to remove worker.' });
@@ -1721,6 +1790,13 @@ const createApp = (contract, db) => {
                 { returnDocument: 'after' }
             );
             if (!result) return res.status(404).json({ error: 'Worker not found.' });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'org_admin' },
+                orgId: req.user.orgId,
+                action: 'worker.job_title_updated',
+                target: { username: req.params.username },
+                metadata: { newTitle: String(req.body.jobTitle || '').trim() }
+            }).catch(() => {});
             return res.json({ ok: true, worker: { username: result.username, jobTitle: result.jobTitle } });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to update worker.' });
@@ -1780,6 +1856,13 @@ const createApp = (contract, db) => {
                     `
                 });
             }
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'platform_admin' },
+                orgId: req.params.orgId,
+                action: 'org.approved',
+                target: { orgId: req.params.orgId },
+                metadata: { companyName: result.companyName || '' }
+            }).catch(() => {});
             return res.json({ ok: true, org: { orgId: result.orgId, approvalStatus: result.approvalStatus } });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to approve organisation.' });
@@ -1795,6 +1878,13 @@ const createApp = (contract, db) => {
                 { returnDocument: 'after' }
             );
             if (!result) return res.status(404).json({ error: 'Organisation not found.' });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'platform_admin' },
+                orgId: req.params.orgId,
+                action: 'org.rejected',
+                target: { orgId: req.params.orgId },
+                metadata: { companyName: result.companyName || '' }
+            }).catch(() => {});
             return res.json({ ok: true, org: { orgId: result.orgId, approvalStatus: result.approvalStatus } });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to reject organisation.' });
@@ -1806,7 +1896,14 @@ const createApp = (contract, db) => {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
             const orgResult = await db.collection('organisations').deleteOne({ orgId: req.params.orgId });
             if (orgResult.deletedCount === 0) return res.status(404).json({ error: 'Organisation not found.' });
-            await db.collection('workers').deleteMany({ orgId: req.params.orgId });
+            const deletedWorkers = await db.collection('workers').deleteMany({ orgId: req.params.orgId });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'platform_admin' },
+                orgId: req.params.orgId,
+                action: 'org.deleted',
+                target: { orgId: req.params.orgId },
+                metadata: { cascadedWorkers: deletedWorkers.deletedCount || 0 }
+            }).catch(() => {});
             return res.json({ ok: true });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to delete organisation.' });
@@ -1828,6 +1925,13 @@ const createApp = (contract, db) => {
                 { returnDocument: 'after' }
             );
             if (!result) return res.status(404).json({ error: 'Organisation not found.' });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'platform_admin' },
+                orgId: req.params.orgId,
+                action: 'org.updated',
+                target: { orgId: req.params.orgId },
+                metadata: { changedFields: Object.keys(setFields) }
+            }).catch(() => {});
             return res.json({ ok: true, org: result });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to update organisation.' });
@@ -1860,6 +1964,13 @@ const createApp = (contract, db) => {
             const { orgId, username } = req.params;
             const result = await db.collection('workers').deleteOne({ username, orgId });
             if (result.deletedCount === 0) return res.status(404).json({ error: 'Worker not found.' });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'platform_admin' },
+                orgId,
+                action: 'worker.removed',
+                target: { username },
+                metadata: { initiatedBy: 'platform_admin' }
+            }).catch(() => {});
             return res.json({ ok: true });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to delete worker.' });
@@ -1886,6 +1997,193 @@ const createApp = (contract, db) => {
             return res.status(500).json({ error: error.message || 'Failed to reset password.' });
         }
     });
+
+    // ── Audit Log Endpoints ──────────────────────────────────────────────────
+
+    const AUDIT_SIZE_LIMIT = 4 * 1024 * 1024 * 1024; // 4 GB
+
+    // Worker activity log
+    app.get('/api/worker/activity', authMiddleware, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            if (req.user?.type !== 'worker') return res.status(403).json({ error: 'Workers only.' });
+            const page = Math.max(1, parseInt(req.query.page) || 1);
+            const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+            const skip = (page - 1) * limit;
+            const col = db.collection('worker_activity_log');
+            const [entries, total] = await Promise.all([
+                col.find({ username: req.user.sub }).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+                col.countDocuments({ username: req.user.sub })
+            ]);
+            return res.json({ entries, total, page, limit });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to load activity.' });
+        }
+    });
+
+    // Org audit log
+    app.get('/api/org/audit', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const page = Math.max(1, parseInt(req.query.page) || 1);
+            const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+            const skip = (page - 1) * limit;
+            const filter = { orgId: req.user.orgId };
+            if (req.query.action) filter.action = req.query.action;
+            if (req.query.worker) filter['actor.username'] = req.query.worker;
+            const col = db.collection('org_audit_log');
+            const [entries, total] = await Promise.all([
+                col.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+                col.countDocuments(filter)
+            ]);
+            return res.json({ entries, total, page, limit });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to load audit log.' });
+        }
+    });
+
+    app.get('/api/org/audit/storage', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const stats = await db.collection('org_audit_log').stats().catch(() => ({ storageSize: 0 }));
+            return res.json({ storageBytes: stats.storageSize || 0, limitBytes: AUDIT_SIZE_LIMIT });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to check storage.' });
+        }
+    });
+
+    app.get('/api/org/audit/export', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const col = db.collection('org_audit_log');
+            const cursor = col.find({ orgId: req.user.orgId }).sort({ createdAt: 1 });
+            const date = new Date().toISOString().slice(0, 10);
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', `attachment; filename="org-audit-log-${date}.csv"`);
+            res.setHeader('Transfer-Encoding', 'chunked');
+            res.write('timestamp,actor_username,actor_type,action,target,metadata\n');
+            for await (const doc of cursor) {
+                const row = [
+                    doc.createdAt ? new Date(doc.createdAt).toISOString() : '',
+                    doc.actor?.username || '',
+                    doc.actor?.type || '',
+                    doc.action || '',
+                    JSON.stringify(doc.target || {}),
+                    JSON.stringify(doc.metadata || {})
+                ].map(f => `"${String(f).replace(/"/g, '""')}"`).join(',');
+                res.write(row + '\n');
+            }
+            res.end();
+        } catch (error) {
+            if (!res.headersSent) return res.status(500).json({ error: error.message || 'Export failed.' });
+            res.end();
+        }
+    });
+
+    app.post('/api/org/audit/reset', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            await db.collection('org_audit_log').deleteMany({ orgId: req.user.orgId });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'org_admin' },
+                orgId: req.user.orgId,
+                action: 'audit.org_reset',
+                target: {},
+                metadata: {}
+            }).catch(() => {});
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Reset failed.' });
+        }
+    });
+
+    // Platform audit log
+    app.get('/api/admin/audit', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const page = Math.max(1, parseInt(req.query.page) || 1);
+            const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+            const skip = (page - 1) * limit;
+            const filter = {};
+            if (req.query.action) filter.action = req.query.action;
+            if (req.query.org) filter.orgId = req.query.org;
+            const col = db.collection('platform_audit_log');
+            const [entries, total] = await Promise.all([
+                col.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+                col.countDocuments(filter)
+            ]);
+            return res.json({ entries, total, page, limit });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to load audit log.' });
+        }
+    });
+
+    app.get('/api/admin/audit/storage', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const [orgStats, platformStats] = await Promise.all([
+                db.collection('org_audit_log').stats().catch(() => ({ storageSize: 0 })),
+                db.collection('platform_audit_log').stats().catch(() => ({ storageSize: 0 }))
+            ]);
+            return res.json({
+                orgAuditBytes: orgStats.storageSize || 0,
+                platformAuditBytes: platformStats.storageSize || 0,
+                limitBytes: AUDIT_SIZE_LIMIT
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to check storage.' });
+        }
+    });
+
+    app.get('/api/admin/audit/export', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const col = db.collection('platform_audit_log');
+            const cursor = col.find({}).sort({ createdAt: 1 });
+            const date = new Date().toISOString().slice(0, 10);
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', `attachment; filename="platform-audit-log-${date}.csv"`);
+            res.setHeader('Transfer-Encoding', 'chunked');
+            res.write('timestamp,actor_username,actor_type,org_id,action,target,metadata\n');
+            for await (const doc of cursor) {
+                const row = [
+                    doc.createdAt ? new Date(doc.createdAt).toISOString() : '',
+                    doc.actor?.username || '',
+                    doc.actor?.type || '',
+                    doc.orgId || '',
+                    doc.action || '',
+                    JSON.stringify(doc.target || {}),
+                    JSON.stringify(doc.metadata || {})
+                ].map(f => `"${String(f).replace(/"/g, '""')}"`).join(',');
+                res.write(row + '\n');
+            }
+            res.end();
+        } catch (error) {
+            if (!res.headersSent) return res.status(500).json({ error: error.message || 'Export failed.' });
+            res.end();
+        }
+    });
+
+    app.post('/api/admin/audit/reset', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            await db.collection('platform_audit_log').drop().catch(() => {});
+            db.collection('platform_audit_log').createIndex({ createdAt: -1 }).catch(() => {});
+            db.collection('platform_audit_log').createIndex({ orgId: 1, createdAt: -1 }).catch(() => {});
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'platform_admin' },
+                orgId: null,
+                action: 'audit.platform_reset',
+                target: {},
+                metadata: {}
+            }).catch(() => {});
+            return res.json({ ok: true });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Reset failed.' });
+        }
+    });
+
+    // ── Medication Endpoints ────────────────────────────────────────────────
 
     app.use('/api/medications', authMiddleware);
     app.use('/api/medications', requireApproved(db));
@@ -1950,6 +2248,15 @@ const createApp = (contract, db) => {
                 } catch (err) {
                     failed.push({ serialNumber: String(serial), error: err.message || 'Unknown error.' });
                 }
+            }
+            if (succeeded.length > 0) {
+                const actor = buildActor(req, user);
+                writeAuditLogs(db, {
+                    actor, orgId: user.orgId || null,
+                    action: 'medication.batch_received',
+                    target: { serialNumbers: succeeded.map(s => s.serialNumber), count: succeeded.length },
+                    metadata: {}
+                }).catch(() => {});
             }
             return res.json({ ok: true, processed: serialNumbers.length, succeeded, failed });
         } catch (error) {
@@ -2017,6 +2324,15 @@ const createApp = (contract, db) => {
                 } catch (err) {
                     failed.push({ serialNumber: String(serial), error: err.message || 'Unknown error.' });
                 }
+            }
+            if (succeeded.length > 0) {
+                const actor = buildActor(req, user);
+                writeAuditLogs(db, {
+                    actor, orgId: user.orgId || null,
+                    action: 'medication.batch_arrived',
+                    target: { serialNumbers: succeeded.map(s => s.serialNumber), count: succeeded.length },
+                    metadata: {}
+                }).catch(() => {});
             }
             return res.json({ ok: true, processed: serialNumbers.length, succeeded, failed });
         } catch (error) {
@@ -2125,6 +2441,13 @@ const createApp = (contract, db) => {
                 { upsert: true }
             );
             await auditCollection.insertOne(buildAuditEntry(serialNumber, 'manufactured', user));
+            const actor = buildActor(req, user);
+            writeAuditLogs(db, {
+                actor, orgId: user.orgId || null,
+                action: 'medication.manufactured',
+                target: { serialNumber },
+                metadata: { medicationName, batchNumber }
+            }).catch(() => {});
             res.status(201).json({
                 id: serialNumber,
                 qrHash
@@ -2186,6 +2509,15 @@ const createApp = (contract, db) => {
                     failed.push({ serialNumber, error: result.reason?.message || 'Failed.' });
                 }
             });
+            if (succeeded.length > 0) {
+                const actor = buildActor(req, user);
+                writeAuditLogs(db, {
+                    actor, orgId: user.orgId || null,
+                    action: 'medication.bulk_manufactured',
+                    target: { serialNumbers: succeeded.map(s => s.serialNumber), count: succeeded.length },
+                    metadata: {}
+                }).catch(() => {});
+            }
             return res.json({ succeeded, failed });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Bulk import failed.' });
@@ -2235,6 +2567,13 @@ const createApp = (contract, db) => {
                 }
             );
             await auditCollection.insertOne(buildAuditEntry(serialNumber, 'received', user));
+            const actor = buildActor(req, user);
+            writeAuditLogs(db, {
+                actor, orgId: user.orgId || null,
+                action: 'medication.received',
+                target: { serialNumber },
+                metadata: {}
+            }).catch(() => {});
             return res.json({ ok: true, status: 'received' });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Internal server error' });
@@ -2284,6 +2623,13 @@ const createApp = (contract, db) => {
                 }
             );
             await auditCollection.insertOne(buildAuditEntry(serialNumber, 'arrived', user));
+            const actor = buildActor(req, user);
+            writeAuditLogs(db, {
+                actor, orgId: user.orgId || null,
+                action: 'medication.arrived',
+                target: { serialNumber },
+                metadata: {}
+            }).catch(() => {});
             return res.json({ ok: true, status: 'arrived' });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Internal server error' });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Truck, CheckCircle2, List, Shield, ShieldCheck, ChevronLeft, ChevronRight, UserCircle2 } from 'lucide-react';
+import { Plus, Truck, CheckCircle2, List, Shield, ShieldCheck, ChevronLeft, ChevronRight, UserCircle2, ClipboardList, FileText } from 'lucide-react';
 
-export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view' | 'admin' | 'security';
+export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view' | 'activity' | 'admin' | 'security' | 'audit';
 
 type DashboardLayoutProps = {
     userName: string;
@@ -106,6 +106,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <List size={16} />
                     <span className="dashboard__link-label">View records</span>
                 </button>
+                {!isAdmin && (
+                    <button
+                        className={activeNav === 'activity' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => onNavSelect('activity')}
+                        title="Activity"
+                    >
+                        <ClipboardList size={16} />
+                        <span className="dashboard__link-label">Activity</span>
+                    </button>
+                )}
                 {isAdmin && (
                     <button
                         className={activeNav === 'admin' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
@@ -114,6 +124,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     >
                         <Shield size={16} />
                         <span className="dashboard__link-label">Admin</span>
+                    </button>
+                )}
+                {isAdmin && (
+                    <button
+                        className={activeNav === 'audit' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => onNavSelect('audit')}
+                        title="Audit log"
+                    >
+                        <FileText size={16} />
+                        <span className="dashboard__link-label">Audit log</span>
                     </button>
                 )}
                 {isAdmin && (

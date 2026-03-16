@@ -22,6 +22,7 @@ import WorkerInvitePage from './pages/WorkerInvitePage';
 import OrgRegisterPasskeyPage from './pages/OrgRegisterPasskeyPage';
 import AdminRecoveryPage from './pages/AdminRecoveryPage';
 import AdminSecurityPage from './pages/AdminSecurityPage';
+import AdminAuditPage from './pages/AdminAuditPage';
 import OnboardingPage from './pages/OnboardingPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import PlatformLoginPage from './pages/PlatformLoginPage';
@@ -243,6 +244,7 @@ const App: React.FC = () => {
     const showAccount = route === '/account' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAdmin = route === '/app/admin' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAdminSecurity = route === '/app/admin/security' && !!authToken && !profileIncomplete && !isPendingApproval;
+    const showAdminAudit = route === '/app/admin/audit' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showPlatformLogin = route === '/staff-a7f3' && !authToken;
     const showAdminRecovery = route === '/staff-a7f3/recovery';
     const showLogin = false; // old /login redirected below
@@ -263,7 +265,7 @@ const App: React.FC = () => {
     const orgResetUsername = orgResetParams?.get('username') || '';
 
     const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding
-        && !showPendingApproval && !showSetup && !showAdmin && !showAdminSecurity && !showOrgDashboard && !showOrgPending
+        && !showPendingApproval && !showSetup && !showAdmin && !showAdminSecurity && !showAdminAudit && !showOrgDashboard && !showOrgPending
         && !showOrgSignup && !showOrgLogin && !showWorkerLogin && !showPlatformLogin && !showWorkerInvite
         && !showOrgRegisterPasskey && !showAdminRecovery;
     const marketingPage = marketingPages[route] ?? marketingPages['/'];
@@ -504,6 +506,14 @@ const App: React.FC = () => {
                     onAccountClick={() => navigate('/account')}
                     onNavSelect={handleNavSelect}
                     onAddBackupPasskey={addBackupPasskey}
+                />
+            )}
+
+            {showAdminAudit && (
+                <AdminAuditPage
+                    userName={profile?.username || 'User'}
+                    onAccountClick={() => navigate('/account')}
+                    onNavSelect={handleNavSelect}
                 />
             )}
 

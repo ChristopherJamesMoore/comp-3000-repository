@@ -71,6 +71,30 @@ export type OrgProfile = {
     approvedAt?: string;
 };
 
+export type ActivityEntry = {
+    username: string;
+    orgId: string;
+    action: string;
+    serialNumbers: string[];
+    metadata: Record<string, unknown>;
+    createdAt: string;
+};
+
+export type AuditLogEntry = {
+    actor: { username: string; type: 'worker' | 'org_admin' | 'platform_admin' };
+    orgId: string | null;
+    action: string;
+    target: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+};
+
+export type AuditStorageInfo = {
+    orgAuditBytes: number;
+    platformAuditBytes: number;
+    limitBytes: number;
+};
+
 export type AuthMode = 'login' | 'signup';
 
 export type BatchResultItem = {
