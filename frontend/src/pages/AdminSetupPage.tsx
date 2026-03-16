@@ -39,7 +39,7 @@ const AdminSetupPage: React.FC<AdminSetupPageProps> = ({ onBootstrap, onNavigate
             <main className="auth-page">
                 <div className="auth-card">
                     <div className="auth-card__header">
-                        <button className="auth-card__brand" onClick={onNavigateLogin}>LedgRx</button>
+                        <button className="auth-card__brand" onClick={onNavigateLogin}><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</button>
                         <span className="auth-card__eyebrow">Setup</span>
                     </div>
                     <h2>Admin already configured.</h2>
@@ -58,7 +58,7 @@ const AdminSetupPage: React.FC<AdminSetupPageProps> = ({ onBootstrap, onNavigate
         <main className="auth-page">
             <div className="auth-card">
                 <div className="auth-card__header">
-                    <button className="auth-card__brand" onClick={onNavigateLogin}>LedgRx</button>
+                    <button className="auth-card__brand" onClick={onNavigateLogin}><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</button>
                     <span className="auth-card__eyebrow">First-time setup</span>
                 </div>
                 <h2>Create your administrator account.</h2>

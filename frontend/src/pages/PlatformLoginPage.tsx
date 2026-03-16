@@ -29,7 +29,7 @@ const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({ onLogin, onRecove
         <main className="auth-page">
             <div className="auth-card">
                 <div className="auth-card__header">
-                    <span className="auth-card__brand">LedgRx</span>
+                    <span className="auth-card__brand"><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</span>
                     <span className="auth-card__eyebrow">Staff access</span>
                 </div>
                 <form onSubmit={handleSubmit}>

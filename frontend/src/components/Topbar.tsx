@@ -12,7 +12,7 @@ type TopbarProps = {
 const Topbar: React.FC<TopbarProps> = ({ authToken, profile, onNavigate, onLogout }) => (
     <header className="topbar">
         <button className="brand" onClick={() => onNavigate('/')}>
-            LedgRx
+            <img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx
         </button>
         <nav className="topbar__nav">
             <button className="topbar__link" onClick={() => onNavigate('/')}>

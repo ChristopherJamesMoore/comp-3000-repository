@@ -34,7 +34,7 @@ const OrgLoginPage: React.FC<OrgLoginPageProps> = ({ onLogin, onNavigateHome, on
         <main className="auth-page">
             <div className="auth-card">
                 <div className="auth-card__header">
-                    <button className="auth-card__brand" onClick={onNavigateHome}>LedgRx</button>
+                    <button className="auth-card__brand" onClick={onNavigateHome}><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</button>
                     <span className="auth-card__eyebrow">Organisation sign in</span>
                 </div>
                 <h2>Welcome back.</h2>

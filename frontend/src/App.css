@@ -67,6 +67,20 @@ body {
   font-weight: 700;
   color: var(--ink);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-logo {
+  height: 24px;
+  width: auto;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.brand-logo--sm {
+  height: 20px;
 }
 
 .topbar__nav {
@@ -212,6 +226,9 @@ body {
   font-family: 'Fraunces', serif;
   cursor: pointer;
   transition: transform 0.2s ease, opacity 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .home-nav__brand:hover {
@@ -876,6 +893,9 @@ body {
   font-weight: 700;
   color: var(--ink);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .auth-card__eyebrow {
@@ -945,6 +965,9 @@ body {
   margin: 0;
   color: #18181b;
   letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .dashboard__brand-text {
@@ -1941,6 +1964,9 @@ body {
   color: #18181b;
   cursor: pointer;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   text-align: left;
 }
 
