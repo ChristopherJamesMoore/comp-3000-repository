@@ -70,9 +70,9 @@ const HeroChainBackdrop: React.FC = () => {
                 let glowYTo: ((v: number) => gsap.core.Tween) | null = null;
                 let glowOpacityTo: ((v: number) => gsap.core.Tween) | null = null;
                 if (glowEl) {
-                    gsap.set(glowEl, { xPercent: -50, yPercent: -50, x: 0, y: 0, opacity: 0 });
-                    glowXTo = gsap.quickTo(glowEl, 'x', { duration: 0.6, ease: 'power2.out' });
-                    glowYTo = gsap.quickTo(glowEl, 'y', { duration: 0.6, ease: 'power2.out' });
+                    gsap.set(glowEl, { left: 0, top: 0, xPercent: -50, yPercent: -50, opacity: 0 });
+                    glowXTo = gsap.quickTo(glowEl, 'left', { duration: 0.6, ease: 'power2.out' });
+                    glowYTo = gsap.quickTo(glowEl, 'top', { duration: 0.6, ease: 'power2.out' });
                     glowOpacityTo = gsap.quickTo(glowEl, 'opacity', { duration: 0.4, ease: 'power2.out' });
                 }
 
