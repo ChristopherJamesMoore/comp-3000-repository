@@ -420,6 +420,7 @@ body {
   font-size: clamp(2.6rem, 4vw, 4rem);
   margin: 12px 0;
   font-family: 'Fraunces', serif;
+  color: #1e3a2f;
 }
 
 .home-hero__typing {
