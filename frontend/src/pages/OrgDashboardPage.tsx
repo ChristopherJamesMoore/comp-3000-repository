@@ -1,9 +1,32 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as xlsx from 'xlsx';
-import { ChevronLeft, ChevronRight, List, Users, UserCircle2, RefreshCw, Trash2, Copy, Check, FileText } from 'lucide-react';
-import { OrgWorker, UserProfile } from '../types';
+import { ChevronLeft, ChevronRight, ChevronDown, List, Users, UserCircle2, RefreshCw, Trash2, Copy, Check, FileText, Search, QrCode } from 'lucide-react';
+import { Medication, OrgWorker, UserProfile } from '../types';
 import { AuditLogList } from '../components/AuditLogList';
 import { useOrgAuditLog } from '../hooks/useAuditLog';
+import type { AuthFetch } from '../hooks/useAuth';
+
+const STAGES = [
+    { key: 'manufactured', label: 'Prod' },
+    { key: 'received',     label: 'Dist' },
+    { key: 'arrived',      label: 'Pharmacy' },
+] as const;
+
+const StageTrack: React.FC<{ status?: string }> = ({ status = 'manufactured' }) => {
+    const activeIndex = STAGES.findIndex((s) => s.key === status);
+    return (
+        <span className="stage-track">
+            {STAGES.map((stage, i) => (
+                <React.Fragment key={stage.key}>
+                    <span className={`stage-track__step${i === activeIndex ? ' stage-track__step--active' : i < activeIndex ? ' stage-track__step--done' : ''}`}>
+                        {stage.label}
+                    </span>
+                    {i < STAGES.length - 1 && <span className="stage-track__sep">&rsaquo;</span>}
+                </React.Fragment>
+            ))}
+        </span>
+    );
+};
 
 type BulkWorkerRow = { username: string; jobTitle: string; _valid: boolean; _error: string };
 type BulkWorkerResult = { succeeded: { username: string; inviteUrl?: string }[]; failed: { username: string; error: string }[] };
@@ -20,8 +43,7 @@ type OrgDashboardPageProps = {
     onBulkAddWorkers: (workers: { username: string; jobTitle: string }[]) => Promise<BulkWorkerResult>;
     onLogout: () => void;
     onAccountClick: () => void;
-    // Records view - pass medications as JSX or a simple list
-    recordsContent?: React.ReactNode;
+    authFetch: AuthFetch;
 };
 
 type Tab = 'workers' | 'records' | 'audit';
@@ -38,7 +60,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     onBulkAddWorkers,
     onLogout,
     onAccountClick,
-    recordsContent
+    authFetch
 }) => {
     const sidebarStorageKey = 'ledgrx.org.sidebarCollapsed';
     const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
@@ -51,6 +73,39 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
 
     const [activeTab, setActiveTab] = useState<Tab>('workers');
     const auditLog = useOrgAuditLog();
+
+    // Medications state (records tab)
+    const [medications, setMedications] = useState<Medication[]>([]);
+    const [medsLoading, setMedsLoading] = useState(false);
+    const [medsError, setMedsError] = useState('');
+    const [medsSearch, setMedsSearch] = useState('');
+    const [expandedSerial, setExpandedSerial] = useState<string | null>(null);
+
+    const fetchMedications = useCallback(async () => {
+        setMedsLoading(true);
+        setMedsError('');
+        try {
+            const res = await authFetch('/api/org/medications');
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Failed to load medications.');
+            }
+            setMedications(await res.json());
+        } catch (err: unknown) {
+            setMedsError(err instanceof Error ? err.message : 'Failed to load medications.');
+        } finally {
+            setMedsLoading(false);
+        }
+    }, [authFetch]);
+
+    const filteredMedications = useMemo(() => {
+        if (!medsSearch.trim()) return medications;
+        const q = medsSearch.trim().toLowerCase();
+        return medications.filter((med) =>
+            [med.serialNumber, med.medicationName, med.batchNumber, med.gtin, med.productionCompany, med.distributionCompany, med.pharmacyCompany]
+                .some((v) => (v ?? '').toLowerCase().includes(q))
+        );
+    }, [medications, medsSearch]);
 
     // Add worker form
     const [showAddForm, setShowAddForm] = useState(false);
@@ -82,6 +137,9 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     useEffect(() => {
         if (activeTab === 'workers') {
             onLoadWorkers();
+        }
+        if (activeTab === 'records') {
+            fetchMedications();
         }
         if (activeTab === 'audit') {
             auditLog.load();
@@ -186,10 +244,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
             <aside className="dashboard__sidebar">
                 <div className="dashboard__sidebar-top">
                     <div className="dashboard__brand">
-                        {sidebarCollapsed
-                            ? <img src="/logo-removebg-preview.png" alt="LedgRx" className="brand-logo brand-logo--sm" />
-                            : <img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" />
-                        }
+                        {!sidebarCollapsed && <img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" />}
                     </div>
                     <button
                         type="button"
@@ -491,9 +546,79 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                 <h1>Records</h1>
                             </div>
                         </div>
-                        <div className="admin-dashboard">
-                            {recordsContent || <p style={{ color: 'var(--muted)' }}>No records available.</p>}
-                        </div>
+                        <section className="dashboard__panel">
+                            <div className="records">
+                                <div className="records__toolbar">
+                                    <div className="search">
+                                        <Search size={16} />
+                                        <input
+                                            type="text"
+                                            placeholder="Search serial, name, batch..."
+                                            value={medsSearch}
+                                            onChange={(e) => setMedsSearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <button className="button button--ghost" onClick={fetchMedications}>
+                                        <RefreshCw size={16} className={medsLoading ? 'spin' : ''} />
+                                        {medsLoading ? 'Refreshing' : 'Refresh'}
+                                    </button>
+                                </div>
+
+                                {medsError && <div className="error-banner">{medsError}</div>}
+
+                                <div className="records__list">
+                                    {filteredMedications.length === 0 && !medsLoading && (
+                                        <div className="empty-state">
+                                            <QrCode size={32} />
+                                            <p>No medication records found for your organisation.</p>
+                                        </div>
+                                    )}
+                                    {filteredMedications.map((med) => (
+                                        <React.Fragment key={med.serialNumber}>
+                                            <div
+                                                className={`record-row${expandedSerial === med.serialNumber ? ' record-row--expanded' : ''}`}
+                                                onClick={() => setExpandedSerial(expandedSerial === med.serialNumber ? null : med.serialNumber)}
+                                            >
+                                                <StageTrack status={med.status} />
+                                                <span className="record-row__serial">
+                                                    <span className="pill">Serial</span>
+                                                    {med.serialNumber}
+                                                </span>
+                                                <span className="record-row__name">{med.medicationName}</span>
+                                                <span className="record-row__batch">{med.batchNumber}</span>
+                                                <ChevronDown size={14} className={`record-row__chevron${expandedSerial === med.serialNumber ? ' record-row__chevron--open' : ''}`} />
+                                            </div>
+                                            {expandedSerial === med.serialNumber && (
+                                                <div className="record-row__detail">
+                                                    <div className="record-row__detail-grid">
+                                                        <div>
+                                                            <span>GTIN</span>
+                                                            <strong>{med.gtin}</strong>
+                                                        </div>
+                                                        <div>
+                                                            <span>Expiry</span>
+                                                            <strong>{med.expiryDate}</strong>
+                                                        </div>
+                                                        <div>
+                                                            <span>Production</span>
+                                                            <strong>{med.productionCompany || '\u2014'}</strong>
+                                                        </div>
+                                                        <div>
+                                                            <span>Distribution</span>
+                                                            <strong>{med.distributionCompany || '\u2014'}</strong>
+                                                        </div>
+                                                        <div>
+                                                            <span>Pharmacy</span>
+                                                            <strong>{med.pharmacyCompany || '\u2014'}</strong>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                            </div>
+                        </section>
                     </>
                 )}
 

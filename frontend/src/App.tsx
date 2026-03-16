@@ -403,6 +403,7 @@ const App: React.FC = () => {
                     onBulkAddWorkers={bulkAddWorkers}
                     onLogout={handleLogout}
                     onAccountClick={() => navigate('/account')}
+                    authFetch={authFetch}
                 />
             )}
 

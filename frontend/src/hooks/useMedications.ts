@@ -92,11 +92,9 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
                 !formData.medicationName ||
                 !formData.gtin ||
                 !formData.batchNumber ||
-                !formData.expiryDate ||
-                !formData.distributionCompany ||
-                !formData.pharmacyCompany
+                !formData.expiryDate
             ) {
-                setAddError('All fields are required.');
+                setAddError('Serial number, name, GTIN, batch, and expiry are required.');
                 return;
             }
             setIsSubmitting(true);

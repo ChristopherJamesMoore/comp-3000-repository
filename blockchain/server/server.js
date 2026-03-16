@@ -2097,6 +2097,49 @@ const createApp = (contract, db) => {
         }
     });
 
+    // Org medications (read-only view for org admins)
+    app.get('/api/org/medications', authMiddleware, requireOrgAdmin, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const org = await db.collection('organisations').findOne({ orgId: req.user.orgId });
+            if (!org) return res.status(404).json({ error: 'Organisation not found.' });
+            const result = await contract.evaluateTransaction('getAllMedications');
+            const medications = parseChaincodeJson(result);
+            const statusCollection = db.collection('medication_status');
+            const serials = medications.map((med) => med.serialNumber).filter(Boolean);
+            const statuses = await statusCollection.find({ serialNumber: { $in: serials } }).toArray();
+            const statusMap = new Map(statuses.map((entry) => [entry.serialNumber, entry]));
+            const merged = medications.map((med) => {
+                const status = statusMap.get(med.serialNumber);
+                if (!status) return med;
+                return {
+                    ...med,
+                    status: status.status,
+                    distributionCompany: status.distributionCompany || med.distributionCompany || '',
+                    pharmacyCompany: status.pharmacyCompany || med.pharmacyCompany || '',
+                    statusUpdatedAt: status.updatedAt,
+                    statusUpdatedBy: status.updatedBy,
+                    statusUpdatedByCompanyType: status.updatedByCompanyType,
+                    statusUpdatedByCompanyName: status.updatedByCompanyName
+                };
+            });
+            const companyLower = (org.companyName || '').toLowerCase();
+            const orgRole = (org.companyType || '').toLowerCase();
+            const visible = merged.filter((med) => {
+                if (orgRole === 'production')
+                    return (med.productionCompany || '').toLowerCase() === companyLower;
+                if (orgRole === 'distribution')
+                    return (med.distributionCompany || '').toLowerCase() === companyLower;
+                if (orgRole === 'pharmacy' || orgRole === 'clinic')
+                    return (med.pharmacyCompany || '').toLowerCase() === companyLower;
+                return false;
+            });
+            return res.json(visible);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Internal server error' });
+        }
+    });
+
     // Platform audit log
     app.get('/api/admin/audit', authMiddleware, requireAdmin(db), async (req, res) => {
         try {
@@ -2302,7 +2345,8 @@ const createApp = (contract, db) => {
                         continue;
                     }
                     const current = await ensureStatus(statusCollection, trimmed);
-                    if (current.status !== 'received') {
+                    const skipDist = !current.distributionCompany && current.status === 'manufactured';
+                    if (current.status !== 'received' && !skipDist) {
                         failed.push({ serialNumber: trimmed, error: `Cannot mark arrived from status '${current.status}'.` });
                         continue;
                     }
@@ -2393,17 +2437,15 @@ const createApp = (contract, db) => {
                 expiryDate,
                 serialNumber,
                 medicationName,
-                distributionCompany,
-                pharmacyCompany
+                distributionCompany = '',
+                pharmacyCompany = ''
             } = req.body;
             if (
                 !gtin ||
                 !batchNumber ||
                 !expiryDate ||
                 !serialNumber ||
-                !medicationName ||
-                !distributionCompany ||
-                !pharmacyCompany
+                !medicationName
             ) {
                 return res.status(400).json({ error: 'Missing required fields.' });
             }
@@ -2483,8 +2525,8 @@ const createApp = (contract, db) => {
             const statusCollection = db.collection('medication_status');
             const auditCollection = db.collection('medication_audits');
             const results = await Promise.allSettled(medications.map(async (row) => {
-                const { serialNumber, medicationName, gtin, batchNumber, expiryDate, distributionCompany, pharmacyCompany } = row;
-                if (!serialNumber || !medicationName || !gtin || !batchNumber || !expiryDate || !distributionCompany || !pharmacyCompany) {
+                const { serialNumber, medicationName, gtin, batchNumber, expiryDate, distributionCompany = '', pharmacyCompany = '' } = row;
+                if (!serialNumber || !medicationName || !gtin || !batchNumber || !expiryDate) {
                     throw new Error('Missing required fields.');
                 }
                 const qrHashSource = `${batchNumber}${expiryDate}${serialNumber}`;
@@ -2521,6 +2563,58 @@ const createApp = (contract, db) => {
             return res.json({ succeeded, failed });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Bulk import failed.' });
+        }
+    });
+
+    app.patch('/api/medications/:id/assign', async (req, res) => {
+        try {
+            if (!usersCollection) {
+                return res.status(501).json({ error: 'Medication actions require MONGODB_URI.' });
+            }
+            if (req.user?.type === 'org') {
+                return res.status(403).json({ error: 'Organisation admins cannot perform medication operations.' });
+            }
+            const user = await loadUserForRequest(db, req);
+            if (!user) return res.status(401).json({ error: 'Invalid user.' });
+            const role = getCompanyRole(user);
+            if (role !== 'production') {
+                return res.status(403).json({ error: 'Only production companies can assign supply chain partners.' });
+            }
+            const serialNumber = req.params.id;
+            if (!serialNumber) return res.status(400).json({ error: 'Medication id is required.' });
+            const { distributionCompany, pharmacyCompany } = req.body;
+            if (distributionCompany === undefined && pharmacyCompany === undefined) {
+                return res.status(400).json({ error: 'Provide distributionCompany and/or pharmacyCompany.' });
+            }
+            const statusCollection = db.collection('medication_status');
+            const auditCollection = db.collection('medication_audits');
+            const update = {};
+            if (distributionCompany !== undefined) update.distributionCompany = distributionCompany;
+            if (pharmacyCompany !== undefined) update.pharmacyCompany = pharmacyCompany;
+            update.updatedAt = new Date();
+            update.updatedBy = user.username;
+            update.updatedByCompanyType = user.companyType || '';
+            update.updatedByCompanyName = user.companyName || '';
+            await statusCollection.updateOne({ serialNumber }, { $set: update }, { upsert: true });
+            await auditCollection.insertOne({
+                serialNumber,
+                action: 'assign',
+                createdAt: new Date(),
+                actorUsername: user.username,
+                actorCompanyType: user.companyType || '',
+                actorCompanyName: user.companyName || '',
+                metadata: { distributionCompany, pharmacyCompany }
+            });
+            const actor = buildActor(req, user);
+            writeAuditLogs(db, {
+                actor, orgId: user.orgId || null,
+                action: 'medication.assign',
+                target: { serialNumber },
+                metadata: { distributionCompany, pharmacyCompany }
+            }).catch(() => {});
+            return res.json({ ok: true, serialNumber, ...update });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Internal server error' });
         }
     });
 
@@ -2606,7 +2700,8 @@ const createApp = (contract, db) => {
             const statusCollection = db.collection('medication_status');
             const auditCollection = db.collection('medication_audits');
             const current = await ensureStatus(statusCollection, serialNumber);
-            if (current.status !== 'received') {
+            const skipDist = !current.distributionCompany && current.status === 'manufactured';
+            if (current.status !== 'received' && !skipDist) {
                 return res.status(409).json({ error: `Cannot mark arrived from status '${current.status}'.` });
             }
             const now = new Date();
@@ -2673,6 +2768,8 @@ const createApp = (contract, db) => {
                 return {
                     ...med,
                     status: status.status,
+                    distributionCompany: status.distributionCompany || med.distributionCompany || '',
+                    pharmacyCompany: status.pharmacyCompany || med.pharmacyCompany || '',
                     statusUpdatedAt: status.updatedAt,
                     statusUpdatedBy: status.updatedBy,
                     statusUpdatedByCompanyType: status.updatedByCompanyType,
@@ -2730,6 +2827,8 @@ const createApp = (contract, db) => {
             return res.json({
                 ...medication,
                 status: status.status,
+                distributionCompany: status.distributionCompany || medication.distributionCompany || '',
+                pharmacyCompany: status.pharmacyCompany || medication.pharmacyCompany || '',
                 statusUpdatedAt: status.updatedAt,
                 statusUpdatedBy: status.updatedBy,
                 statusUpdatedByCompanyType: status.updatedByCompanyType,

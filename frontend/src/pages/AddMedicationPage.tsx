@@ -53,6 +53,8 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
     onBulkAddMedications
 }) => {
     const [mode, setMode] = useState<'single' | 'bulk'>('single');
+    const [skipDistribution, setSkipDistribution] = useState(false);
+    const [skipPharmacy, setSkipPharmacy] = useState(false);
     const bulkFileRef = useRef<HTMLInputElement>(null);
     const [bulkRows, setBulkRows] = useState<BulkMedRow[]>([]);
     const [bulkResult, setBulkResult] = useState<BulkMedResult | null>(null);
@@ -85,8 +87,6 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                     else if (!gtin) _error = 'gtin is required.';
                     else if (!batchNumber) _error = 'batchNumber is required.';
                     else if (!expiryDate) _error = 'expiryDate is required.';
-                    else if (!distributionCompany) _error = 'distributionCompany is required.';
-                    else if (!pharmacyCompany) _error = 'pharmacyCompany is required.';
                     return { serialNumber, medicationName, gtin, batchNumber, expiryDate, distributionCompany, pharmacyCompany, _valid: !_error, _error };
                 });
                 setBulkRows(mapped);
@@ -150,7 +150,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                 {mode === 'single' && (
                     <form className="card card--form" onSubmit={onSubmit}>
                         <h2>New medication entry</h2>
-                        <p>All fields are required to generate a traceable QR payload.</p>
+                        <p>Fill in the medication details. Distribution and pharmacy can be assigned later.</p>
                         {!canAdd && (
                             <div className="inline-error">Only production companies can add medications.</div>
                         )}
@@ -219,27 +219,57 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                             <p className="field__info">Auto-filled from your account: <strong>{companyName}</strong></p>
                         </div>
                         <div className="field">
-                            <label>Distribution Company</label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>Distribution Company</span>
+                            </label>
+                            <label style={{ fontSize: '0.82rem', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={skipDistribution}
+                                    onChange={(e) => {
+                                        setSkipDistribution(e.target.checked);
+                                        if (e.target.checked) {
+                                            onInputChange({ target: { name: 'distributionCompany', value: '' } } as React.ChangeEvent<HTMLInputElement>);
+                                        }
+                                    }}
+                                    disabled={!canAdd}
+                                />
+                                Direct to pharmacy — no distributor
+                            </label>
                             <input
                                 type="text"
                                 name="distributionCompany"
                                 placeholder="Global Logistics"
-                                value={formData.distributionCompany}
+                                value={skipDistribution ? '' : formData.distributionCompany}
                                 onChange={onInputChange}
-                                required
-                                disabled={!canAdd}
+                                disabled={!canAdd || skipDistribution}
                             />
                         </div>
                         <div className="field">
-                            <label>Destination Pharmacy / Clinic</label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>Destination Pharmacy / Clinic</span>
+                            </label>
+                            <label style={{ fontSize: '0.82rem', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={skipPharmacy}
+                                    onChange={(e) => {
+                                        setSkipPharmacy(e.target.checked);
+                                        if (e.target.checked) {
+                                            onInputChange({ target: { name: 'pharmacyCompany', value: '' } } as React.ChangeEvent<HTMLInputElement>);
+                                        }
+                                    }}
+                                    disabled={!canAdd}
+                                />
+                                Pharmacy to be assigned later
+                            </label>
                             <input
                                 type="text"
                                 name="pharmacyCompany"
                                 placeholder="Destination pharmacy or clinic name"
-                                value={formData.pharmacyCompany}
+                                value={skipPharmacy ? '' : formData.pharmacyCompany}
                                 onChange={onInputChange}
-                                required
-                                disabled={!canAdd}
+                                disabled={!canAdd || skipPharmacy}
                             />
                         </div>
 
@@ -257,7 +287,7 @@ const AddMedicationPage: React.FC<AddMedicationPageProps> = ({
                     <div className="card card--form">
                         <h2>Bulk import medications</h2>
                         <p style={{ marginBottom: '4px' }}>
-                            Expected columns: <code>serialNumber | medicationName | gtin | batchNumber | expiryDate | distributionCompany | pharmacyCompany</code>
+                            Expected columns: <code>serialNumber | medicationName | gtin | batchNumber | expiryDate</code> and optionally <code>distributionCompany | pharmacyCompany</code>
                         </p>
                         <p style={{ color: 'var(--muted)', fontSize: '13px', marginBottom: '12px' }}>
                             Production company auto-filled from your account: <strong>{companyName}</strong>
