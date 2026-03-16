@@ -414,7 +414,7 @@ body {
 .home-hero__caret {
   display: inline-block;
   font-weight: 400;
-  color: var(--accent);
+  color: #6366f1;
   margin-left: 2px;
   vertical-align: baseline;
 }
@@ -471,7 +471,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   font-size: 0.72rem;
-  color: var(--muted);
+  color: #6366f1;
 }
 
 .home-demo h2 {
@@ -484,18 +484,18 @@ body {
   width: min(1120px, 100%);
   margin: 0 auto;
   border-radius: 24px;
-  border: 1px solid var(--stroke);
-  background: linear-gradient(165deg, #ffffff 0%, #fafafe 68%, #f5f5ff 100%);
+  border: 1px solid #c7d2fe;
+  background: linear-gradient(165deg, #ffffff 0%, #fafafe 68%, #eef2ff 100%);
   padding: 14px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.08), 0 0 0 1px rgba(99, 102, 241, 0.04);
 }
 
 .home-demo__video {
   width: 100%;
   display: block;
   border-radius: 16px;
-  border: 1px solid var(--stroke);
-  background: #f4f4f5;
+  border: 1px solid #e0e7ff;
+  background: #eef2ff;
   aspect-ratio: 16 / 9;
   object-fit: cover;
 }
@@ -1058,8 +1058,8 @@ body {
 }
 
 .dashboard__link--active {
-  background: #f4f4f5;
-  color: #18181b;
+  background: #eef2ff;
+  color: #4f46e5;
   font-weight: 600;
 }
 
@@ -1415,9 +1415,9 @@ body {
 
 .tab--active {
   background: var(--surface);
-  color: var(--ink);
+  color: #4f46e5;
   box-shadow: none;
-  border-bottom: 2px solid #18181b;
+  border-bottom: 2px solid #6366f1;
 }
 
 .panel__body {
@@ -1483,8 +1483,8 @@ body {
 
 .field input:focus {
   outline: none;
-  border-color: #18181b;
-  box-shadow: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .form__actions {
@@ -1807,8 +1807,8 @@ body {
 
 .lookup__row input:focus {
   outline: none;
-  border-color: #18181b;
-  box-shadow: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .lookup__result {
@@ -2182,8 +2182,8 @@ body {
 
 .batch-input-row input:focus {
   outline: none;
-  border-color: #18181b;
-  box-shadow: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .batch-queue {
@@ -2295,8 +2295,8 @@ body {
 
 .field select:focus {
   outline: none;
-  border-color: #18181b;
-  box-shadow: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 /* --- Admin dashboard --- */
@@ -2369,8 +2369,8 @@ body {
 }
 
 .admin-filter--active {
-  background: #18181b;
-  border-color: #18181b;
+  background: #6366f1;
+  border-color: #6366f1;
   color: #ffffff;
 }
 
@@ -2422,7 +2422,7 @@ body {
 }
 
 .stage-track__step--active {
-  color: #18181b;
+  color: #6366f1;
   font-weight: 700;
 }
 

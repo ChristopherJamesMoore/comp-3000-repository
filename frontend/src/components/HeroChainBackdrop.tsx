@@ -1,9 +1,12 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 
-const getPillVariant = (index: number): 'duo-a' | 'duo-b' => {
-    const bucket = (index * 37 + 13) % 10;
-    if (bucket < 7) return 'duo-a';
+const getPillVariant = (index: number, cols: number): 'duo-a' | 'duo-b' => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+    const noise = Math.sin((row + 1) * 127.1 + (col + 1) * 311.7) * 43758.5453;
+    const fract = noise - Math.floor(noise);
+    if (fract < 0.7) return 'duo-a';
     return 'duo-b';
 };
 
@@ -229,7 +232,7 @@ const HeroChainBackdrop: React.FC = () => {
             <div className="hero-chain-glow" ref={glowRef} />
             <div className="home-chain__pillfield" ref={pillFieldRef}>
                 {Array.from({ length: pillCount }).map((_, index) => (
-                    <div className={`home-chain__pill home-chain__pill--${getPillVariant(index)}`} key={index}>
+                    <div className={`home-chain__pill home-chain__pill--${getPillVariant(index, pillGrid.cols)}`} key={index}>
                         <span className="home-chain__pill-half home-chain__pill-half--top" />
                         <span className="home-chain__pill-half home-chain__pill-half--bottom" />
                     </div>
