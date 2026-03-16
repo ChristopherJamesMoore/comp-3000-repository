@@ -119,8 +119,7 @@ body {
   margin-right: calc(50% - 50vw);
   min-height: 100vh;
   border-bottom: 1px solid var(--stroke);
-  background: #f0fdf4;
-  overflow: hidden;
+  background: #f6fef9;
 }
 
 .home-fold::before,
@@ -129,24 +128,24 @@ body {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
-  filter: blur(140px);
-  z-index: 1;
+  filter: blur(180px);
+  z-index: 0;
 }
 
 .home-fold::before {
-  width: 700px;
-  height: 700px;
-  background: rgba(74, 222, 128, 0.3);
-  bottom: -12%;
-  left: -8%;
+  width: 800px;
+  height: 800px;
+  background: rgba(74, 222, 128, 0.14);
+  bottom: -15%;
+  left: -10%;
 }
 
 .home-fold::after {
-  width: 600px;
-  height: 600px;
-  background: rgba(103, 232, 249, 0.22);
-  top: -10%;
-  right: -8%;
+  width: 700px;
+  height: 700px;
+  background: rgba(103, 232, 249, 0.1);
+  top: -12%;
+  right: -10%;
 }
 
 .home-fold > .home-nav,
@@ -158,6 +157,40 @@ body {
 .home-fold > .home-nav {
   margin-left: 6vw;
   margin-right: 6vw;
+}
+
+/* Hero load animation */
+@keyframes hero-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-glow-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.home-fold > .home-nav {
+  animation: hero-fade-in 0.8s ease both;
+}
+
+.home-fold > .home-hero {
+  animation: hero-fade-in 0.9s 0.15s ease both;
+}
+
+.home-fold > .hero-chain-backdrop {
+  animation: hero-glow-in 1.2s 0.1s ease both;
+}
+
+.home-fold::before,
+.home-fold::after {
+  animation: hero-glow-in 1.6s 0.3s ease both;
 }
 
 /* Scroll-triggered fade-in */
@@ -373,7 +406,7 @@ body {
   display: grid;
   place-items: center;
   pointer-events: auto;
-  z-index: 0;
+  z-index: 1;
 }
 
 .home-hero__eyebrow {
@@ -660,8 +693,8 @@ body {
   display: flex;
   flex-direction: column;
   opacity: 1;
-  box-shadow: none;
-  border: 1px solid #bbf7d0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid #86efac;
   overflow: hidden;
 }
 
@@ -671,38 +704,38 @@ body {
 }
 
 .home-chain__pill-half--top {
-  background: #86efac;
+  background: #4ade80;
 }
 
 .home-chain__pill-half--bottom {
-  background: #a7f3d0;
-  border-top: 1px solid #bbf7d0;
+  background: #6ee7b7;
+  border-top: 1px solid #86efac;
 }
 
 .home-chain__pill--duo-a {
-  border-color: #bbf7d0;
+  border-color: #86efac;
 }
 
 .home-chain__pill--duo-a .home-chain__pill-half--top {
-  background: #86efac;
+  background: #4ade80;
 }
 
 .home-chain__pill--duo-a .home-chain__pill-half--bottom {
-  background: #a7f3d0;
-  border-top: 1px solid #bbf7d0;
+  background: #6ee7b7;
+  border-top: 1px solid #86efac;
 }
 
 .home-chain__pill--duo-b {
-  border-color: #99f6e4;
+  border-color: #5eead4;
 }
 
 .home-chain__pill--duo-b .home-chain__pill-half--top {
-  background: #5eead4;
+  background: #2dd4bf;
 }
 
 .home-chain__pill--duo-b .home-chain__pill-half--bottom {
-  background: #86efac;
-  border-top: 1px solid #99f6e4;
+  background: #4ade80;
+  border-top: 1px solid #5eead4;
 }
 
 .home-chain__model {
