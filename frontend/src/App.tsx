@@ -67,6 +67,7 @@ const App: React.FC = () => {
         loadAdminOrgWorkers,
         deleteAdminOrgWorker,
         resetWorkerPasskey,
+        reassignWorkerCompanyType,
         addBackupPasskey,
         orgWorkers,
         orgWorkersLoading,
@@ -498,6 +499,7 @@ const App: React.FC = () => {
                     onLoadOrgWorkers={loadAdminOrgWorkers}
                     onDeleteOrgWorker={deleteAdminOrgWorker}
                     onResetWorkerPasskey={resetWorkerPasskey}
+                    onReassignWorkerCompanyType={reassignWorkerCompanyType}
                 />
             )}
 

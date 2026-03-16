@@ -3,6 +3,7 @@ import { RefreshCw, Search, QrCode, X, ChevronDown } from 'lucide-react';
 import { Medication, AuditEntry, BatchResult } from '../types';
 import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
 import QrScanner from '../components/QrScanner';
+import SerialAutocomplete from '../components/SerialAutocomplete';
 import { WorkerActivityList } from '../components/AuditLogList';
 import { useWorkerActivity } from '../hooks/useAuditLog';
 
@@ -108,20 +109,6 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         }
     }, [arrivedInput, props]);
 
-    const handleReceiveKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleReceiveAdd();
-        }
-    };
-
-    const handleArrivedKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleArrivedAdd();
-        }
-    };
-
     const handleReceiveScan = useCallback(async (value: string) => {
         const serial = await props.onResolveQrHash(value);
         if (serial) {
@@ -171,12 +158,13 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                         <p>Add serial numbers manually or scan QR codes, then submit the batch.</p>
 
                         <div className="batch-input-row">
-                            <input
-                                type="text"
-                                placeholder="RX-2026-00001"
+                            <SerialAutocomplete
                                 value={receiveInput}
-                                onChange={(e) => setReceiveInput(e.target.value)}
-                                onKeyDown={handleReceiveKeyDown}
+                                onChange={setReceiveInput}
+                                onAdd={(serial) => { props.onAddToReceiveBatch(serial); setReceiveInput(''); }}
+                                medications={props.medications}
+                                statusFilter="manufactured"
+                                exclude={props.receiveBatch}
                                 disabled={!props.canReceive}
                             />
                             <button
@@ -276,12 +264,13 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                         <p>Add serial numbers manually or scan QR codes, then submit the batch.</p>
 
                         <div className="batch-input-row">
-                            <input
-                                type="text"
-                                placeholder="RX-2026-00001"
+                            <SerialAutocomplete
                                 value={arrivedInput}
-                                onChange={(e) => setArrivedInput(e.target.value)}
-                                onKeyDown={handleArrivedKeyDown}
+                                onChange={setArrivedInput}
+                                onAdd={(serial) => { props.onAddToArrivedBatch(serial); setArrivedInput(''); }}
+                                medications={props.medications}
+                                statusFilter={['received', 'manufactured']}
+                                exclude={props.arrivedBatch}
                                 disabled={!props.canArrived}
                             />
                             <button

@@ -21,6 +21,7 @@ type AdminPageProps = {
     onLoadOrgWorkers: (orgId: string) => Promise<OrgWorker[]>;
     onDeleteOrgWorker: (orgId: string, username: string) => Promise<unknown>;
     onResetWorkerPasskey: (orgId: string, username: string) => Promise<{ ok: boolean; registerUrl: string }>;
+    onReassignWorkerCompanyType: (orgId: string, username: string, companyType: string) => Promise<unknown>;
 };
 
 const AdminPage: React.FC<AdminPageProps> = ({
@@ -39,6 +40,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
     onLoadOrgWorkers,
     onDeleteOrgWorker,
     onResetWorkerPasskey,
+    onReassignWorkerCompanyType,
 }) => {
     const [filter, setFilter] = useState<AdminFilter>('all');
     const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
@@ -49,6 +51,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
     const [resetLinkUrl, setResetLinkUrl] = useState('');
     const [orgWorkers, setOrgWorkers] = useState<OrgWorker[]>([]);
     const [orgWorkersLoading, setOrgWorkersLoading] = useState(false);
+    const [reassignTarget, setReassignTarget] = useState<string | null>(null); // username being reassigned
+    const [reassignType, setReassignType] = useState('');
 
     const closeExpanded = () => {
         setExpandedOrg(null);
@@ -57,6 +61,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
         setOrgWorkers([]);
         setResetLinkTarget(null);
         setResetLinkUrl('');
+        setReassignTarget(null);
+        setReassignType('');
     };
 
     const openEdit = (org: OrgProfile) => {
@@ -151,6 +157,19 @@ const AdminPage: React.FC<AdminPageProps> = ({
             setResetLinkUrl(result.registerUrl);
         } catch (err: unknown) {
             setActionError(err instanceof Error ? err.message : 'Failed to reset passkey.');
+        }
+    };
+
+    const handleReassignCompanyType = async (orgId: string, username: string) => {
+        if (!reassignType) return;
+        setActionError('');
+        try {
+            await onReassignWorkerCompanyType(orgId, username, reassignType);
+            setOrgWorkers((prev) => prev.map((w) => w.username === username ? { ...w, companyType: reassignType } : w));
+            setReassignTarget(null);
+            setReassignType('');
+        } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to reassign company type.');
         }
     };
 
@@ -338,18 +357,34 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                             )}
                                             {!orgWorkersLoading && orgWorkers.length > 0 && (
                                                 <div className="admin-table" style={{ marginTop: 0 }}>
-                                                    <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+                                                    <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 1fr 1fr auto' }}>
                                                         <span>Username</span>
                                                         <span>Job title</span>
+                                                        <span>Company type</span>
                                                         <span>Actions</span>
                                                     </div>
                                                     {orgWorkers.map((worker) => (
                                                         <React.Fragment key={worker.username}>
-                                                            <div className="admin-table__row" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+                                                            <div className="admin-table__row" style={{ gridTemplateColumns: '1fr 1fr 1fr auto' }}>
                                                                 <span>{worker.username}</span>
                                                                 <span>{worker.jobTitle || '—'}</span>
                                                                 <span>
+                                                                    <span style={{ textTransform: 'capitalize' }}>{worker.companyType || '—'}</span>
+                                                                    {worker.companyType !== org.companyType && (
+                                                                        <span className="pill" style={{ marginLeft: 6, fontSize: '0.65rem' }}>override</span>
+                                                                    )}
+                                                                </span>
+                                                                <span>
                                                                     <span className="admin-table__actions">
+                                                                        <button
+                                                                            className="button button--ghost button--mini"
+                                                                            onClick={() => {
+                                                                                setReassignTarget(reassignTarget === worker.username ? null : worker.username);
+                                                                                setReassignType(worker.companyType || org.companyType || '');
+                                                                            }}
+                                                                        >
+                                                                            Reassign
+                                                                        </button>
                                                                         <button
                                                                             className="button button--ghost button--mini"
                                                                             onClick={() => handleResetWorkerPasskey(org.orgId, worker.username)}
@@ -370,6 +405,39 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                                                     </span>
                                                                 </span>
                                                             </div>
+                                                            {reassignTarget === worker.username && (
+                                                                <div className="admin-table__expanded" style={{ paddingLeft: '12px' }}>
+                                                                    <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '6px' }}>
+                                                                        Reassign <strong>{worker.username}</strong> to a different company type:
+                                                                    </p>
+                                                                    <div className="field" style={{ maxWidth: '260px' }}>
+                                                                        <select
+                                                                            value={reassignType}
+                                                                            onChange={(e) => setReassignType(e.target.value)}
+                                                                        >
+                                                                            <option value="production">Production</option>
+                                                                            <option value="distribution">Distribution</option>
+                                                                            <option value="pharmacy">Pharmacy</option>
+                                                                            <option value="clinic">Clinic</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div className="admin-table__expanded-actions">
+                                                                        <button
+                                                                            className="button button--primary button--mini"
+                                                                            onClick={() => handleReassignCompanyType(org.orgId, worker.username)}
+                                                                            disabled={reassignType === worker.companyType}
+                                                                        >
+                                                                            Save
+                                                                        </button>
+                                                                        <button
+                                                                            className="button button--ghost button--mini"
+                                                                            onClick={() => { setReassignTarget(null); setReassignType(''); }}
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </React.Fragment>
                                                     ))}
                                                 </div>

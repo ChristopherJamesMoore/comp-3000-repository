@@ -826,6 +826,21 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authFetch]
     );
 
+    const reassignWorkerCompanyType = useCallback(
+        async (orgId: string, username: string, companyType: string) => {
+            const response = await authFetch(
+                `/api/admin/orgs/${encodeURIComponent(orgId)}/workers/${encodeURIComponent(username)}/company-type`,
+                { method: 'PATCH', body: JSON.stringify({ companyType }) }
+            );
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to update company type.');
+            }
+            return response.json();
+        },
+        [authFetch]
+    );
+
     const addBackupPasskey = useCallback(
         async () => {
             const beginRes = await authFetch('/api/admin/webauthn/backup/begin', { method: 'POST' });
@@ -923,6 +938,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         loadAdminOrgWorkers,
         deleteAdminOrgWorker,
         resetWorkerPasskey,
+        reassignWorkerCompanyType,
         addBackupPasskey,
         orgWorkers,
         orgWorkersLoading,

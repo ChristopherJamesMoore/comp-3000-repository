@@ -73,7 +73,7 @@ export const useMedications = ({ authFetch, route, activeTab, setToast }: UseMed
     }, [authFetch]);
 
     useEffect(() => {
-        if (route === '/app' && activeTab === 'view') {
+        if (route === '/app' && (activeTab === 'view' || activeTab === 'receive' || activeTab === 'arrived')) {
             fetchMedications();
         }
     }, [route, activeTab, fetchMedications]);

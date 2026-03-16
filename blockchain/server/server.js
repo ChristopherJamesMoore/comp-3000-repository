@@ -1833,6 +1833,30 @@ const createApp = (contract, db) => {
         }
     });
 
+    // Lightweight company-name autocomplete for medication forms
+    app.get('/api/companies', authMiddleware, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const q = String(req.query.q || '').trim().toLowerCase();
+            const type = String(req.query.type || '').trim().toLowerCase(); // optional: distribution, pharmacy, clinic, production — comma-separated
+            const filter = { approvalStatus: 'approved' };
+            if (type) {
+                const types = type.split(',').map((t) => t.trim()).filter(Boolean);
+                filter.companyType = types.length === 1 ? types[0] : { $in: types };
+            }
+            const orgs = await db.collection('organisations')
+                .find(filter, { projection: { _id: 0, companyName: 1, companyType: 1 } })
+                .toArray();
+            let results = orgs.map((o) => ({ companyName: o.companyName, companyType: o.companyType }));
+            if (q) {
+                results = results.filter((r) => r.companyName.toLowerCase().includes(q));
+            }
+            return res.json(results);
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to search companies.' });
+        }
+    });
+
     app.post('/api/admin/orgs/:orgId/approve', authMiddleware, requireAdmin(db), async (req, res) => {
         try {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
@@ -1974,6 +1998,35 @@ const createApp = (contract, db) => {
             return res.json({ ok: true });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to delete worker.' });
+        }
+    });
+
+    // Admin: reassign a single worker's company type (e.g. production worker at a company that also does distribution)
+    app.patch('/api/admin/orgs/:orgId/workers/:username/company-type', authMiddleware, requireAdmin(db), async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
+            const { orgId, username } = req.params;
+            const { companyType } = req.body;
+            const validTypes = ['production', 'distribution', 'pharmacy', 'clinic'];
+            if (!companyType || !validTypes.includes(companyType.toLowerCase())) {
+                return res.status(400).json({ error: `companyType must be one of: ${validTypes.join(', ')}` });
+            }
+            const result = await db.collection('workers').findOneAndUpdate(
+                { username, orgId },
+                { $set: { companyType: companyType.toLowerCase() } },
+                { returnDocument: 'after', projection: { _id: 0, passwordHash: 0 } }
+            );
+            if (!result) return res.status(404).json({ error: 'Worker not found.' });
+            writeAuditLogs(db, {
+                actor: { username: req.user.sub, type: 'platform_admin' },
+                orgId,
+                action: 'worker.company_type_changed',
+                target: { username },
+                metadata: { newCompanyType: companyType.toLowerCase() }
+            }).catch(() => {});
+            return res.json({ ok: true, worker: result });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to update worker company type.' });
         }
     });
 
