@@ -48,8 +48,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <aside className="dashboard__sidebar">
             <div className="dashboard__sidebar-top">
                 <div className="dashboard__brand">
-                    <img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" />
-                    {!sidebarCollapsed && <span className="dashboard__brand-text">LedgRx</span>}
+                    {sidebarCollapsed
+                        ? <img src="/logo-removebg-preview.png" alt="LedgRx" className="brand-logo brand-logo--sm" />
+                        : <img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" />
+                    }
                 </div>
                 <button
                     type="button"

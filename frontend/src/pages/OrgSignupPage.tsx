@@ -56,7 +56,7 @@ const OrgSignupPage: React.FC<OrgSignupPageProps> = ({ onSignup, onNavigateHome,
         <main className="auth-page">
             <div className="auth-card">
                 <div className="auth-card__header">
-                    <button className="auth-card__brand" onClick={onNavigateHome}><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</button>
+                    <button className="auth-card__brand" onClick={onNavigateHome}><img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" /></button>
                     <span className="auth-card__eyebrow">Register organisation</span>
                 </div>
                 <h2>Build trust in every handoff.</h2>

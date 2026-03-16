@@ -9,7 +9,7 @@ const AdminRecoveryPage: React.FC<AdminRecoveryPageProps> = ({ onBack }) => {
         <main className="auth-page">
             <div className="auth-card" style={{ maxWidth: 560 }}>
                 <div className="auth-card__header">
-                    <span className="auth-card__brand"><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</span>
+                    <span className="auth-card__brand"><img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" /></span>
                     <span className="auth-card__eyebrow">Emergency recovery</span>
                 </div>
                 <h2>Admin account recovery</h2>

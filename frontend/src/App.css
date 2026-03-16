@@ -83,6 +83,17 @@ body {
   height: 20px;
 }
 
+.brand-logo-typ {
+  height: 28px;
+  width: auto;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.brand-logo-typ--sm {
+  height: 22px;
+}
+
 .topbar__nav {
   display: flex;
   gap: 12px;

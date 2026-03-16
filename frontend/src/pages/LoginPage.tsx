@@ -29,8 +29,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
         <div className="auth-card">
             <div className="auth-card__header">
                 <button className="auth-card__brand" onClick={onNavigateHome}>
-                    <img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" />
-                    LedgRx
+                    <img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" />
                 </button>
                 <span className="auth-card__eyebrow">{authMode === 'signup' ? 'Create account' : 'Sign in'}</span>
             </div>

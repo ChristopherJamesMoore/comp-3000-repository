@@ -88,7 +88,7 @@ const WorkerInvitePage: React.FC<WorkerInvitePageProps> = ({ inviteToken, onSucc
             <main className="auth-page">
                 <div className="auth-card">
                     <div className="auth-card__header">
-                        <span className="auth-card__brand"><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</span>
+                        <span className="auth-card__brand"><img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" /></span>
                         <span className="auth-card__eyebrow">Worker setup</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 0' }}>
@@ -105,7 +105,7 @@ const WorkerInvitePage: React.FC<WorkerInvitePageProps> = ({ inviteToken, onSucc
             <main className="auth-page">
                 <div className="auth-card">
                     <div className="auth-card__header">
-                        <button className="auth-card__brand" onClick={onNavigateHome}><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</button>
+                        <button className="auth-card__brand" onClick={onNavigateHome}><img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" /></button>
                         <span className="auth-card__eyebrow">Worker setup</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#991b1b', marginBottom: 16 }}>
@@ -126,7 +126,7 @@ const WorkerInvitePage: React.FC<WorkerInvitePageProps> = ({ inviteToken, onSucc
             <main className="auth-page">
                 <div className="auth-card">
                     <div className="auth-card__header">
-                        <span className="auth-card__brand"><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</span>
+                        <span className="auth-card__brand"><img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" /></span>
                         <span className="auth-card__eyebrow">Worker setup</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#166534', marginBottom: 16 }}>
@@ -143,7 +143,7 @@ const WorkerInvitePage: React.FC<WorkerInvitePageProps> = ({ inviteToken, onSucc
         <main className="auth-page">
             <div className="auth-card">
                 <div className="auth-card__header">
-                    <button className="auth-card__brand" onClick={onNavigateHome}><img src="/logo-removebg-preview.png" alt="" className="brand-logo brand-logo--sm" /> LedgRx</button>
+                    <button className="auth-card__brand" onClick={onNavigateHome}><img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" /></button>
                     <span className="auth-card__eyebrow">Worker setup</span>
                 </div>
                 <h2>Set up your account.</h2>

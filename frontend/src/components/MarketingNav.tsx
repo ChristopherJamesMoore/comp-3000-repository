@@ -20,8 +20,7 @@ const MarketingNav: React.FC<MarketingNavProps> = ({ authToken, profileType, onN
     return (
         <header className={`home-nav${mobileOpen ? ' home-nav--open' : ''}`}>
             <button className="home-nav__brand" onClick={() => handleNavigate('/')}>
-                <img src="/logo-removebg-preview.png" alt="" className="brand-logo" />
-                LedgRx
+                <img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ" />
             </button>
 
             <button
