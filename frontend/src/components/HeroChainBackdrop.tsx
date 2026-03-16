@@ -12,6 +12,7 @@ const HeroChainBackdrop: React.FC = () => {
     const pillCount = pillGrid.cols * pillGrid.rows;
     const stageRef = useRef<HTMLDivElement>(null);
     const pillFieldRef = useRef<HTMLDivElement>(null);
+    const glowRef = useRef<HTMLDivElement>(null);
 
     useLayoutEffect(() => {
         if (!stageRef.current) return undefined;
@@ -62,6 +63,18 @@ const HeroChainBackdrop: React.FC = () => {
 
                 const hover = { x: -9999, y: -9999, active: false };
                 const effectRadius = 132;
+
+                // Cursor-following glow
+                const glowEl = glowRef.current;
+                let glowXTo: ((v: number) => gsap.core.Tween) | null = null;
+                let glowYTo: ((v: number) => gsap.core.Tween) | null = null;
+                let glowOpacityTo: ((v: number) => gsap.core.Tween) | null = null;
+                if (glowEl) {
+                    gsap.set(glowEl, { xPercent: -50, yPercent: -50, x: 0, y: 0, opacity: 0 });
+                    glowXTo = gsap.quickTo(glowEl, 'x', { duration: 0.6, ease: 'power2.out' });
+                    glowYTo = gsap.quickTo(glowEl, 'y', { duration: 0.6, ease: 'power2.out' });
+                    glowOpacityTo = gsap.quickTo(glowEl, 'opacity', { duration: 0.4, ease: 'power2.out' });
+                }
 
                 const handlePointerMove = (event: PointerEvent) => {
                     const rect = pillField.getBoundingClientRect();
@@ -158,6 +171,18 @@ const HeroChainBackdrop: React.FC = () => {
                 tickerFn = () => {
                     if (!hover.active && !wasHoverActive) return;
                     wasHoverActive = hover.active;
+
+                    // Move glow to cursor
+                    if (glowXTo && glowYTo && glowOpacityTo) {
+                        if (hover.active) {
+                            glowXTo(hover.x);
+                            glowYTo(hover.y);
+                            glowOpacityTo(1);
+                        } else {
+                            glowOpacityTo(0);
+                        }
+                    }
+
                     pillEntries.forEach((entry) => {
                         let influence = 0;
                         if (hover.active) {
@@ -201,6 +226,7 @@ const HeroChainBackdrop: React.FC = () => {
 
     return (
         <div className="hero-chain-backdrop" ref={stageRef} aria-hidden="true">
+            <div className="hero-chain-glow" ref={glowRef} />
             <div className="home-chain__pillfield" ref={pillFieldRef}>
                 {Array.from({ length: pillCount }).map((_, index) => (
                     <div className={`home-chain__pill home-chain__pill--${getPillVariant(index)}`} key={index}>
