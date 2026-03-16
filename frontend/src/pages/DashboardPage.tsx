@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { RefreshCw, Search, QrCode, X } from 'lucide-react';
+import { RefreshCw, Search, QrCode, X, ChevronDown } from 'lucide-react';
 import { Medication, AuditEntry, BatchResult } from '../types';
 import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
 import QrScanner from '../components/QrScanner';
@@ -84,6 +84,7 @@ type DashboardPageProps = {
 };
 
 const DashboardPage: React.FC<DashboardPageProps> = (props) => {
+    const [expandedSerial, setExpandedSerial] = useState<string | null>(null);
     const [receiveInput, setReceiveInput] = useState('');
     const [arrivedInput, setArrivedInput] = useState('');
     const [receiveScannerActive, setReceiveScannerActive] = useState(false);
@@ -390,7 +391,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
 
                         {props.error && <div className="error-banner">{props.error}</div>}
 
-                        <div className="records__grid">
+                        <div className="records__list">
                             {props.filteredMedications.length === 0 && !props.isLoading && (
                                 <div className="empty-state">
                                     <QrCode size={32} />
@@ -398,46 +399,59 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                                 </div>
                             )}
                             {props.filteredMedications.map((med) => (
-                                <div className="record-card" key={med.serialNumber}>
-                                    <div className="record-card__header">
-                                        <div>
+                                <React.Fragment key={med.serialNumber}>
+                                    <div
+                                        className={`record-row${expandedSerial === med.serialNumber ? ' record-row--expanded' : ''}`}
+                                        onClick={() => setExpandedSerial(expandedSerial === med.serialNumber ? null : med.serialNumber)}
+                                    >
+                                        <StageTrack status={med.status} />
+                                        <span className="record-row__serial">
                                             <span className="pill">Serial</span>
-                                            <h3>{med.serialNumber}</h3>
-                                        </div>
-                                        <button className="button button--ghost button--mini" onClick={() => props.onShowQR(med.qrHash || '')}>
-                                            <QrCode size={14} />
-                                            View QR
-                                        </button>
+                                            {med.serialNumber}
+                                        </span>
+                                        <span className="record-row__name">{med.medicationName}</span>
+                                        <span className="record-row__batch">{med.batchNumber}</span>
+                                        <ChevronDown size={14} className={`record-row__chevron${expandedSerial === med.serialNumber ? ' record-row__chevron--open' : ''}`} />
                                     </div>
-                                    <div className="record-card__meta">
-                                        <div>
-                                            <span>Name</span>
-                                            <strong>{med.medicationName}</strong>
+                                    {expandedSerial === med.serialNumber && (
+                                        <div className="record-row__detail">
+                                            <div className="record-row__detail-grid">
+                                                <div>
+                                                    <span>GTIN</span>
+                                                    <strong>{med.gtin}</strong>
+                                                </div>
+                                                <div>
+                                                    <span>Expiry</span>
+                                                    <strong>{med.expiryDate}</strong>
+                                                </div>
+                                                <div>
+                                                    <span>Production</span>
+                                                    <strong>{med.productionCompany || '\u2014'}</strong>
+                                                </div>
+                                                <div>
+                                                    <span>Distribution</span>
+                                                    <strong>{med.distributionCompany || '\u2014'}</strong>
+                                                </div>
+                                                <div>
+                                                    <span>Pharmacy</span>
+                                                    <strong>{med.pharmacyCompany || '\u2014'}</strong>
+                                                </div>
+                                            </div>
+                                            <div className="record-row__detail-actions">
+                                                <div className="record-card__hash">
+                                                    <span>QR Hash</span>
+                                                    <button className="button button--ghost button--mini" onClick={(e) => { e.stopPropagation(); props.onShowQR(med.qrHash || ''); }}>
+                                                        Show
+                                                    </button>
+                                                </div>
+                                                <button className="button button--ghost button--mini" onClick={(e) => { e.stopPropagation(); props.onShowQR(med.qrHash || ''); }}>
+                                                    <QrCode size={14} />
+                                                    View QR
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <span>GTIN</span>
-                                            <strong>{med.gtin}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Batch</span>
-                                            <strong>{med.batchNumber}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Expiry</span>
-                                            <strong>{med.expiryDate}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Status</span>
-                                            <StageTrack status={med.status} />
-                                        </div>
-                                    </div>
-                                    <div className="record-card__hash">
-                                        <span>QR Hash</span>
-                                        <button className="button button--ghost button--mini" onClick={() => props.onShowQR(med.qrHash || '')}>
-                                            Show
-                                        </button>
-                                    </div>
-                                </div>
+                                    )}
+                                </React.Fragment>
                             ))}
                         </div>
 
