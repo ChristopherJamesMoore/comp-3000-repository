@@ -245,7 +245,7 @@ const App: React.FC = () => {
     const showAdmin = route === '/app/admin' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAdminSecurity = route === '/app/admin/security' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAdminAudit = route === '/app/admin/audit' && !!authToken && !profileIncomplete && !isPendingApproval;
-    const showPlatformLogin = route === '/staff-a7f3' && !authToken;
+    const showPlatformLogin = route === '/staff-a7f3';
     const showAdminRecovery = route === '/staff-a7f3/recovery';
     const showLogin = false; // old /login redirected below
     // Redirect bare /login to org login

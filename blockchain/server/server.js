@@ -2045,7 +2045,7 @@ const createApp = (contract, db) => {
     app.get('/api/org/audit/storage', authMiddleware, requireOrgAdmin, async (req, res) => {
         try {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
-            const stats = await db.collection('org_audit_log').stats().catch(() => ({ storageSize: 0 }));
+            const stats = await db.command({ collStats: 'org_audit_log' }).catch(() => ({ storageSize: 0 }));
             return res.json({ storageBytes: stats.storageSize || 0, limitBytes: AUDIT_SIZE_LIMIT });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to check storage.' });
@@ -2122,8 +2122,8 @@ const createApp = (contract, db) => {
         try {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
             const [orgStats, platformStats] = await Promise.all([
-                db.collection('org_audit_log').stats().catch(() => ({ storageSize: 0 })),
-                db.collection('platform_audit_log').stats().catch(() => ({ storageSize: 0 }))
+                db.command({ collStats: 'org_audit_log' }).catch(() => ({ storageSize: 0 })),
+                db.command({ collStats: 'platform_audit_log' }).catch(() => ({ storageSize: 0 }))
             ]);
             return res.json({
                 orgAuditBytes: orgStats.storageSize || 0,
