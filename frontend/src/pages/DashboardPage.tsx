@@ -153,7 +153,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                 </div>
             </div>
 
-            {!props.isAdmin && (
+            {props.activeNav === 'insights' && !props.isAdmin && (
                 <DashboardCharts
                     medications={props.medications}
                     activityEntries={activity.entries}

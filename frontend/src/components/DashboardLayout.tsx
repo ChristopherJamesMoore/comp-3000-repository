@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Truck, CheckCircle2, List, Shield, ShieldCheck, ChevronLeft, ChevronRight, UserCircle2, ClipboardList, FileText } from 'lucide-react';
+import { BarChart3, Plus, Truck, CheckCircle2, List, Shield, ShieldCheck, ChevronLeft, ChevronRight, UserCircle2, ClipboardList, FileText } from 'lucide-react';
 
-export type DashboardNav = 'add' | 'receive' | 'arrived' | 'view' | 'activity' | 'admin' | 'security' | 'audit';
+export type DashboardNav = 'insights' | 'add' | 'receive' | 'arrived' | 'view' | 'activity' | 'admin' | 'security' | 'audit';
 
 type DashboardLayoutProps = {
     userName: string;
@@ -73,6 +73,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
             </button>
             <nav className="dashboard__nav">
+                {!isAdmin && (
+                    <button
+                        className={activeNav === 'insights' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => onNavSelect('insights')}
+                        title="Insights"
+                    >
+                        <BarChart3 size={16} />
+                        <span className="dashboard__link-label">Insights</span>
+                    </button>
+                )}
                 {!isAdmin && (
                     <button
                         className={activeNav === 'add' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}

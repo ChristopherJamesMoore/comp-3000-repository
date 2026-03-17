@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import type { DashboardNav } from '../components/DashboardLayout';
 
 export const useDashboardNav = (navigate: (path: string) => void) => {
-    const [activeTab, setActiveTab] = useState<DashboardNav>('view');
+    const [activeTab, setActiveTab] = useState<DashboardNav>('insights');
 
     const handleNavSelect = useCallback(
         (nav: DashboardNav) => {
