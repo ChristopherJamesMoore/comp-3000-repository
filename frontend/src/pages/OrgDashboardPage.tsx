@@ -244,7 +244,12 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
             <aside className="dashboard__sidebar">
                 <div className="dashboard__sidebar-top">
                     <div className="dashboard__brand">
-                        {!sidebarCollapsed && <img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm" />}
+                        {!sidebarCollapsed && (
+                            <>
+                                <img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm brand-logo-typ--light" />
+                                <img src="/logo_white.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--sm brand-logo-typ--dark" />
+                            </>
+                        )}
                     </div>
                     <button
                         type="button"

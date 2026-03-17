@@ -48,7 +48,8 @@ const MarketingFooter: React.FC<MarketingFooterProps> = ({ onNavigate }) => (
         <div className="marketing-footer__inner">
             <div className="marketing-footer__brand">
                 <button type="button" className="marketing-footer__logo" onClick={() => onNavigate('/')}>
-                    <img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ" />
+                    <img src="/logo_typ.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--light" />
+                    <img src="/logo_white.png" alt="LedgRx" className="brand-logo-typ brand-logo-typ--dark" />
                 </button>
             </div>
 

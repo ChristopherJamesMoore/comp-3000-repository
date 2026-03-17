@@ -298,6 +298,26 @@ body {
   height: 28px;
 }
 
+.brand-logo-typ--dark {
+  display: none;
+}
+
+[data-theme="dark"] .brand-logo-typ--light {
+  display: none;
+}
+
+[data-theme="dark"] .brand-logo-typ--dark {
+  display: inline-block;
+}
+
+[data-theme="sidebar-dark"] .dashboard__brand .brand-logo-typ--light {
+  display: none;
+}
+
+[data-theme="sidebar-dark"] .dashboard__brand .brand-logo-typ--dark {
+  display: inline-block;
+}
+
 .dashboard__brand .brand-logo-typ,
 .dashboard__brand .brand-logo-typ--sm {
   height: 40px;
