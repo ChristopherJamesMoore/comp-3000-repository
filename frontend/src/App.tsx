@@ -26,6 +26,7 @@ import AdminAuditPage from './pages/AdminAuditPage';
 import OnboardingPage from './pages/OnboardingPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import PlatformLoginPage from './pages/PlatformLoginPage';
+import BillingPage from './pages/BillingPage';
 import MarketingFooter from './components/MarketingFooter';
 import { useAuth } from './hooks/useAuth';
 import { useDashboardNav } from './hooks/useDashboardNav';
@@ -245,6 +246,7 @@ const App: React.FC = () => {
     const showDashboard = route === '/app' && !!authToken && !profileIncomplete && !isPendingApproval && profileType !== 'org';
     const showAddMedication = route === '/app/add' && !!authToken && !profileIncomplete && !isPendingApproval && profileType !== 'org';
     const showAccount = route === '/account' && !!authToken && !profileIncomplete && !isPendingApproval;
+    const showBilling = route === '/billing' && !!authToken && profileType === 'org' && !isPendingApproval;
     const showAdmin = route === '/app/admin' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAdminSecurity = route === '/app/admin/security' && !!authToken && !profileIncomplete && !isPendingApproval;
     const showAdminAudit = route === '/app/admin/audit' && !!authToken && !profileIncomplete && !isPendingApproval;
@@ -267,7 +269,7 @@ const App: React.FC = () => {
     const orgResetToken = orgResetParams?.get('token') || '';
     const orgResetUsername = orgResetParams?.get('username') || '';
 
-    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showOnboarding
+    const showMarketing = !showDashboard && !showAddMedication && !showLogin && !showAccount && !showBilling && !showOnboarding
         && !showPendingApproval && !showSetup && !showAdmin && !showAdminSecurity && !showAdminAudit && !showOrgDashboard && !showOrgPending
         && !showOrgSignup && !showOrgLogin && !showWorkerLogin && !showPlatformLogin && !showWorkerInvite
         && !showOrgRegisterPasskey && !showAdminRecovery;
@@ -534,9 +536,14 @@ const App: React.FC = () => {
                     onBack={() => navigate(profileType === 'org' ? '/org' : '/app')}
                     onLogout={handleLogout}
                     onAdminClick={() => navigate('/app/admin')}
+                    onBillingClick={profileType === 'org' ? () => navigate('/billing') : undefined}
                     currentTheme={theme}
                     onThemeChange={handleThemeChange}
                 />
+            )}
+
+            {showBilling && (
+                <BillingPage onBack={() => navigate('/account')} />
             )}
 
             {toast && <div className={`toast toast--${toast.type}`}>{toast.message}</div>}

@@ -12,6 +12,7 @@ type AccountPageProps = {
     onBack: () => void;
     onLogout: () => void;
     onAdminClick?: () => void;
+    onBillingClick?: () => void;
     currentTheme: string;
     onThemeChange: (theme: string) => void;
 };
@@ -33,6 +34,7 @@ const AccountPage: React.FC<AccountPageProps> = ({
     onBack,
     onLogout,
     onAdminClick,
+    onBillingClick,
     currentTheme,
     onThemeChange
 }) => {
@@ -256,50 +258,25 @@ const AccountPage: React.FC<AccountPageProps> = ({
                 </div>
             </div>
 
-            {/* Section 5 — Billing (org only) */}
-            {profile?.type === 'org' && (
+            {/* Section 5 — Billing link (org only) */}
+            {profile?.type === 'org' && onBillingClick && (
                 <div className="account-section">
                     <h3 className="account-section__title">Billing</h3>
                     <div className="account-section__body">
-                        <div className="billing-overview">
-                            <div className="billing-overview__plan">
-                                <div className="account-field-row">
-                                    <span className="account-field-row__label">Current plan</span>
-                                    <span className="account-field-row__value">
-                                        <span className="pill pill--approved">Free</span>
-                                    </span>
-                                </div>
-                                <div className="account-field-row">
-                                    <span className="account-field-row__label">Workers</span>
-                                    <span className="account-field-row__value">Unlimited</span>
-                                </div>
-                                <div className="account-field-row">
-                                    <span className="account-field-row__label">Records</span>
-                                    <span className="account-field-row__value">Unlimited</span>
-                                </div>
-                                <div className="account-field-row">
-                                    <span className="account-field-row__label">Audit log retention</span>
-                                    <span className="account-field-row__value">90 days</span>
-                                </div>
-                            </div>
-                            <div className="billing-overview__payment">
-                                <div className="account-field-row">
-                                    <span className="account-field-row__label">Payment method</span>
-                                    <span className="account-field-row__value" style={{ color: 'var(--muted)' }}>None added</span>
-                                </div>
-                            </div>
-                            <div className="billing-overview__actions">
-                                <button type="button" className="button button--primary button--mini" disabled>
-                                    Upgrade plan
-                                </button>
-                                <button type="button" className="button button--ghost button--mini" disabled>
-                                    Add payment method
-                                </button>
-                            </div>
-                            <p className="billing-overview__note">
-                                Billing integration coming soon. All features are currently free during the beta period.
-                            </p>
+                        <div className="account-field-row">
+                            <span className="account-field-row__label">Current plan</span>
+                            <span className="account-field-row__value">
+                                <span className="pill pill--approved">Free</span>
+                            </span>
                         </div>
+                        <button
+                            type="button"
+                            className="button button--ghost button--mini"
+                            onClick={onBillingClick}
+                            style={{ alignSelf: 'flex-start' }}
+                        >
+                            Manage billing
+                        </button>
                     </div>
                 </div>
             )}
