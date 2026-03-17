@@ -2992,6 +2992,19 @@ body {
   gap: 10px;
 }
 
+/* ── Billing overview ────────────────────────────── */
+.billing-overview__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.billing-overview__note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 10px;
+  line-height: 1.4;
+}
+
 /* ── Theme picker ────────────────────────────────── */
 .theme-picker__options {
   display: flex;

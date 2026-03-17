@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as xlsx from 'xlsx';
-import { ChevronLeft, ChevronRight, ChevronDown, List, Users, UserCircle2, RefreshCw, Trash2, Copy, Check, FileText, Search, QrCode } from 'lucide-react';
-import { Medication, OrgWorker, UserProfile } from '../types';
+import { ChevronLeft, ChevronRight, ChevronDown, List, Users, UserCircle2, RefreshCw, Trash2, Copy, Check, FileText, Search, QrCode, BarChart3 } from 'lucide-react';
+import { Medication, OrgWorker, UserProfile, ActivityEntry } from '../types';
 import { AuditLogList } from '../components/AuditLogList';
 import { useOrgAuditLog } from '../hooks/useAuditLog';
+import DashboardCharts from '../components/DashboardCharts';
 import type { AuthFetch } from '../hooks/useAuth';
 
 const STAGES = [
@@ -46,7 +47,7 @@ type OrgDashboardPageProps = {
     authFetch: AuthFetch;
 };
 
-type Tab = 'workers' | 'records' | 'audit';
+type Tab = 'insights' | 'workers' | 'records' | 'audit';
 
 const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     profile,
@@ -71,7 +72,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
         window.localStorage.setItem(sidebarStorageKey, String(sidebarCollapsed));
     }, [sidebarCollapsed]);
 
-    const [activeTab, setActiveTab] = useState<Tab>('workers');
+    const [activeTab, setActiveTab] = useState<Tab>('insights');
     const auditLog = useOrgAuditLog();
 
     // Medications state (records tab)
@@ -134,6 +135,22 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
     const [bulkSubmitting, setBulkSubmitting] = useState(false);
     const [bulkParseError, setBulkParseError] = useState('');
 
+    // Load medications + audit on mount for insights charts
+    useEffect(() => { fetchMedications(); auditLog.load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Map audit log entries to ActivityEntry shape for the activity bar chart
+    const activityFromAudit = useMemo<ActivityEntry[]>(() =>
+        auditLog.entries.map((e) => ({
+            username: e.actor?.username || '',
+            orgId: e.orgId || '',
+            action: e.action,
+            serialNumbers: e.target?.serialNumber ? [String(e.target.serialNumber)] : [],
+            metadata: e.metadata || {},
+            createdAt: e.createdAt,
+        })),
+        [auditLog.entries]
+    );
+
     useEffect(() => {
         if (activeTab === 'workers') {
             onLoadWorkers();
@@ -144,6 +161,10 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
         if (activeTab === 'audit') {
             auditLog.load();
             auditLog.loadStorage();
+        }
+        if (activeTab === 'insights') {
+            fetchMedications();
+            auditLog.load();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
@@ -269,6 +290,14 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                 </button>
                 <nav className="dashboard__nav">
                     <button
+                        className={activeTab === 'insights' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
+                        onClick={() => setActiveTab('insights')}
+                        title="Insights"
+                    >
+                        <BarChart3 size={16} />
+                        <span className="dashboard__link-label">Insights</span>
+                    </button>
+                    <button
                         className={activeTab === 'workers' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
                         onClick={() => setActiveTab('workers')}
                         title="Manage workers"
@@ -296,6 +325,35 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
             </aside>
 
             <div className="dashboard__content">
+                {activeTab === 'insights' && (
+                    <>
+                        <div className="dashboard__topbar">
+                            <div>
+                                <h1>Insights</h1>
+                            </div>
+                        </div>
+                        <div className="dashboard__stats">
+                            <div>
+                                <span>Total Records</span>
+                                <strong>{medications.length}</strong>
+                            </div>
+                            <div>
+                                <span>Workers</span>
+                                <strong>{orgWorkers.length}</strong>
+                            </div>
+                            <div>
+                                <span>Audit Events</span>
+                                <strong>{auditLog.total}</strong>
+                            </div>
+                        </div>
+                        <DashboardCharts
+                            medications={medications}
+                            activityEntries={activityFromAudit}
+                            activityLoading={auditLog.loading}
+                        />
+                    </>
+                )}
+
                 {activeTab === 'workers' && (
                     <>
                         <div className="dashboard__topbar">
