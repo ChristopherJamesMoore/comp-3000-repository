@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { RefreshCw, Search, QrCode, X, ChevronDown } from 'lucide-react';
 import { Medication, AuditEntry, BatchResult } from '../types';
 import DashboardLayout, { DashboardNav } from '../components/DashboardLayout';
+import DashboardCharts from '../components/DashboardCharts';
 import QrScanner from '../components/QrScanner';
 import SerialAutocomplete from '../components/SerialAutocomplete';
 import { WorkerActivityList } from '../components/AuditLogList';
@@ -93,6 +94,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     const [receiveScannerActive, setReceiveScannerActive] = useState(false);
     const [arrivedScannerActive, setArrivedScannerActive] = useState(false);
     const activity = useWorkerActivity();
+    useEffect(() => { activity.load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     useEffect(() => { if (props.activeNav === 'activity') activity.load(); }, [props.activeNav]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleReceiveAdd = useCallback(() => {
@@ -150,6 +152,14 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                     <strong>{props.lastUpdated ?? '\u2014'}</strong>
                 </div>
             </div>
+
+            {!props.isAdmin && (
+                <DashboardCharts
+                    medications={props.medications}
+                    activityEntries={activity.entries}
+                    activityLoading={activity.loading}
+                />
+            )}
 
             {props.activeNav === 'receive' && (
                 <section className="dashboard__panel">
