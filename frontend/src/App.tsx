@@ -76,7 +76,9 @@ const App: React.FC = () => {
         addOrgWorker,
         removeOrgWorker,
         updateOrgWorkerJobTitle,
-        bulkAddWorkers
+        bulkAddWorkers,
+        theme,
+        handleThemeChange
     } = useAuth({ requiresAuth, navigate, setToast });
     const onNavigate = useNavigateWithAuthMode(navigate, setAuthMode);
     const { activeTab, handleNavSelect } = useDashboardNav(navigate);
@@ -532,6 +534,8 @@ const App: React.FC = () => {
                     onBack={() => navigate(profileType === 'org' ? '/org' : '/app')}
                     onLogout={handleLogout}
                     onAdminClick={() => navigate('/app/admin')}
+                    currentTheme={theme}
+                    onThemeChange={handleThemeChange}
                 />
             )}
 

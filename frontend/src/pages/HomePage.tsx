@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Zap, ZapOff } from 'lucide-react';
 import { AuthMode } from '../types';
 import MarketingNav from '../components/MarketingNav';
 import HeroChainBackdrop from '../components/HeroChainBackdrop';
@@ -62,7 +63,16 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, profileType, onNavigate 
     const [typed, setTyped] = useState('');
     const [showCaret, setShowCaret] = useState(true);
     const [typingComplete, setTypingComplete] = useState(false);
+    const [lowSpec, setLowSpec] = useState(() => localStorage.getItem('ledgrx.lowSpec') === 'true');
     const mainRef = useFadeOnScroll();
+
+    const toggleLowSpec = () => {
+        setLowSpec((prev) => {
+            const next = !prev;
+            localStorage.setItem('ledgrx.lowSpec', String(next));
+            return next;
+        });
+    };
 
     useEffect(() => {
         let index = 0;
@@ -88,8 +98,16 @@ const HomePage: React.FC<HomePageProps> = ({ authToken, profileType, onNavigate 
     return (
         <main className="home" ref={mainRef}>
             <section className="home-fold">
-                <HeroChainBackdrop />
+                <HeroChainBackdrop lowSpec={lowSpec} />
                 <MarketingNav authToken={authToken} profileType={profileType} onNavigate={onNavigate} />
+                <button
+                    className="lowspec-toggle"
+                    onClick={toggleLowSpec}
+                    title={lowSpec ? 'Enable animations' : 'Disable animations'}
+                    type="button"
+                >
+                    {lowSpec ? <ZapOff size={16} /> : <Zap size={16} />}
+                </button>
 
                 <section className="home-hero">
                     <div className="home-hero__inner">

@@ -13,6 +13,7 @@ export const useRouting = () => {
         setRoute((currentRoute) => {
             if (path !== currentRoute) {
                 window.history.pushState({}, '', path);
+                window.scrollTo(0, 0);
                 return path;
             }
             return currentRoute;

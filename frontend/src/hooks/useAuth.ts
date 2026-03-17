@@ -30,6 +30,25 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     const [orgWorkers, setOrgWorkers] = useState<OrgWorker[]>([]);
     const [orgWorkersLoading, setOrgWorkersLoading] = useState(false);
     const [orgWorkersError, setOrgWorkersError] = useState('');
+    const [theme, setTheme] = useState(() => localStorage.getItem('ledgrx.theme') || 'light');
+
+    const applyTheme = useCallback((t: string) => {
+        setTheme(t);
+        localStorage.setItem('ledgrx.theme', t);
+        if (t === 'light') {
+            document.documentElement.removeAttribute('data-theme');
+        } else {
+            document.documentElement.setAttribute('data-theme', t);
+        }
+    }, []);
+
+    // Apply theme from localStorage on mount (prevents flash)
+    useEffect(() => {
+        const saved = localStorage.getItem('ledgrx.theme') || 'light';
+        if (saved !== 'light') {
+            document.documentElement.setAttribute('data-theme', saved);
+        }
+    }, []);
 
     useEffect(() => {
         const stored = localStorage.getItem('authToken');
@@ -56,6 +75,15 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         [authToken]
     );
 
+    const handleThemeChange = useCallback((newTheme: string) => {
+        applyTheme(newTheme);
+        // fire-and-forget persist
+        authFetch('/api/auth/theme', {
+            method: 'POST',
+            body: JSON.stringify({ theme: newTheme }),
+        }).catch(() => {});
+    }, [applyTheme, authFetch]);
+
     const loadProfile = useCallback(async () => {
         if (!authToken) return;
         const tokenType = localStorage.getItem('authTokenType') || 'platform';
@@ -80,9 +108,11 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     adminLastName: org.adminLastName,
                     isAdmin: false,
                     type: 'org',
-                    orgId: org.orgId
+                    orgId: org.orgId,
+                    theme: org.theme || 'light'
                 };
                 setProfile(mappedProfile);
+                applyTheme(org.theme || 'light');
                 setProfileError('');
                 setProfileForm({
                     companyType: org.companyType || '',
@@ -107,9 +137,11 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
                     isAdmin: false,
                     type: 'worker',
                     orgId: worker.orgId,
-                    jobTitle: worker.jobTitle
+                    jobTitle: worker.jobTitle,
+                    theme: worker.theme || 'light'
                 };
                 setProfile(mappedProfile);
+                applyTheme(worker.theme || 'light');
                 setProfileError('');
                 setProfileForm({
                     companyType: worker.companyType || '',
@@ -127,6 +159,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
             }
             const data = await response.json();
             setProfile({ ...data, type: 'platform' });
+            applyTheme(data.theme || 'light');
             setProfileError('');
             setProfileForm({
                 companyType: data.companyType || '',
@@ -136,7 +169,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         } catch (error) {
             setProfileError('Failed to load profile.');
         }
-    }, [authFetch, authToken]);
+    }, [authFetch, authToken, applyTheme]);
 
     const loadAdminUsers = useCallback(async () => {
         if (!authToken) return;
@@ -346,8 +379,11 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         }
         localStorage.removeItem('authToken');
         localStorage.removeItem('authTokenType');
+        localStorage.removeItem('ledgrx.theme');
+        document.documentElement.removeAttribute('data-theme');
         setAuthToken(null);
         setProfile(null);
+        setTheme('light');
         setProfileForm({ companyType: '', companyName: '', registrationNumber: '' });
         setAdminOrgs([]);
         setOrgWorkers([]);
@@ -947,6 +983,8 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
         addOrgWorker,
         removeOrgWorker,
         updateOrgWorkerJobTitle,
-        bulkAddWorkers
+        bulkAddWorkers,
+        theme,
+        handleThemeChange
     };
 };

@@ -43,6 +43,7 @@ export type UserProfile = {
     adminEmail?: string;
     adminFirstName?: string;
     adminLastName?: string;
+    theme?: string;
 };
 
 export type OrgWorker = {

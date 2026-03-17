@@ -10,7 +10,11 @@ const getPillVariant = (index: number, cols: number): 'duo-a' | 'duo-b' => {
     return 'duo-b';
 };
 
-const HeroChainBackdrop: React.FC = () => {
+type HeroChainBackdropProps = {
+    lowSpec?: boolean;
+};
+
+const HeroChainBackdrop: React.FC<HeroChainBackdropProps> = ({ lowSpec = false }) => {
     const [pillGrid, setPillGrid] = useState({ cols: 18, rows: 7 });
     const pillCount = pillGrid.cols * pillGrid.rows;
     const stageRef = useRef<HTMLDivElement>(null);
@@ -149,6 +153,8 @@ const HeroChainBackdrop: React.FC = () => {
                         scale: 1,
                     });
 
+                    if (lowSpec) return; // Position only — skip animations
+
                     pillEntries.push({
                         x,
                         y,
@@ -169,6 +175,8 @@ const HeroChainBackdrop: React.FC = () => {
                         })
                     );
                 });
+
+                if (lowSpec) return; // Skip ticker + pointer handlers
 
                 let wasHoverActive = false;
                 tickerFn = () => {
@@ -225,7 +233,7 @@ const HeroChainBackdrop: React.FC = () => {
             pillTweens.forEach((tween) => tween.kill());
             media.revert();
         };
-    }, [pillGrid.cols, pillGrid.rows]);
+    }, [pillGrid.cols, pillGrid.rows, lowSpec]);
 
     return (
         <div className="hero-chain-backdrop" ref={stageRef} aria-hidden="true">

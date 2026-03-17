@@ -489,7 +489,8 @@ const createApp = (contract, db) => {
                     isAdmin: !!user.isAdmin || isAdminUser(username),
                     approvalStatus: getUserApprovalStatus(user),
                     registrationNumber: user.registrationNumber || '',
-                    email: user.email || ''
+                    email: user.email || '',
+                    theme: user.theme || 'light'
                 });
             }
             return res.json({ username, isAdmin: isAdminUser(username), approvalStatus: 'approved' });
@@ -669,6 +670,42 @@ const createApp = (contract, db) => {
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to update profile.' });
+        }
+    });
+
+    app.post('/api/auth/theme', authMiddleware, async (req, res) => {
+        try {
+            if (!db) return res.status(501).json({ error: 'Theme changes require MONGODB_URI.' });
+            const username = req.user?.sub;
+            if (!username) return res.status(401).json({ error: 'Invalid token.' });
+            const { theme } = req.body;
+            const validThemes = ['light', 'dark', 'sidebar-dark'];
+            if (!theme || !validThemes.includes(theme)) {
+                return res.status(400).json({ error: `Invalid theme. Must be one of: ${validThemes.join(', ')}` });
+            }
+            switch (req.user.type) {
+                case 'org':
+                    await db.collection('organisations').updateOne(
+                        { adminUsername: username },
+                        { $set: { theme } }
+                    );
+                    break;
+                case 'worker':
+                    await db.collection('workers').updateOne(
+                        { username },
+                        { $set: { theme } }
+                    );
+                    break;
+                default:
+                    await db.collection('users').updateOne(
+                        { username },
+                        { $set: { theme } }
+                    );
+                    break;
+            }
+            return res.json({ ok: true, theme });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to update theme.' });
         }
     });
 
@@ -1578,7 +1615,8 @@ const createApp = (contract, db) => {
                 adminEmail: org.adminEmail,
                 adminFirstName: org.adminFirstName,
                 adminLastName: org.adminLastName,
-                registrationNumber: org.registrationNumber
+                registrationNumber: org.registrationNumber,
+                theme: org.theme || 'light'
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to load profile.' });
@@ -1634,7 +1672,8 @@ const createApp = (contract, db) => {
                 orgId: worker.orgId,
                 companyName: worker.companyName,
                 companyType: worker.companyType,
-                jobTitle: worker.jobTitle
+                jobTitle: worker.jobTitle,
+                theme: worker.theme || 'light'
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to load profile.' });
