@@ -706,10 +706,10 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     }, [authFetch, authToken]);
 
     const addOrgWorker = useCallback(
-        async (username: string, jobTitle: string) => {
+        async (username: string, jobTitle: string, companyType: string) => {
             const response = await authFetch('/api/org/workers', {
                 method: 'POST',
-                body: JSON.stringify({ username, jobTitle }),
+                body: JSON.stringify({ username, jobTitle, companyType }),
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -748,7 +748,7 @@ export const useAuth = ({ requiresAuth, navigate, setToast }: UseAuthOptions) =>
     );
 
     const bulkAddWorkers = useCallback(
-        async (workers: { username: string; jobTitle: string }[]) => {
+        async (workers: { username: string; jobTitle: string; companyType: string }[]) => {
             const res = await authFetch('/api/org/workers/bulk', { method: 'POST', body: JSON.stringify({ workers }) });
             if (!res.ok) throw new Error((await res.json()).error || 'Bulk import failed');
             return res.json(); // { succeeded: [{ username, inviteUrl }], failed: [...] }

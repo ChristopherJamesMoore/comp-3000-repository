@@ -29,7 +29,7 @@ const StageTrack: React.FC<{ status?: string }> = ({ status = 'manufactured' }) 
     );
 };
 
-type BulkWorkerRow = { username: string; jobTitle: string; _valid: boolean; _error: string };
+type BulkWorkerRow = { username: string; jobTitle: string; companyType: string; _valid: boolean; _error: string };
 type BulkWorkerResult = { succeeded: { username: string; inviteUrl?: string }[]; failed: { username: string; error: string }[] };
 
 type OrgDashboardPageProps = {
@@ -38,10 +38,10 @@ type OrgDashboardPageProps = {
     orgWorkersLoading: boolean;
     orgWorkersError: string;
     onLoadWorkers: () => void;
-    onAddWorker: (username: string, jobTitle: string) => Promise<{ worker: unknown; inviteUrl: string }>;
+    onAddWorker: (username: string, jobTitle: string, companyType: string) => Promise<{ worker: unknown; inviteUrl: string }>;
     onRemoveWorker: (username: string) => Promise<unknown>;
     onUpdateJobTitle: (username: string, jobTitle: string) => Promise<unknown>;
-    onBulkAddWorkers: (workers: { username: string; jobTitle: string }[]) => Promise<BulkWorkerResult>;
+    onBulkAddWorkers: (workers: { username: string; jobTitle: string; companyType: string }[]) => Promise<BulkWorkerResult>;
     onLogout: () => void;
     onAccountClick: () => void;
     authFetch: AuthFetch;
@@ -110,7 +110,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
 
     // Add worker form
     const [showAddForm, setShowAddForm] = useState(false);
-    const [addForm, setAddForm] = useState({ username: '', jobTitle: '' });
+    const [addForm, setAddForm] = useState({ username: '', jobTitle: '', companyType: '' });
     const [addError, setAddError] = useState('');
     const [addSubmitting, setAddSubmitting] = useState(false);
     const [addedInviteUrl, setAddedInviteUrl] = useState('');
@@ -175,11 +175,12 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
         setAddedInviteUrl('');
         if (!addForm.username) { setAddError('Username is required.'); return; }
         if (addForm.username.length < 3) { setAddError('Username must be at least 3 characters.'); return; }
+        if (!addForm.companyType) { setAddError('Role is required.'); return; }
         setAddSubmitting(true);
         try {
-            const result = await onAddWorker(addForm.username, addForm.jobTitle);
+            const result = await onAddWorker(addForm.username, addForm.jobTitle, addForm.companyType);
             setAddedInviteUrl(result.inviteUrl);
-            setAddForm({ username: '', jobTitle: '' });
+            setAddForm({ username: '', jobTitle: '', companyType: '' });
             onLoadWorkers();
         } catch (err: unknown) {
             setAddError(err instanceof Error ? err.message : 'Failed to add worker.');
@@ -221,12 +222,15 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                 const wb = xlsx.read(data, { type: 'array' });
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 const rows: Record<string, unknown>[] = xlsx.utils.sheet_to_json(ws, { defval: '' });
+                const allowedTypes = ['production', 'distribution', 'pharmacy', 'clinic'];
                 const mapped: BulkWorkerRow[] = rows.map((row) => {
                     const username = String(row['username'] || row['Username'] || '').trim();
                     const jobTitle = String(row['jobTitle'] || row['Job Title'] || row['job_title'] || '').trim();
+                    const companyType = String(row['companyType'] || row['Company Type'] || row['company_type'] || row['role'] || row['Role'] || '').trim().toLowerCase();
                     let _error = '';
                     if (!username || username.length < 3) _error = 'Username must be at least 3 characters.';
-                    return { username, jobTitle, _valid: !_error, _error };
+                    else if (!companyType || !allowedTypes.includes(companyType)) _error = 'Invalid role (must be production, distribution, pharmacy, or clinic).';
+                    return { username, jobTitle, companyType, _valid: !_error, _error };
                 });
                 setBulkRows(mapped);
             } catch {
@@ -242,7 +246,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
         setBulkResult(null);
         try {
             const validRows = bulkRows.filter((r) => r._valid);
-            const result = await onBulkAddWorkers(validRows.map(({ username, jobTitle }) => ({ username, jobTitle })));
+            const result = await onBulkAddWorkers(validRows.map(({ username, jobTitle, companyType }) => ({ username, jobTitle, companyType })));
             setBulkResult(result);
             if (result.failed.length === 0) {
                 setBulkRows([]);
@@ -390,7 +394,7 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                             </div>
 
                             <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '-4px 0 10px' }}>
-                                Excel / CSV must have columns: <code>username</code> <code>jobTitle</code> — jobTitle is optional. Each worker will receive a unique invite link to register their passkey.
+                                Excel / CSV must have columns: <code>username</code> <code>companyType</code> (production/distribution/pharmacy/clinic) and optionally <code>jobTitle</code>. Each worker will receive a unique invite link to register their passkey.
                             </p>
 
                             {bulkParseError && <div className="inline-error" style={{ marginBottom: '8px' }}>{bulkParseError}</div>}
@@ -398,17 +402,19 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                             {bulkRows.length > 0 && (
                                 <div className="admin-table__expanded" style={{ marginBottom: '12px' }}>
                                     <p style={{ marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
-                                        Expected columns: <code>username | jobTitle</code>
+                                        Expected columns: <code>username | companyType | jobTitle</code>
                                     </p>
                                     <div className="admin-table">
-                                        <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+                                        <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 0.8fr 1fr 1fr' }}>
                                             <span>Username</span>
+                                            <span>Role</span>
                                             <span>Job title</span>
                                             <span>Status</span>
                                         </div>
                                         {bulkRows.map((row, i) => (
-                                            <div key={i} className="admin-table__row" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+                                            <div key={i} className="admin-table__row" style={{ gridTemplateColumns: '1fr 0.8fr 1fr 1fr' }}>
                                                 <span className="admin-table__primary">{row.username || <em style={{ color: 'var(--muted)' }}>empty</em>}</span>
+                                                <span style={{ textTransform: 'capitalize' }}>{row.companyType || '—'}</span>
                                                 <span>{row.jobTitle || '—'}</span>
                                                 <span style={{ color: row._valid ? 'var(--success, #22c55e)' : 'var(--error, #ef4444)', fontSize: '12px' }}>
                                                     {row._valid ? '✓ valid' : row._error}
@@ -511,6 +517,19 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                         />
                                     </div>
                                     <div className="field">
+                                        <label>Role</label>
+                                        <select
+                                            value={addForm.companyType}
+                                            onChange={(e) => setAddForm((f) => ({ ...f, companyType: e.target.value }))}
+                                        >
+                                            <option value="">Select role…</option>
+                                            <option value="production">Production</option>
+                                            <option value="distribution">Distribution</option>
+                                            <option value="pharmacy">Pharmacy</option>
+                                            <option value="clinic">Clinic</option>
+                                        </select>
+                                    </div>
+                                    <div className="field">
                                         <label>Job title <span style={{ color: 'var(--muted)' }}>(optional)</span></label>
                                         <input
                                             type="text"
@@ -540,8 +559,9 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
 
                             {!orgWorkersLoading && (
                                 <div className="admin-table">
-                                    <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 1fr 1fr auto' }}>
+                                    <div className="admin-table__row admin-table__row--head" style={{ gridTemplateColumns: '1fr 0.8fr 0.8fr 0.8fr auto' }}>
                                         <span>Username</span>
+                                        <span>Role</span>
                                         <span>Job title</span>
                                         <span>Added</span>
                                         <span>Actions</span>
@@ -551,8 +571,9 @@ const OrgDashboardPage: React.FC<OrgDashboardPageProps> = ({
                                     )}
                                     {orgWorkers.map((worker) => (
                                         <React.Fragment key={worker.username}>
-                                            <div className="admin-table__row" style={{ gridTemplateColumns: '1fr 1fr 1fr auto' }}>
+                                            <div className="admin-table__row" style={{ gridTemplateColumns: '1fr 0.8fr 0.8fr 0.8fr auto' }}>
                                                 <span className="admin-table__primary">{worker.username}</span>
+                                                <span style={{ textTransform: 'capitalize' }}>{worker.companyType || '—'}</span>
                                                 <span>{worker.jobTitle || '—'}</span>
                                                 <span>{formatDate(worker.createdAt)}</span>
                                                 <span>

@@ -220,6 +220,10 @@
   color: #818cf8;
 }
 
+[data-theme="sidebar-dark"] .dashboard__link--disabled {
+  opacity: 0.25;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1324,6 +1328,12 @@ body {
   background: #eef2ff;
   color: #4f46e5;
   font-weight: 600;
+}
+
+.dashboard__link--disabled {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 
 .dashboard__link-label {

@@ -85,8 +85,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 )}
                 {!isAdmin && (
                     <button
-                        className={activeNav === 'add' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
-                        onClick={() => onNavSelect('add')}
+                        className={`dashboard__link${activeNav === 'add' ? ' dashboard__link--active' : ''}${!canAdd ? ' dashboard__link--disabled' : ''}`}
+                        onClick={() => canAdd && onNavSelect('add')}
                         title="Add medication"
                     >
                         <Plus size={16} />
@@ -95,8 +95,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 )}
                 {!isAdmin && (
                     <button
-                        className={activeNav === 'receive' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
-                        onClick={() => onNavSelect('receive')}
+                        className={`dashboard__link${activeNav === 'receive' ? ' dashboard__link--active' : ''}${!canReceive ? ' dashboard__link--disabled' : ''}`}
+                        onClick={() => canReceive && onNavSelect('receive')}
                         title="Mark received by distributor"
                     >
                         <Truck size={16} />
@@ -105,8 +105,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 )}
                 {!isAdmin && (
                     <button
-                        className={activeNav === 'arrived' ? 'dashboard__link dashboard__link--active' : 'dashboard__link'}
-                        onClick={() => onNavSelect('arrived')}
+                        className={`dashboard__link${activeNav === 'arrived' ? ' dashboard__link--active' : ''}${!canArrived ? ' dashboard__link--disabled' : ''}`}
+                        onClick={() => canArrived && onNavSelect('arrived')}
                         title="Mark arrived at pharmacy"
                     >
                         <CheckCircle2 size={16} />

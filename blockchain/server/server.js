@@ -1697,9 +1697,13 @@ const createApp = (contract, db) => {
     app.post('/api/org/workers', authMiddleware, requireOrgAdmin, async (req, res) => {
         try {
             if (!db) return res.status(501).json({ error: 'Requires MONGODB_URI.' });
-            const { username, jobTitle } = req.body;
+            const { username, jobTitle, companyType } = req.body;
             if (!username) return res.status(400).json({ error: 'Username is required.' });
             if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters.' });
+            const allowedTypes = ['production', 'distribution', 'pharmacy', 'clinic'];
+            if (!companyType || !allowedTypes.includes(companyType.toLowerCase())) {
+                return res.status(400).json({ error: 'companyType is required and must be one of: production, distribution, pharmacy, clinic.' });
+            }
             const workersCol = db.collection('workers');
             const orgsCol = db.collection('organisations');
             const workerConflict = await workersCol.findOne({ username });
@@ -1708,10 +1712,11 @@ const createApp = (contract, db) => {
             if (orgConflict) return res.status(409).json({ error: 'Username already taken.' });
             const org = await orgsCol.findOne({ orgId: req.user.orgId });
             if (!org) return res.status(404).json({ error: 'Organisation not found.' });
+            const workerCompanyType = companyType.toLowerCase();
             const workerId = crypto.randomUUID();
             await workersCol.insertOne({
                 workerId, username,
-                orgId: org.orgId, companyName: org.companyName, companyType: org.companyType,
+                orgId: org.orgId, companyName: org.companyName, companyType: workerCompanyType,
                 jobTitle: String(jobTitle || '').trim(),
                 createdAt: new Date(), createdBy: req.user.sub,
             });
@@ -1732,7 +1737,7 @@ const createApp = (contract, db) => {
                 metadata: { jobTitle: jobTitle || '' }
             }).catch(() => {});
             return res.status(201).json({
-                worker: { workerId, username, orgId: org.orgId, companyName: org.companyName, companyType: org.companyType, jobTitle: jobTitle || '' },
+                worker: { workerId, username, orgId: org.orgId, companyName: org.companyName, companyType: workerCompanyType, jobTitle: jobTitle || '' },
                 inviteUrl,
             });
         } catch (error) {
@@ -1757,10 +1762,15 @@ const createApp = (contract, db) => {
             const succeeded = [];
             const failed = [];
             const appUrl = getEnv('APP_URL', 'https://ledgrx.duckdns.org');
+            const allowedTypes = ['production', 'distribution', 'pharmacy', 'clinic'];
             for (const row of workers) {
-                const { username, jobTitle } = row;
+                const { username, jobTitle, companyType } = row;
                 if (!username || username.length < 3) {
                     failed.push({ username: username || '', error: 'Username must be at least 3 characters.' });
+                    continue;
+                }
+                if (!companyType || !allowedTypes.includes(String(companyType).toLowerCase())) {
+                    failed.push({ username, error: 'companyType is required (production, distribution, pharmacy, clinic).' });
                     continue;
                 }
                 try {
@@ -1768,10 +1778,11 @@ const createApp = (contract, db) => {
                     if (workerConflict) { failed.push({ username, error: 'Username already taken.' }); continue; }
                     const orgConflict = await orgsCollection.findOne({ adminUsername: username });
                     if (orgConflict) { failed.push({ username, error: 'Username already taken.' }); continue; }
+                    const workerCompanyType = String(companyType).toLowerCase();
                     const workerId = crypto.randomUUID();
                     await workersCollection.insertOne({
                         workerId, username,
-                        orgId: org.orgId, companyName: org.companyName, companyType: org.companyType,
+                        orgId: org.orgId, companyName: org.companyName, companyType: workerCompanyType,
                         jobTitle: String(jobTitle || '').trim(),
                         createdAt: new Date(), createdBy: req.user.sub,
                     });
