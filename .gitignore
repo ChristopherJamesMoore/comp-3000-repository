@@ -1,3 +1,7 @@
 .DS_Store
 .env.backend
 blockchain/server/data/
+blockchain/chaincode/node_modules/
+Module Handbook.pdf
+Report structure.pdf
+docs/writeup-structure.md
